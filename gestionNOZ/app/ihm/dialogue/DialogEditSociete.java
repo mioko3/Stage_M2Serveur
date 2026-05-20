@@ -1,6 +1,6 @@
 package app.ihm.dialogue;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.gestionlot.PanelSocietes;
@@ -35,7 +35,7 @@ import javax.swing.table.DefaultTableModel;
 public class DialogEditSociete extends JDialog
 {
 	private final FenetrePrincipale fenetre;
-	private final Controleur    ctrl;
+	private final IControleur    ctrl;
 	private final Societe       soc;
 	private final PanelSocietes panelSoc;
 
@@ -44,7 +44,7 @@ public class DialogEditSociete extends JDialog
 	private JTable            tblAces;
 	private JLabel            lblErreur;
 
-	public DialogEditSociete(FenetrePrincipale fenetre, Controleur ctrl,
+	public DialogEditSociete(FenetrePrincipale fenetre, IControleur ctrl,
 							  Societe soc, PanelSocietes panelSoc)
 	{
 		super(fenetre, "Modifier — " + soc.getNom(), true);

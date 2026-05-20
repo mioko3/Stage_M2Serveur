@@ -1,6 +1,6 @@
 package app.ihm.dialogue;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.gestionlot.PanelAffectation;
@@ -42,7 +42,7 @@ import javax.swing.event.DocumentListener;
  */
 public class DialogEditLot extends JDialog
 {
-	private final Controleur        ctrl;
+	private final IControleur        ctrl;
 	private final Lot               lot;
 	private final PanelAffectation  panelAff;
 	private final FenetrePrincipale fenetre;
@@ -67,7 +67,7 @@ public class DialogEditLot extends JDialog
 
 	// ── Constructeur ──────────────────────────────────────────────────────
 
-	public DialogEditLot(FenetrePrincipale fenetre, Controleur ctrl,
+	public DialogEditLot(FenetrePrincipale fenetre, IControleur ctrl,
 	                     Lot lot, PanelAffectation panelAff)
 	{
 		super(fenetre, "Modifier le lot — N° " + lot.getNumCDE(), true);

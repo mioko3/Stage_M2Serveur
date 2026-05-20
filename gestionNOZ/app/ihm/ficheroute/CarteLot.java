@@ -1,6 +1,7 @@
 package app.ihm.ficheroute;
 
 import app.Controleur;
+import app.IControleur;
 import app.ihm.IhmUtils;
 import app.metier.lot.LigneColisage;
 import app.metier.lot.Lot;
@@ -27,7 +28,7 @@ public class CarteLot extends JPanel implements ActionListener
 	private static boolean estcommencer;
 
 	private final Lot             lot;
-	private final Controleur      ctrl;
+	private final IControleur      ctrl;
 	private final PanelFicheRoute m;
 	private Ace             couranAce;
 
@@ -54,7 +55,7 @@ public class CarteLot extends JPanel implements ActionListener
 	private JPanel panelBadgesEtat;
 	private JPanel ligne1;
 
-	public CarteLot(Lot lot, Color color, Controleur ctrl, PanelFicheRoute m)
+	public CarteLot(Lot lot, Color color, IControleur ctrl, PanelFicheRoute m)
 	{
 		this.lot  = lot;
 		this.ctrl = ctrl;

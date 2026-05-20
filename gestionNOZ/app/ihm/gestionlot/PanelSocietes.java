@@ -1,6 +1,6 @@
 package app.ihm.gestionlot;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.dialogue.DialogEditSociete;
@@ -31,14 +31,14 @@ import javax.swing.table.DefaultTableModel;
  */
 public class PanelSocietes extends JPanel
 {
-	private final Controleur        ctrl;
+	private final IControleur        ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private DefaultTableModel modelSocietes;
 	private JTable            tbl;
 	private JTextArea         detailAce;
 
-	public PanelSocietes(Controleur ctrl, FenetrePrincipale fenetre)
+	public PanelSocietes(IControleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;

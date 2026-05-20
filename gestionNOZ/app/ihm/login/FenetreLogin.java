@@ -1,6 +1,8 @@
 package app.ihm.login;
 
 import app.Controleur;
+import app.IControleur;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -19,7 +21,7 @@ public class FenetreLogin extends JFrame implements ActionListener
 	// ── Identifiants autorisés ────────────────────────────────────────────
 	private static final String[] LOGIN_VALIDES = { "PAM"};
 
-	private final Controleur ctrl;
+	private final IControleur ctrl;
 
 	// ── Composants ────────────────────────────────────────────────────────
 	private JTextField txtLogin;

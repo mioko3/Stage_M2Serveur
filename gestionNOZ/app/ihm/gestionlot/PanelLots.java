@@ -1,6 +1,7 @@
 package app.ihm.gestionlot;
 
 import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.dialogue.DialogEditLot;
@@ -38,7 +39,7 @@ import javax.swing.table.DefaultTableModel;
  */
 public class PanelLots extends JPanel
 {
-	private final Controleur        ctrl;
+	private final IControleur        ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private DefaultTableModel  modelLots;

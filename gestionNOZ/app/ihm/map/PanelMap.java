@@ -1,6 +1,6 @@
 package app.ihm.map;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.metier.lot.Lot;
@@ -12,22 +12,13 @@ import javax.swing.*;
 
 /**
  * Carte interactive de l'entrepôt.
- *
- * Chaque zone est identifiée par une lettre (A, B, C, D, LTS, HD).
- * Dans les zones à rangées (A–D) chaque numéro de rangée est affiché
- * comme une cellule cliquable (ex : B21, B42).
- * Les zones spéciales LTS et HD sont une seule cellule sans numéro.
- *
- * Un clic sur une cellule sélectionne l'emplacement et liste les lots
- * dans le panneau de droite. Un survol affiche un tooltip récapitulatif.
  */
 public class PanelMap extends JPanel
 {
-	private final Controleur        ctrl;
+	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private JTextArea         infoLot;
-	// ── Zones ─────────────────────────────────────────────────────────────
 	private static final String[] ZONES_RANGEES   = { "A", "B", "C", "D" };
 	private static final String[] ZONES_SPECIALES = { "LTS", "HD" };
 
@@ -44,17 +35,16 @@ public class PanelMap extends JPanel
 	private String    emplacementSel = null;
 	private PlanPanel planPanel;
 	private List<Lot> lotsCourants = new ArrayList<>();
-	private Map<String, List<Lot>> lotsParEmplacement = new HashMap<>();
-	private Map<String, List<String>> numerosParZone = new HashMap<>();
+	private Map<String, List<Lot>>    lotsParEmplacement = new HashMap<>();
+	private Map<String, List<String>> numerosParZone     = new HashMap<>();
 
-	// Panneau détail
 	private JLabel                   lblEmpl;
 	private DefaultListModel<String> listModel;
 	private JList<String>            listeLots;
 
 	// ── Constructeur ──────────────────────────────────────────────────────
 
-	public PanelMap(Controleur ctrl, FenetrePrincipale fenetre)
+	public PanelMap(IControleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;
@@ -69,9 +59,7 @@ public class PanelMap extends JPanel
 		add(creerLegende(),     BorderLayout.SOUTH);
 	}
 
-	// ══════════════════════════════════════════════════════════════════════
-	// Plan Swing
-	// ══════════════════════════════════════════════════════════════════════
+	// ── Plan Swing ────────────────────────────────────────────────────────
 
 	private class PlanPanel extends JPanel
 	{
@@ -101,27 +89,20 @@ public class PanelMap extends JPanel
 				bottomRow.add(creerZoneSpeciale(code));
 
 			GridBagConstraints gbc = new GridBagConstraints();
-			gbc.gridx = 0;
-			gbc.gridy = 0;
-			gbc.weightx = 1.0;
-			gbc.weighty = 1.0;
+			gbc.gridx = 0; gbc.gridy = 0;
+			gbc.weightx = 1.0; gbc.weighty = 1.0;
 			gbc.fill = GridBagConstraints.BOTH;
 			gbc.insets = new Insets(0, 0, 10, 0);
 			add(topRow, gbc);
 
-			gbc.gridy = 1;
-			gbc.weighty = 0.3;
+			gbc.gridy = 1; gbc.weighty = 0.3;
 			add(bottomRow, gbc);
 
 			revalidate();
 			repaint();
 		}
 
-		public void updatePlan()
-		{
-			revalidate();
-			repaint();
-		}
+		public void updatePlan() { revalidate(); repaint(); }
 
 		private JPanel creerZoneRangees(String lettre)
 		{
@@ -148,7 +129,7 @@ public class PanelMap extends JPanel
 			}
 			else
 			{
-				int n = nums.size();
+				int n    = nums.size();
 				int cols = Math.max(1, (int) Math.ceil(Math.sqrt(n)));
 				int rows = (int) Math.ceil((double) n / cols);
 				JPanel grille = new JPanel(new GridLayout(rows, cols, 5, 5));
@@ -162,7 +143,6 @@ public class PanelMap extends JPanel
 				}
 				zone.add(grille, BorderLayout.CENTER);
 			}
-
 			return zone;
 		}
 
@@ -190,41 +170,31 @@ public class PanelMap extends JPanel
 
 		private JButton creerBoutonEmplacement(String empl)
 		{
-			BoutonEmplacement btn =
-				new BoutonEmplacement(empl, getLotsEmplacement(empl));
-
+			BoutonEmplacement btn = new BoutonEmplacement(empl, getLotsEmplacement(empl));
 			btn.addActionListener(e -> {
 				selectionnerEmplacement(empl);
 				updatePlan();
 			});
-
 			btn.setToolTipText(buildTooltip(empl));
 			btn.setBorderPainted(true);
-
 			return btn;
 		}
-
 	}
 
 	// ── Données ───────────────────────────────────────────────────────────
 
 	private List<String> getNumerosZone(String lettre)
-	{
-		return numerosParZone.getOrDefault(lettre, new ArrayList<>());
-	}
+	{ return numerosParZone.getOrDefault(lettre, new ArrayList<>()); }
 
 	private List<Lot> getLotsEmplacement(String empl)
-	{
-		return lotsParEmplacement.getOrDefault(empl, new ArrayList<>());
-	}
+	{ return lotsParEmplacement.getOrDefault(empl, new ArrayList<>()); }
 
 	private String buildTooltip(String empl)
 	{
 		List<Lot> lots = getLotsEmplacement(empl);
 		if (lots.isEmpty())
 			return "<html><b>" + empl + "</b> &mdash; aucun lot</html>";
-		StringBuilder sb = new StringBuilder(
-			"<html><b>Emplacement " + empl + "</b><hr>");
+		StringBuilder sb = new StringBuilder("<html><b>Emplacement " + empl + "</b><hr>");
 		for (Lot l : lots)
 		{
 			Societe soc = ctrl.getSocieteDuLot(l);
@@ -241,7 +211,6 @@ public class PanelMap extends JPanel
 	private void selectionnerEmplacement(String empl)
 	{
 		emplacementSel = empl;
-	
 		List<Lot> lots = getLotsEmplacement(empl);
 		lotsCourants = lots;
 		planPanel.updatePlan();
@@ -285,18 +254,15 @@ public class PanelMap extends JPanel
 
 		Map<String, Set<String>> tempNums = new HashMap<>();
 		for (String lettre : ZONES_RANGEES)
-		{
 			tempNums.put(lettre, new TreeSet<>(Comparator.comparingInt(a -> {
 				try { return Integer.parseInt(a); } catch (Exception e) { return 0; }
 			})));
-		}
 
 		for (Lot l : ctrl.getLots())
 		{
 			String empl = s(l.getEmplacement());
 			lotsParEmplacement.computeIfAbsent(empl, k -> new ArrayList<>()).add(l);
 
-			// Calcul des numéros de zone
 			if (!empl.isEmpty())
 			{
 				String lettre = empl.substring(0, 1);
@@ -315,9 +281,7 @@ public class PanelMap extends JPanel
 		}
 
 		for (String lettre : ZONES_RANGEES)
-		{
 			numerosParZone.put(lettre, new ArrayList<>(tempNums.get(lettre)));
-		}
 	}
 
 	// ── Panel détail ──────────────────────────────────────────────────────
@@ -345,18 +309,12 @@ public class PanelMap extends JPanel
 			{
 				int idx = listeLots.getSelectedIndex();
 				if (idx >= 0 && idx < lotsCourants.size())
-				{
-					Lot lot = lotsCourants.get(idx);
-					afficherInfoLot(lot);
-				}
+					afficherInfoLot(lotsCourants.get(idx));
 				else
-				{
 					infoLot.setText("");
-				}
 			}
 		});
 
-		// Infos lot sélectionné
 		infoLot = new JTextArea(8, 20);
 		infoLot.setEditable(false);
 		infoLot.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -369,9 +327,9 @@ public class PanelMap extends JPanel
 		JScrollPane scroll = new JScrollPane(listeLots);
 		scroll.setBorder(BorderFactory.createLineBorder(IhmUtils.BORD));
 
-		p.add(lblEmpl, BorderLayout.NORTH);
-		p.add(scroll,  BorderLayout.CENTER);
-		p.add(scrollInfo, BorderLayout.SOUTH);
+		p.add(lblEmpl,     BorderLayout.NORTH);
+		p.add(scroll,      BorderLayout.CENTER);
+		p.add(scrollInfo,  BorderLayout.SOUTH);
 		return p;
 	}
 
@@ -444,7 +402,7 @@ public class PanelMap extends JPanel
 		sb.append("Date paiement: ").append(s(lot.getDatePaiement())).append("\n");
 		sb.append("Commentaire: ").append(s(lot.getCommentaire())).append("\n");
 		sb.append("Emplacement: ").append(s(lot.getEmplacement())).append("\n");
-		sb.append("Méthode: ").append(s(lot.getMethode()==null ? "":lot.getMethode().getNom())).append("\n");
+		sb.append("Méthode: ").append(s(lot.getMethode() == null ? "" : lot.getMethode().getNom())).append("\n");
 		sb.append("Distribution: ").append(s(lot.getDistribution())).append("\n");
 		sb.append("Format carton: ").append(s(lot.getFormatCarton())).append("\n");
 		sb.append("Machine: ").append(lot.estMachine() ? "Oui" : "Non").append("\n");
@@ -452,6 +410,4 @@ public class PanelMap extends JPanel
 		sb.append("Société: ").append(soc != null ? soc.getNom() : "—").append("\n");
 		infoLot.setText(sb.toString());
 	}
-
-	
 }
