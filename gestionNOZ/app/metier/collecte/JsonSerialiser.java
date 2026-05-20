@@ -6,7 +6,6 @@ import app.metier.ficheroute.SuivieProd;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
-
 import java.util.ArrayList;
 
 /**
@@ -63,7 +62,7 @@ public class JsonSerialiser
             + "\"dateReception\":"           + esc(lot.getDateReception())                  + ","
             + "\"datePaiement\":"            + esc(lot.getDatePaiement())                   + ","
             + "\"commentaire\":"             + esc(lot.getCommentaire())                    + ","
-            + "\"methode\":"                 + esc(lot.getMethode())                        + ","
+            + "\"methode\":"                 + esc(lot.getMethode().getNom())               + ","
             + "\"distribution\":"            + esc(lot.getDistribution())                   + ","
             + "\"formatCarton\":"            + esc(lot.getFormatCarton())                   + ","
             + "\"sp_nbPieceEtiq\":"          + (sp != null ? sp.getNbPieceEtiq()          : 0) + ","
