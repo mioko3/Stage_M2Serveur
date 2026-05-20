@@ -6,10 +6,16 @@ import app.metier.ficheroute.Phase;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
+
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * Couche métier pure — aucune dépendance Swing.
@@ -96,6 +102,38 @@ public class PlanningGlobal
 	public void mettreAJourHeuresSocietes(String cheminXlsx, int semaine) throws IOException
 	{
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsx, this.societes, semaine);
+	}
+	public void nouvelleHeurePourSociete(int semaine)
+	{
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("Sélectionner le fichier des lots (XLSX / XLSM)");
+		chooser.setFileFilter(new FileNameExtensionFilter(
+			"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+ 
+		// Ouvrir par défaut dans app/data/ si le dossier existe
+		File dossierDefaut = new File("app/data");
+		if (dossierDefaut.exists() && dossierDefaut.isDirectory())
+			chooser.setCurrentDirectory(dossierDefaut);
+ 
+		int resultat = chooser.showOpenDialog(null);
+		if (resultat == JFileChooser.APPROVE_OPTION)
+		{
+			String xml = chooser.getSelectedFile().getAbsolutePath();
+			try
+			{
+				ExcelReader.ajouterHeuresDepuisExcel(xml, this.societes, semaine);
+				JOptionPane.showMessageDialog(null, "Heures ajoutées avec succès !", "Nouvelle heure", JOptionPane.INFORMATION_MESSAGE);
+			}
+			catch (IOException e)
+			{
+				System.err.println("[PlanningGlobal] Impossible de charger les données : " + e.getMessage());
+				JOptionPane.showMessageDialog(null, "Erreur lors du chargement du fichier Excel.", "Nouvelle heure", JOptionPane.ERROR_MESSAGE);
+			}
+		}
+		else
+		{
+			JOptionPane.showMessageDialog(null, "Aucun fichier sélectionné. Opération annulée.", "Nouvelle heure", JOptionPane.INFORMATION_MESSAGE);
+		}
 	}
 
 	public void nouveau()
@@ -268,7 +306,7 @@ public class PlanningGlobal
 	}
 
 	public void ajouterLot  (Lot lot) { lots.add(lot);    }
-	
+
 	public void ajouterLot(int numCDE, String typologie, String affaire,
 	                       int nbPieces, double cadence, int valeurVente,
 	                       String statut, String statutEchant,

@@ -28,7 +28,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  *   3. FenetreLogin     → appelle ctrl.lancerApp(login, utiliserExcel)
  *   4. lancerApp()      → charge les données (Excel ou JSON) puis ouvre FenetrePrincipale
  */
-public class Controleur
+public class Controleur implements IControleur
 {
 	private FenetrePrincipale  fenetre;
 	private PlanningGlobal     metier;
