@@ -267,6 +267,8 @@ public class PlanningGlobal
 		}
 	}
 
+	public void ajouterLot  (Lot lot) { lots.add(lot);    }
+	
 	public void ajouterLot(int numCDE, String typologie, String affaire,
 	                       int nbPieces, double cadence, int valeurVente,
 	                       String statut, String statutEchant,
