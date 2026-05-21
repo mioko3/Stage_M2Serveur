@@ -1,6 +1,7 @@
 package app;
 
 import app.ihm.FenetrePrincipale;
+import app.ihm.login.FenetreLogin;
 import app.metier.collecte.JsonSerialiser;
 import app.metier.ficheroute.FicheRoute;
 import app.metier.lot.Lot;
@@ -54,7 +55,7 @@ public class ControleurClient extends Controleur
 		SwingUtilities.invokeLater(() ->
 		{
 			chargerDepuisServeur();
-			this.fenetre = new FenetrePrincipale(this);
+			new FenetreLogin(this);
 		});
 	}
 
@@ -390,6 +391,12 @@ public class ControleurClient extends Controleur
 	}
 
 	// ── Sauvegarde / Chargement ───────────────────────────────────────────
+
+	public void lancerApp(String login, boolean utiliserExcel)
+	{
+		super.lancerApp(login, utiliserExcel);
+		this.fenetre = super.fenetre; 
+	}
 
 	@Override
 	public void sauvegarderDonnees(String cheminDossier, String semaine)

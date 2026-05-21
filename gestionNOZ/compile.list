@@ -38,3 +38,6 @@ app/ihm/FenetrePrincipale.java
 
 app/IControleur.java
 app/Controleur.java
+app/ServeurHTTP.java
+app/ControleurClient.java
+app/metier/collecte/JsonSerialiser.java
