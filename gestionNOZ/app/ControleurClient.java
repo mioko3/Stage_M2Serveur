@@ -94,8 +94,6 @@ public class ControleurClient implements IControleur
 
 	@Override public ArrayList<Societe> getSocietes()          { return societes;          }
 	@Override public ArrayList<Lot>     getLots()              { return lots;              }
-	@Override public String             getCheminLotsJson()    { return "";                }
-	@Override public String             getCheminSocietesJson(){ return "";                }
 
 	// ── IControleur : Lots ────────────────────────────────────────────────
 
@@ -139,7 +137,6 @@ public class ControleurClient implements IControleur
 		catch (Exception e) { err("supprimerLot", e); }
 	}
 
-	@Override
 	public void sauvegarderLots() { autoSauvegarde(); }
 
 	@Override
@@ -258,7 +255,6 @@ public class ControleurClient implements IControleur
 		} catch (Exception e) { err("modifierSociete", e); }
 	}
 
-	@Override
 	public void modifierAce(Ace ace, String nom, int nbPers, int effectif)
 	{
 		Societe soc = getSocieteDeAce(ace);
@@ -456,10 +452,7 @@ public class ControleurClient implements IControleur
 
 	public static void main(String[] args)
 	{
-		if (args.length > 0)
-			SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
-		else
-			// Sans argument → fenêtre de connexion pour entrer l'IP
-			SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
+		// Sans argument → fenêtre de connexion pour entrer l'IP
+		SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
 	}
 }

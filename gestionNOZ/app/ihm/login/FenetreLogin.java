@@ -1,7 +1,6 @@
 package app.ihm.login;
 
 import app.Controleur;
-
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -9,14 +8,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 /**
- * Fenêtre de connexion — mode standalone uniquement.
- *
- * Elle s'affiche AVANT le chargement des données.
- * Lorsque l'identifiant est valide, elle appelle ctrl.lancerApp(login, utiliserExcel).
- *
- * Note : utilise Controleur (pas IControleur) car lancerApp() est
- * spécifique au mode standalone. Le mode client (ControleurClient)
- * n'utilise pas FenetreLogin — il se connecte directement au serveur.
+ * Fenêtre de connexion — mode SOLO uniquement.
+ * Prend un Controleur (pas IControleur) car elle appelle lancerApp()
+ * qui est propre au mode solo.
  */
 public class FenetreLogin extends JFrame implements ActionListener
 {
@@ -34,17 +28,14 @@ public class FenetreLogin extends JFrame implements ActionListener
 	public FenetreLogin(Controleur ctrl)
 	{
 		this.ctrl = ctrl;
-
 		setTitle("Planning Global Futura — Connexion");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(480, 550);
 		setLocationRelativeTo(null);
 		setResizable(false);
 		setLayout(new BorderLayout());
-
 		getContentPane().setBackground(new Color(18, 18, 28));
 		add(construireCarte(), BorderLayout.CENTER);
-
 		setVisible(true);
 	}
 
@@ -59,15 +50,11 @@ public class FenetreLogin extends JFrame implements ActionListener
 		carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
 		carte.setBorder(new EmptyBorder(35, 40, 35, 40));
 
-		carte.add(labelCentre("GLOBAL FUTURA",
-			new Font("SansSerif", Font.BOLD, 28), new Color(120, 170, 255)));
+		carte.add(label("GLOBAL FUTURA", new Font("SansSerif", Font.BOLD, 28), new Color(120, 170, 255)));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
-		carte.add(labelCentre("Connexion au planning",
-			new Font("SansSerif", Font.PLAIN, 15), new Color(180, 180, 190)));
+		carte.add(label("Connexion au planning", new Font("SansSerif", Font.PLAIN, 15), new Color(180, 180, 190)));
 		carte.add(Box.createRigidArea(new Dimension(0, 30)));
-
-		carte.add(labelCentre("IDENTIFIANT",
-			new Font("SansSerif", Font.BOLD, 13), Color.WHITE));
+		carte.add(label("IDENTIFIANT", new Font("SansSerif", Font.BOLD, 13), Color.WHITE));
 		carte.add(Box.createRigidArea(new Dimension(0, 10)));
 
 		txtLogin = new JTextField();
@@ -102,24 +89,23 @@ public class FenetreLogin extends JFrame implements ActionListener
 		carte.add(sep);
 		carte.add(Box.createRigidArea(new Dimension(0, 20)));
 
-		carte.add(labelCentre("SOURCE DES DONNÉES",
-			new Font("SansSerif", Font.BOLD, 11), new Color(130, 130, 150)));
-		carte.add(Box.createRigidArea(new Dimension(0, 10)));
+		carte.add(label("SOURCE DES DONNÉES", new Font("SansSerif", Font.BOLD, 13), new Color(190, 190, 200)));
+		carte.add(Box.createRigidArea(new Dimension(0, 12)));
 
-		chkFichierCourant = checkbox("Utiliser le fichier courant (JSON)");
-		chkExport         = checkbox("Importer depuis Excel (XLSX)");
-		chkSave           = checkbox("Charger une sauvegarde…");
-
-		ButtonGroup group = new ButtonGroup();
-		group.add(chkFichierCourant);
-		group.add(chkExport);
-		group.add(chkSave);
+		chkFichierCourant = checkbox("Utiliser les fichiers courants (JSON)");
+		chkExport         = checkbox("Faire une nouvelle semaine (Excel)");
+		chkSave           = checkbox("Utiliser une semaine sauvegardée (JSON)");
 		chkFichierCourant.setSelected(true);
 
+		ButtonGroup grp = new ButtonGroup();
+		grp.add(chkFichierCourant);
+		grp.add(chkExport);
+		grp.add(chkSave);
+
 		carte.add(chkFichierCourant);
-		carte.add(Box.createRigidArea(new Dimension(0, 4)));
+		carte.add(Box.createRigidArea(new Dimension(0, 8)));
 		carte.add(chkExport);
-		carte.add(Box.createRigidArea(new Dimension(0, 4)));
+		carte.add(Box.createRigidArea(new Dimension(0, 8)));
 		carte.add(chkSave);
 
 		fond.add(carte);
@@ -128,6 +114,11 @@ public class FenetreLogin extends JFrame implements ActionListener
 
 	@Override
 	public void actionPerformed(ActionEvent e)
+	{
+		tenterConnexion();
+	}
+
+	private void tenterConnexion()
 	{
 		String saisie = txtLogin.getText().trim().toUpperCase();
 
@@ -143,43 +134,43 @@ public class FenetreLogin extends JFrame implements ActionListener
 		setVisible(false);
 		dispose();
 
-		boolean utiliserExcel = chkExport.isSelected();
-		ctrl.lancerApp(saisie, utiliserExcel);
-
 		if (chkSave.isSelected())
+		{
 			ouvrirSauvegarde();
+		}
+		else
+		{
+			ctrl.lancerApp(saisie, chkExport.isSelected());
+		}
 	}
 
 	private void ouvrirSauvegarde()
 	{
 		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Charger une sauvegarde JSON");
+		fc.setDialogTitle("Ouvrir une sauvegarde JSON");
 		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
 		{
-			try { ctrl.chargerDonnees(fc.getSelectedFile().getAbsolutePath()); }
-			catch (Exception ex)
-			{
-				JOptionPane.showMessageDialog(null,
-					"Erreur chargement : " + ex.getMessage(),
-					"Erreur", JOptionPane.ERROR_MESSAGE);
-			}
+			String dossier = fc.getSelectedFile().getAbsolutePath();
+			// Lance l'app avec JSON courant puis charge la sauvegarde
+			ctrl.lancerApp("", false);
+			try { ctrl.chargerDonnees(dossier); }
+			catch (Exception ex) { JOptionPane.showMessageDialog(null, "Erreur : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE); }
+		}
+		else
+		{
+			ctrl.lancerApp("", false);
 		}
 	}
 
 	private boolean loginValide(String log)
-	{
-		for (String l : LOGIN_VALIDES)
-			if (l.equals(log)) return true;
-		return false;
-	}
+	{ for (String l : LOGIN_VALIDES) if (l.equals(log)) return true; return false; }
 
-	private JLabel labelCentre(String texte, Font font, Color couleur)
+	private JLabel label(String texte, Font font, Color couleur)
 	{
 		JLabel l = new JLabel(texte);
 		l.setAlignmentX(Component.CENTER_ALIGNMENT);
-		l.setFont(font);
-		l.setForeground(couleur);
+		l.setFont(font); l.setForeground(couleur);
 		return l;
 	}
 
@@ -188,10 +179,8 @@ public class FenetreLogin extends JFrame implements ActionListener
 		JButton b = new JButton(texte);
 		b.setAlignmentX(Component.CENTER_ALIGNMENT);
 		b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-		b.setFocusPainted(false);
-		b.setCursor(new Cursor(Cursor.HAND_CURSOR));
-		b.setBackground(couleur);
-		b.setForeground(Color.WHITE);
+		b.setFocusPainted(false); b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		b.setBackground(couleur); b.setForeground(Color.WHITE);
 		b.setFont(new Font("SansSerif", Font.BOLD, 14));
 		b.setBorder(new EmptyBorder(12, 20, 12, 20));
 		return b;
@@ -201,10 +190,8 @@ public class FenetreLogin extends JFrame implements ActionListener
 	{
 		JCheckBox c = new JCheckBox(texte);
 		c.setAlignmentX(Component.CENTER_ALIGNMENT);
-		c.setBackground(new Color(28, 28, 40));
-		c.setForeground(Color.WHITE);
-		c.setFocusPainted(false);
-		c.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		c.setBackground(new Color(28, 28, 40)); c.setForeground(Color.WHITE);
+		c.setFocusPainted(false); c.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		c.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		return c;
 	}

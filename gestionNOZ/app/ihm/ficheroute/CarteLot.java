@@ -347,7 +347,7 @@ public class CarteLot extends JPanel implements ActionListener
 		this.textNbPers      = new JTextField(String.valueOf(lot.getNbPers()), 10);
 		this.combDistri      = new JComboBox(lot.DISTRI);
 		this.combDistri.setSelectedItem(lot.getDistribution() == null ? "" : lot.getDistribution());
-		this.textColisRecup  = new JTextField(lot.getPoucentrecupCartonFour(), 10);
+		this.textColisRecup  = new JTextField(String.valueOf(lot.getPoucentrecupCartonFour()), 10);
 		this.textCadenceReel = new JTextField(String.valueOf(lot.getCadenceReel()), 10);
 		this.textLotCharge   = new JTextField(s(lot.getLotACharge()), 10);
 		this.textMethode     = new JTextField(lot.getMethode() == null ? "" : lot.getMethode().getNom(), 10);
@@ -600,7 +600,7 @@ public class CarteLot extends JPanel implements ActionListener
 				case "COLISRECUP":
 				{
 					int v = Integer.parseInt(textColisRecup.getText().trim());
-					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour(String.valueOf(v));
+					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour(v);
 					break;
 				}
 				case "METHODE":

@@ -4,20 +4,22 @@ import app.ControleurClient;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 /**
  * Fenêtre de connexion RÉSEAU.
- * Demande l'IP du serveur et lance ControleurClient.
- *
- * Point d'entrée : java -cp ... app.ihm.login.FenetreConnexionClient
- *              OU : java -cp ... app.ControleurClient [IP]
+ * Demande l'IP du serveur, teste la connexion, puis lance ControleurClient.
+ * Point d'entrée client : java -cp ... app.ControleurClient
  */
 public class FenetreConnexionClient extends JFrame implements ActionListener
 {
 	private JTextField txtIP;
-	private JTextField txtPort;
 	private JButton    btnConnecter;
 	private JLabel     lblStatut;
 
@@ -25,7 +27,7 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 	{
 		setTitle("Planning Global Futura — Connexion Réseau");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(420, 300);
+		setSize(420, 280);
 		setLocationRelativeTo(null);
 		setResizable(false);
 		setLayout(new BorderLayout());
@@ -40,33 +42,24 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		fond.setBackground(new Color(18, 18, 28));
 
 		JPanel carte = new JPanel();
-		carte.setPreferredSize(new Dimension(380, 260));
+		carte.setPreferredSize(new Dimension(380, 240));
 		carte.setBackground(new Color(28, 28, 40));
 		carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
 		carte.setBorder(new EmptyBorder(30, 40, 30, 40));
 
-		// Titre
-		JLabel titre = new JLabel("GLOBAL FUTURA — CLIENT");
+		JLabel titre = new JLabel("GLOBAL FUTURA — CLIENT RÉSEAU");
 		titre.setAlignmentX(Component.CENTER_ALIGNMENT);
-		titre.setFont(new Font("SansSerif", Font.BOLD, 20));
+		titre.setFont(new Font("SansSerif", Font.BOLD, 16));
 		titre.setForeground(new Color(120, 170, 255));
 		carte.add(titre);
-		carte.add(Box.createRigidArea(new Dimension(0, 6)));
+		carte.add(Box.createRigidArea(new Dimension(0, 20)));
 
-		JLabel sous = new JLabel("Connexion au serveur");
-		sous.setAlignmentX(Component.CENTER_ALIGNMENT);
-		sous.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		sous.setForeground(new Color(180, 180, 190));
-		carte.add(sous);
-		carte.add(Box.createRigidArea(new Dimension(0, 24)));
-
-		// Champ IP
-		JLabel lblIP = new JLabel("IP du serveur :");
+		JLabel lblIP = new JLabel("IP du serveur (ex: 192.168.1.10) :");
 		lblIP.setAlignmentX(Component.CENTER_ALIGNMENT);
 		lblIP.setForeground(Color.WHITE);
 		lblIP.setFont(new Font("SansSerif", Font.BOLD, 12));
 		carte.add(lblIP);
-		carte.add(Box.createRigidArea(new Dimension(0, 6)));
+		carte.add(Box.createRigidArea(new Dimension(0, 8)));
 
 		txtIP = new JTextField("localhost");
 		txtIP.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
@@ -82,7 +75,6 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		carte.add(txtIP);
 		carte.add(Box.createRigidArea(new Dimension(0, 14)));
 
-		// Bouton
 		btnConnecter = new JButton("SE CONNECTER");
 		btnConnecter.setAlignmentX(Component.CENTER_ALIGNMENT);
 		btnConnecter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
@@ -95,7 +87,6 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		carte.add(btnConnecter);
 		carte.add(Box.createRigidArea(new Dimension(0, 10)));
 
-		// Statut
 		lblStatut = new JLabel(" ");
 		lblStatut.setAlignmentX(Component.CENTER_ALIGNMENT);
 		lblStatut.setForeground(new Color(255, 120, 120));
@@ -112,78 +103,57 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		String ip = txtIP.getText().trim();
 		if (ip.isEmpty()) { lblStatut.setText("Entrez une adresse IP."); return; }
 
-		lblStatut.setText("Connexion en cours...");
+		lblStatut.setText("Connexion en cours…");
 		lblStatut.setForeground(new Color(180, 180, 100));
 		btnConnecter.setEnabled(false);
+		txtIP.setEnabled(false);
 
-		// Test de connexion avant de lancer l'app
 		new Thread(() ->
 		{
 			try
 			{
-				java.net.http.HttpClient testHttp = java.net.http.HttpClient.newHttpClient();
-				java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-					.uri(java.net.URI.create("http://" + ip + ":8080/lots"))
-					.GET()
-					.timeout(java.time.Duration.ofSeconds(5))
-					.build();
-				java.net.http.HttpResponse<String> resp = testHttp.send(req,
-					java.net.http.HttpResponse.BodyHandlers.ofString());
+				HttpClient http = HttpClient.newBuilder()
+					.connectTimeout(Duration.ofSeconds(5)).build();
+				HttpRequest req = HttpRequest.newBuilder()
+					.uri(URI.create("http://" + ip + ":8080/lots"))
+					.timeout(Duration.ofSeconds(5)).GET().build();
+				HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
 				if (resp.statusCode() == 200)
 				{
-					SwingUtilities.invokeLater(() ->
-					{
+					SwingUtilities.invokeLater(() -> {
 						dispose();
 						new ControleurClient(ip);
 					});
 				}
 				else
 				{
-					SwingUtilities.invokeLater(() ->
-					{
-						lblStatut.setText("Serveur répond avec erreur " + resp.statusCode());
+					SwingUtilities.invokeLater(() -> {
+						lblStatut.setText("Erreur serveur : " + resp.statusCode());
 						lblStatut.setForeground(new Color(255, 120, 120));
 						btnConnecter.setEnabled(true);
+						txtIP.setEnabled(true);
 					});
 				}
 			}
-			catch (java.net.ConnectException ce)
+			catch (java.net.ConnectException ex)
 			{
-				SwingUtilities.invokeLater(() ->
-				{
+				SwingUtilities.invokeLater(() -> {
 					lblStatut.setText("Connexion refusée — serveur démarré ?");
 					lblStatut.setForeground(new Color(255, 120, 120));
 					btnConnecter.setEnabled(true);
-				});
-			}
-			catch (java.net.http.HttpTimeoutException te)
-			{
-				SwingUtilities.invokeLater(() ->
-				{
-					lblStatut.setText("Timeout — IP incorrecte ou pare-feu ?");
-					lblStatut.setForeground(new Color(255, 120, 120));
-					btnConnecter.setEnabled(true);
+					txtIP.setEnabled(true);
 				});
 			}
 			catch (Exception ex)
 			{
-				SwingUtilities.invokeLater(() ->
-				{
+				SwingUtilities.invokeLater(() -> {
 					lblStatut.setText("Erreur : " + ex.getMessage());
 					lblStatut.setForeground(new Color(255, 120, 120));
 					btnConnecter.setEnabled(true);
+					txtIP.setEnabled(true);
 				});
 			}
 		}).start();
-	}
-
-	public static void main(String[] args)
-	{
-		// Si une IP est passée en argument, connexion directe
-		if (args.length > 0)
-			SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
-		else
-			SwingUtilities.invokeLater(FenetreConnexionClient::new);
 	}
 }
