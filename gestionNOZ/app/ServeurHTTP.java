@@ -3,7 +3,6 @@ package app;
 import app.metier.PlanningGlobal;
 import app.metier.collecte.DonneesSauvegarder;
 import app.metier.collecte.JsonSerialiser;
-import app.metier.ficheroute.FicheRoute;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
