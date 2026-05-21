@@ -199,10 +199,43 @@ public class CarteLot extends JPanel implements ActionListener
 		lFin.setBackground(bg);
 		if (!lot.getdateFin().isEmpty())
 		{
-			info(lFin, "Temps : ",       lot.calculDuree(),                               bg);
-			info(lFin, "Cadence Moy : ", String.format("%.0f p/h", lot.calculCadenceMoyenne()), bg);
+			info(lFin, "Temps : ",       calculDureeLocale(),       bg);
+			info(lFin, "Cadence Moy : ", calculCadenceMoyLocale(),  bg);
 		}
 		return lFin;
+	}
+
+	/** Calcule la durée entre dateDebut et dateFin (inline, sans méthode dans Lot). */
+	private String calculDureeLocale()
+	{
+		try
+		{
+			java.time.format.DateTimeFormatter fmt =
+				java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+			java.time.LocalDateTime debut = java.time.LocalDateTime.parse(lot.getDateDebut(), fmt);
+			java.time.LocalDateTime fin   = java.time.LocalDateTime.parse(lot.getdateFin(),   fmt);
+			long totalMin = java.time.Duration.between(debut, fin).toMinutes();
+			return (totalMin / 60) + "h " + (totalMin % 60) + "m";
+		}
+		catch (Exception e) { return "—"; }
+	}
+
+	/** Calcule la cadence moyenne (pièces / heures travaillées). */
+	private String calculCadenceMoyLocale()
+	{
+		try
+		{
+			java.time.format.DateTimeFormatter fmt =
+				java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+			java.time.LocalDateTime debut = java.time.LocalDateTime.parse(lot.getDateDebut(), fmt);
+			java.time.LocalDateTime fin   = java.time.LocalDateTime.parse(lot.getdateFin(),   fmt);
+			double heures = java.time.Duration.between(debut, fin).toMinutes() / 60.0;
+			if (heures <= 0) return "—";
+			int nbPers = lot.getNbPers() > 0 ? lot.getNbPers() : 1;
+			double cadence = lot.getNbPieces() / (heures * nbPers);
+			return String.format("%.0f p/h", cadence);
+		}
+		catch (Exception e) { return "—"; }
 	}
 
 	// ── Ligne Date : bouton commencer + dates ─────────────────────────
@@ -567,7 +600,7 @@ public class CarteLot extends JPanel implements ActionListener
 				case "COLISRECUP":
 				{
 					int v = Integer.parseInt(textColisRecup.getText().trim());
-					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour(v);
+					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour((v));
 					break;
 				}
 				case "METHODE":

@@ -159,8 +159,7 @@ public class Controleur implements IControleur
 	// ── IControleur : Gestion des lots ───────────────────────────────────
 
 	@Override
-	public void ajouterLot(Lot lot)
-	{ metier.ajouterLot(lot); autoSauvegarderLots(); }
+	public void ajouterLot(Lot lot) { metier.ajouterLot(lot); autoSauvegarderLots(); }
 
 	@Override
 	public void ajouterLot(int numCDE, String typologie, String affaire,

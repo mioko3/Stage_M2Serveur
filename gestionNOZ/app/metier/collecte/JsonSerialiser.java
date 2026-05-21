@@ -452,4 +452,5 @@ public class JsonSerialiser
 		// juste à confirmer les données. On retourne la fiche générée localement.
 		return fr;
 	}
+
 }
