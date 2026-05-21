@@ -1,6 +1,5 @@
 package app.ihm.ficheroute;
 
-import app.Controleur;
 import app.IControleur;
 import app.ihm.IhmUtils;
 import app.metier.lot.LigneColisage;
@@ -104,7 +103,7 @@ public class CarteLot extends JPanel implements ActionListener
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, getPreferredSize().height + 16));
 	}
 
-	public CarteLot(Lot lot, Ace ace, Controleur ctrl, PanelFicheRoute m)
+	public CarteLot(Lot lot, Ace ace, IControleur ctrl, PanelFicheRoute m)
 	{
 		this(lot, ace.getColor(), ctrl, m);
 		this.couranAce = ace;

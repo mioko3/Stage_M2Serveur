@@ -1,6 +1,5 @@
 package app.ihm.gestionlot;
 
-import app.Controleur;
 import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
@@ -31,15 +30,9 @@ import javax.swing.JTextField;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Onglet "Liste des lots".
- * Filtre par statut + recherche texte libre.
- * Double-clic → dialogue d'édition complète.
- * Bouton suppression (lot non affecté uniquement).
- */
 public class PanelLots extends JPanel
 {
-	private final IControleur        ctrl;
+	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private DefaultTableModel  modelLots;
@@ -48,7 +41,7 @@ public class PanelLots extends JPanel
 	private JCheckBox          chkSousDouane;
 	private JTextField         txtRecherche;
 
-	public PanelLots(Controleur ctrl, FenetrePrincipale fenetre)
+	public PanelLots(IControleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;
@@ -60,27 +53,25 @@ public class PanelLots extends JPanel
 		add(creerTableau(), BorderLayout.CENTER);
 	}
 
-	// ── Barre de filtres + boutons ────────────────────────────────────────
-
 	private JPanel creerBarre()
 	{
 		combFiltreStatut = new JComboBox<>(new String[]{
-			"Tous les statuts", "VA - Validé avec le CP", "BL - Bloqué",
-			"EP - Envoi au CP"});
+			"Tous les statuts", "VA - Validé avec le CP", "BL - Bloqué", "EP - Envoi au CP"});
 		combFiltreStatut.addActionListener(e -> rafraichir());
 
-		this.chkSousDouane = new JCheckBox("Inclure les lots sous douane");
+		chkSousDouane = new JCheckBox("Inclure les lots sous douane");
 		chkSousDouane.setBackground(IhmUtils.FOND);
 		chkSousDouane.addActionListener(e -> rafraichir());
 
 		txtRecherche = new JTextField(20);
 		txtRecherche.setToolTipText("Recherche : N° CDE, typologie, affaire...");
-		txtRecherche.addKeyListener(new KeyAdapter() {
+		txtRecherche.addKeyListener(new KeyAdapter()
+		{
 			public void keyReleased(KeyEvent e) { rafraichir(); }
 		});
 
-		JButton btnEdit  = IhmUtils.bouton("✏ Modifier",   IhmUtils.BLEU,          Color.WHITE);
-		JButton btnSuppr = IhmUtils.bouton("🗑 Supprimer",  new Color(180, 30, 30), Color.WHITE);
+		JButton btnEdit  = IhmUtils.bouton("✏ Modifier",  IhmUtils.BLEU,          Color.WHITE);
+		JButton btnSuppr = IhmUtils.bouton("🗑 Supprimer", new Color(180, 30, 30), Color.WHITE);
 		btnEdit .setMaximumSize(new Dimension(110, 28));
 		btnSuppr.setMaximumSize(new Dimension(110, 28));
 		btnEdit .addActionListener(e -> ouvrirEdition());
@@ -106,8 +97,6 @@ public class PanelLots extends JPanel
 		return p;
 	}
 
-	// ── Tableau ───────────────────────────────────────────────────────────
-
 	private JPanel creerTableau()
 	{
 		String[] cols = {
@@ -115,49 +104,51 @@ public class PanelLots extends JPanel
 			"Cadence", "Heures", "Valeur €", "Statut échant.", "Sem.",
 			"Société", "Emplacement"
 		};
-		modelLots = new DefaultTableModel(cols, 0){
+		modelLots = new DefaultTableModel(cols, 0)
+		{
 			public boolean isCellEditable(int r, int c) { return false; }
 		};
 		tbl = IhmUtils.creerTable(modelLots);
-		tbl.addMouseListener(new MouseAdapter() {
+		tbl.addMouseListener(new MouseAdapter()
+		{
 			public void mouseClicked(MouseEvent e)
 			{
 				if (e.getClickCount() == 2) ouvrirEdition();
 			}
 		});
 
-		// Colorer la colonne "Statut échant." selon la valeur
-		tbl.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer() {
+		tbl.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer()
+		{
 			public Component getTableCellRendererComponent(JTable t, Object v,
 					boolean sel, boolean foc, int r, int c)
-				{
-					super.getTableCellRendererComponent(t, v, sel, foc, r, c);
-					String s = v != null ? v.toString() : "";
-					if (s.startsWith("VA")) setForeground(IhmUtils.VERT);
-					else if (s.startsWith("BL")) setForeground(IhmUtils.ROUGE);
-					else setForeground(IhmUtils.AMBER);
-					if (!sel) setBackground(Color.WHITE);
-					return this;
-				}
-			});
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				String s = v != null ? v.toString() : "";
+				if (s.startsWith("VA"))      setForeground(IhmUtils.VERT);
+				else if (s.startsWith("BL")) setForeground(IhmUtils.ROUGE);
+				else                         setForeground(IhmUtils.AMBER);
+				if (!sel) setBackground(Color.WHITE);
+				return this;
+			}
+		});
 
-		// Colorer les lignes des lots sous douane
-		tbl.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+		tbl.setDefaultRenderer(Object.class, new DefaultTableCellRenderer()
+		{
 			public Component getTableCellRendererComponent(JTable t, Object v,
 					boolean sel, boolean foc, int r, int c)
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				if (!sel)
 				{
-					super.getTableCellRendererComponent(t, v, sel, foc, r, c);
-					if (!sel)
-					{
-						Lot lot = getLotLigne(r);
-						if (lot != null && lot.isEstSousDouane())
-							setBackground(new Color(170, 85, 195));
-						else
-							setBackground(Color.WHITE);
-					}
-					return this;
+					Lot lot = getLotLigne(r);
+					if (lot != null && lot.isEstSousDouane())
+						setBackground(new Color(170, 85, 195));
+					else
+						setBackground(Color.WHITE);
 				}
-			});
+				return this;
+			}
+		});
 
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(Color.WHITE);
@@ -165,8 +156,6 @@ public class PanelLots extends JPanel
 		p.add(new JScrollPane(tbl));
 		return p;
 	}
-
-	// ── Actions ───────────────────────────────────────────────────────────
 
 	private void ouvrirEdition()
 	{
@@ -196,20 +185,17 @@ public class PanelLots extends JPanel
 		}
 	}
 
-	/** Retrouve le Lot correspondant à la ligne visible (en tenant compte des filtres). */
 	private Lot getLotLigne(int row)
 	{
 		if (row < 0) return null;
-		String filtre  = combFiltreStatut.getSelectedIndex() > 0
+		String  filtre          = combFiltreStatut.getSelectedIndex() > 0
 			? (String) combFiltreStatut.getSelectedItem() : "";
-		String recherche = txtRecherche.getText().toLowerCase();
+		String  recherche       = txtRecherche.getText().toLowerCase();
 		boolean inclureSousDouane = chkSousDouane != null && chkSousDouane.isSelected();
 		int compteur = 0;
 		for (Lot l : ctrl.getLots())
 		{
-			// Filtre sous douane
-			if (!inclureSousDouane && l.isEstSousDouane())
-				continue;
+			if (!inclureSousDouane && l.isEstSousDouane()) continue;
 			if (!passFiltres(l, filtre, recherche)) continue;
 			if (compteur == row) return l;
 			compteur++;
@@ -228,36 +214,27 @@ public class PanelLots extends JPanel
 			String typo = s(l.getTypologie()).toLowerCase();
 			String aff  = s(l.getAffaire()).toLowerCase();
 			if (!num.contains(recherche) && !typo.contains(recherche)
-				&& !aff.contains(recherche) ) return false;
+				&& !aff.contains(recherche)) return false;
 		}
 		return true;
 	}
 
 	private String s(String v) { return v != null ? v : ""; }
 
-	// ── Rafraîchissement ──────────────────────────────────────────────────
-
 	public void rafraichir()
 	{
 		modelLots.setRowCount(0);
-
 		String filtre = combFiltreStatut != null && combFiltreStatut.getSelectedIndex() > 0
 			? (String) combFiltreStatut.getSelectedItem() : "";
-
 		String recherche = txtRecherche != null ? txtRecherche.getText().toLowerCase() : "";
-
 		boolean inclureSousDouane = chkSousDouane != null && chkSousDouane.isSelected();
 
 		for (Lot l : ctrl.getLots())
 		{
-			// Filtre sous douane
-			if (!inclureSousDouane && l.isEstSousDouane())
-				continue;
-
+			if (!inclureSousDouane && l.isEstSousDouane()) continue;
 			if (!passFiltres(l, filtre, recherche)) continue;
 
 			Societe soc = ctrl.getSocieteDuLot(l);
-
 			modelLots.addRow(new Object[]{
 				l.getNumCDE(),
 				s(l.getTypologie()),

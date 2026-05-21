@@ -1,6 +1,5 @@
 package app.ihm.gestionlot;
 
-import app.Controleur;
 import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
@@ -31,36 +30,25 @@ import javax.swing.ListSelectionModel;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Onglet "Affectation des lots".
- *
- * Layout repensé :
- *   - GAUCHE  : tableau de tous les lots (avec recherche) — clic pour sélectionner
- *   - CENTRE  : panneau de détail du lot sélectionné + choix société/ACE + boutons
- *   - DROITE  : tableau des lots déjà affectés (avec recherche)
- */
 public class PanelAffectation extends JPanel
 {
-	private final IControleur        ctrl;
+	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
-	// Tableau lots disponibles (gauche)
 	private DefaultTableModel modelDisponibles;
 	private JTable            tblDisponibles;
 	private JTextField        txtRechercheDisp;
 
-	// Panneau central
 	private JTextArea         infoLot;
 	private JComboBox<String> combSociete;
 	private JComboBox<String> combAce;
 	private JLabel            lblStatut;
 
-	// Tableau lots affectés (droite)
 	private DefaultTableModel modelAffectes;
 	private JTable            tblAffectes;
 	private JTextField        txtRechercheAff;
 
-	public PanelAffectation(Controleur ctrl, FenetrePrincipale fenetre)
+	public PanelAffectation(IControleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;
@@ -72,8 +60,6 @@ public class PanelAffectation extends JPanel
 		add(creerPanelCentral(),       BorderLayout.CENTER);
 		add(creerTableauAffectes(),    BorderLayout.EAST);
 	}
-
-	// ── Tableau gauche : lots disponibles ─────────────────────────────────
 
 	private JPanel creerTableauDisponibles()
 	{
@@ -110,19 +96,16 @@ public class PanelAffectation extends JPanel
 		tblPanel.setBorder(BorderFactory.createLineBorder(IhmUtils.BORD));
 		tblPanel.add(new JScrollPane(tblDisponibles));
 
-		p.add(top,     BorderLayout.NORTH);
+		p.add(top,      BorderLayout.NORTH);
 		p.add(tblPanel, BorderLayout.CENTER);
 		return p;
 	}
-
-	// ── Panneau central ───────────────────────────────────────────────────
 
 	private JPanel creerPanelCentral()
 	{
 		JPanel p = IhmUtils.panelFormulaire(280);
 		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 
-		// Infos lot sélectionné
 		infoLot = new JTextArea(8, 20);
 		infoLot.setEditable(false);
 		infoLot.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -141,11 +124,11 @@ public class PanelAffectation extends JPanel
 		combAce.setAlignmentX(Component.LEFT_ALIGNMENT);
 		combAce.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
-		JButton btnAffecter = IhmUtils.bouton("▶ Affecter →",       IhmUtils.HEADER,         Color.WHITE);
-		JButton btnRetirer  = IhmUtils.bouton("◀ Retirer",          new Color(200, 50, 50),  Color.WHITE);
-		JButton btnEditer   = IhmUtils.bouton("✏ Modifier ce lot",   IhmUtils.BLEU,           Color.WHITE);
-		JButton btnAjouter  = IhmUtils.bouton("+ Nouveau lot",       new Color(60, 140, 60),  Color.WHITE);
-		JButton btnNewLots  = IhmUtils.bouton("importer nouveau lots", new Color(100,20,70), Color.WHITE);
+		JButton btnAffecter = IhmUtils.bouton("▶ Affecter →",         IhmUtils.HEADER,         Color.WHITE);
+		JButton btnRetirer  = IhmUtils.bouton("◀ Retirer",            new Color(200, 50, 50),  Color.WHITE);
+		JButton btnEditer   = IhmUtils.bouton("✏ Modifier ce lot",     IhmUtils.BLEU,           Color.WHITE);
+		JButton btnAjouter  = IhmUtils.bouton("+ Nouveau lot",         new Color(60, 140, 60),  Color.WHITE);
+		JButton btnNewLots  = IhmUtils.bouton("importer nouveau lots", new Color(100, 20, 70),  Color.WHITE);
 
 		btnAffecter.addActionListener(e -> affecterLot());
 		btnRetirer .addActionListener(e -> retirerAffectation());
@@ -183,19 +166,19 @@ public class PanelAffectation extends JPanel
 		return p;
 	}
 
-	// ── Tableau droite : lots affectés ────────────────────────────────────
-
 	private JPanel creerTableauAffectes()
 	{
 		String[] cols = {"N° CDE", "Typologie", "Société", "ACE", "H Piste"};
-		modelAffectes = new DefaultTableModel(cols, 0) {
+		modelAffectes = new DefaultTableModel(cols, 0)
+		{
 			public boolean isCellEditable(int r, int c) { return false; }
 		};
 		tblAffectes = IhmUtils.creerTable(modelAffectes);
 
 		txtRechercheAff = new JTextField();
 		txtRechercheAff.setToolTipText("Rechercher dans les lots affectés…");
-		txtRechercheAff.addKeyListener(new KeyAdapter() {
+		txtRechercheAff.addKeyListener(new KeyAdapter()
+		{
 			public void keyReleased(KeyEvent e) { rafraichirTableauAffectes(); }
 		});
 
@@ -218,8 +201,6 @@ public class PanelAffectation extends JPanel
 		return p;
 	}
 
-	// ── Remplissage combos ────────────────────────────────────────────────
-
 	public void remplirComboSocietes()
 	{
 		combSociete.removeAllItems();
@@ -237,13 +218,11 @@ public class PanelAffectation extends JPanel
 		for (Ace a : ctrl.getSocietes().get(idx).getAces())
 		{
 			int nbPcs = 0;
-			for (Lot l : a.getLots()) 
+			for (Lot l : a.getLots())
 				nbPcs = l.getNbPieces();
-			combAce.addItem(a.getNom() + " (" + a.getLots().size() + " Lot(s) pour " +nbPcs+" Pieces )");
+			combAce.addItem(a.getNom() + " (" + a.getLots().size() + " Lot(s) pour " + nbPcs + " Pieces )");
 		}
 	}
-
-	// ── Info lot ──────────────────────────────────────────────────────────
 
 	private void majInfoLot()
 	{
@@ -257,7 +236,7 @@ public class PanelAffectation extends JPanel
 		sb.append("Pièces  : ").append(String.format("%,d", lot.getNbPieces())).append("\n");
 		sb.append("Cadence : ").append(String.format("%.2f p/h", lot.getCadence())).append("\n");
 		sb.append("Heures  : ").append(IhmUtils.fmt(lot.getHeures())).append("\n");
-		sb.append("VVS     :").append(String.format("%,d", lot.getValeurVente())).append(" €\n");
+		sb.append("VVS     : ").append(String.format("%,d", lot.getValeurVente())).append(" €\n");
 		sb.append("PU      : ").append(String.format("%.2f €", lot.getPrixUnitaire())).append("\n");
 		sb.append("Statut  : ").append(safe(lot.getStatutEchant())).append("\n");
 		sb.append("Sem.    : ").append(safe(lot.getSemaine())).append("\n");
@@ -266,17 +245,15 @@ public class PanelAffectation extends JPanel
 
 	private String safe(String s) { return (s != null && !s.isEmpty()) ? s : "—"; }
 
-	// ── Actions ───────────────────────────────────────────────────────────
-
 	private void affecterLot()
 	{
-		Lot lot = getLotSelectionne();
+		Lot lot    = getLotSelectionne();
 		int idxSoc = combSociete.getSelectedIndex() - 1;
 		int idxAce = combAce.getSelectedIndex() - 1;
 
-		if (lot == null)  { afficherStatut("Sélectionnez un lot dans le tableau.",          IhmUtils.ROUGE); return; }
-		if (idxSoc < 0)   { afficherStatut("Choisissez une société.",                       IhmUtils.ROUGE); return; }
-		if (idxAce < 0)   { afficherStatut("Choisissez un ACE.",                            IhmUtils.ROUGE); return; }
+		if (lot == null) { afficherStatut("Sélectionnez un lot dans le tableau.",   IhmUtils.ROUGE); return; }
+		if (idxSoc < 0)  { afficherStatut("Choisissez une société.",                IhmUtils.ROUGE); return; }
+		if (idxAce < 0)  { afficherStatut("Choisissez un ACE.",                     IhmUtils.ROUGE); return; }
 
 		Societe soc = ctrl.getSocietes().get(idxSoc);
 		Ace     ace = soc.getAces().get(idxAce);
@@ -296,11 +273,10 @@ public class PanelAffectation extends JPanel
 
 	private void retirerAffectation()
 	{
-		// Chercher d'abord dans le tableau des affectés
 		Lot lot = getLotAffecteSelectionne();
 		if (lot == null) lot = getLotSelectionne();
-		if (lot == null) { afficherStatut("Sélectionnez un lot à désaffecter.", IhmUtils.ROUGE); return; }
-		if (ctrl.getSocieteDuLot(lot) == null) { afficherStatut("Ce lot n'est pas affecté.", IhmUtils.AMBER); return; }
+		if (lot == null)                       { afficherStatut("Sélectionnez un lot à désaffecter.", IhmUtils.ROUGE); return; }
+		if (ctrl.getSocieteDuLot(lot) == null) { afficherStatut("Ce lot n'est pas affecté.",          IhmUtils.AMBER); return; }
 
 		ctrl.desaffecterLot(lot);
 		afficherStatut("Lot " + lot.getNumCDE() + " désaffecté.", Color.DARK_GRAY);
@@ -316,9 +292,6 @@ public class PanelAffectation extends JPanel
 		new DialogEditLot(fenetre, ctrl, lot, this).setVisible(true);
 	}
 
-	// ── Sélection ─────────────────────────────────────────────────────────
-
-	/** Retourne le lot sélectionné dans le tableau gauche (disponibles). */
 	private Lot getLotSelectionne()
 	{
 		int row = tblDisponibles.getSelectedRow();
@@ -327,11 +300,9 @@ public class PanelAffectation extends JPanel
 		int compteur = 0;
 		for (Lot l : ctrl.getLots())
 		{
-			// Filtrer : pas sous douane, pas déjà affecté, pas bloqué
-			if (l.isEstSousDouane() | l.getStatutEchant().contains("BL")) continue;
+			if (l.isEstSousDouane() || l.getStatutEchant().contains("BL")) continue;
 			if (ctrl.getSocieteDuLot(l) != null) continue;
 			if (l.getStatut() != null && l.getStatut().contains("BL")) continue;
-
 			if (!filtre.isEmpty()
 				&& !String.valueOf(l.getNumCDE()).contains(filtre)
 				&& !safe2(l.getTypologie()).toLowerCase().contains(filtre)
@@ -342,7 +313,6 @@ public class PanelAffectation extends JPanel
 		return null;
 	}
 
-	/** Retourne le lot sélectionné dans le tableau droite (affectés). */
 	private Lot getLotAffecteSelectionne()
 	{
 		int row = tblAffectes.getSelectedRow();
@@ -364,8 +334,6 @@ public class PanelAffectation extends JPanel
 
 	private String safe2(String s) { return s != null ? s : ""; }
 
-	// ── Rafraîchissement ──────────────────────────────────────────────────
-
 	public void rafraichir()
 	{
 		rafraichirTableauDisponibles();
@@ -380,11 +348,9 @@ public class PanelAffectation extends JPanel
 		String filtre = txtRechercheDisp != null ? txtRechercheDisp.getText().toLowerCase() : "";
 		for (Lot l : ctrl.getLots())
 		{
-			// Filtrer : pas sous douane, pas déjà affecté, pas bloqué
-			if (l.isEstSousDouane() | l.getStatutEchant().contains("BL")) continue;
+			if (l.isEstSousDouane() || l.getStatutEchant().contains("BL")) continue;
 			if (ctrl.getSocieteDuLot(l) != null) continue;
 			if (l.getStatut() != null && l.getStatut().contains("BL")) continue;
-
 			if (!filtre.isEmpty()
 				&& !String.valueOf(l.getNumCDE()).contains(filtre)
 				&& !safe2(l.getTypologie()).toLowerCase().contains(filtre)
@@ -408,10 +374,7 @@ public class PanelAffectation extends JPanel
 			if (combSociete != null) remplirComboSocietes();
 			if (combAce != null)     remplirComboAce();
 		}
-		catch (NullPointerException ex)
-		{
-			// Ignorer les NPE qui peuvent survenir si les composants ne sont pas encore initialisés
-		}
+		catch (NullPointerException ignored) {}
 	}
 
 	private void rafraichirTableauAffectes()
@@ -438,13 +401,12 @@ public class PanelAffectation extends JPanel
 			}
 	}
 
-	// ── Statut ────────────────────────────────────────────────────────────
-
 	public void afficherStatut(String msg, Color couleur)
 	{
 		lblStatut.setText(msg);
 		lblStatut.setForeground(couleur);
 		Timer t = new Timer(4000, e -> lblStatut.setText(" "));
-		t.setRepeats(false); t.start();
+		t.setRepeats(false);
+		t.start();
 	}
 }

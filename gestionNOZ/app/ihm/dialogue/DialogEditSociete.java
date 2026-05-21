@@ -27,17 +27,12 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Dialogue d'édition d'une société : nom, CE, heures disponibles, et tableau des ACE.
- * Les heures de la société sont éditables directement.
- * Les ACE peuvent être ajoutés, modifiés, supprimés dans le tableau.
- */
 public class DialogEditSociete extends JDialog
 {
 	private final FenetrePrincipale fenetre;
-	private final IControleur    ctrl;
-	private final Societe       soc;
-	private final PanelSocietes panelSoc;
+	private final IControleur       ctrl;
+	private final Societe           soc;
+	private final PanelSocietes     panelSoc;
 
 	private JTextField        fNom, fCe, fHeures, fEffect;
 	private DefaultTableModel modelAces;
@@ -45,17 +40,17 @@ public class DialogEditSociete extends JDialog
 	private JLabel            lblErreur;
 
 	public DialogEditSociete(FenetrePrincipale fenetre, IControleur ctrl,
-							  Societe soc, PanelSocietes panelSoc)
+	                         Societe soc, PanelSocietes panelSoc)
 	{
 		super(fenetre, "Modifier — " + soc.getNom(), true);
-		this.fenetre = fenetre;
+		this.fenetre  = fenetre;
 		this.ctrl     = ctrl;
 		this.soc      = soc;
 		this.panelSoc = panelSoc;
 		setSize(580, 480);
 		setLocationRelativeTo(fenetre);
 		setLayout(new BorderLayout(0, 6));
-		add(creerFormulaire(), BorderLayout.NORTH);
+		add(creerFormulaire(),  BorderLayout.NORTH);
 		add(creerTableauAces(), BorderLayout.CENTER);
 		add(creerBas(),         BorderLayout.SOUTH);
 		preRemplir();
@@ -80,7 +75,7 @@ public class DialogEditSociete extends JDialog
 			{"Nom société",             fNom   },
 			{"Responsable CE",          fCe    },
 			{"Heures disponibles (CE)", fHeures},
-			{"Effectif ",               fEffect},
+			{"Effectif",                fEffect},
 		};
 		for (int i = 0; i < champs.length; i++)
 		{
@@ -105,8 +100,8 @@ public class DialogEditSociete extends JDialog
 		tblAces = IhmUtils.creerTable(modelAces);
 		tblAces.setRowHeight(28);
 
-		JButton btnAdd = IhmUtils.bouton("+ Ajouter une ACE",                 new Color(60,140,60), Color.WHITE);
-		JButton btnDel = IhmUtils.bouton("− Supprimer la ligne sélectionnée", new Color(180,30,30), Color.WHITE);
+		JButton btnAdd = IhmUtils.bouton("+ Ajouter une ACE",                 new Color(60, 140, 60), Color.WHITE);
+		JButton btnDel = IhmUtils.bouton("− Supprimer la ligne sélectionnée", new Color(180, 30, 30), Color.WHITE);
 		btnAdd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		btnDel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		btnAdd.addActionListener(e -> modelAces.addRow(new Object[]{"Nouvelle ACE", 1, 1}));
@@ -138,8 +133,8 @@ public class DialogEditSociete extends JDialog
 		lblErreur.setForeground(IhmUtils.ROUGE);
 		lblErreur.setFont(new Font("SansSerif", Font.ITALIC, 12));
 
-		JButton btnOk  = IhmUtils.bouton("Enregistrer", IhmUtils.VERT,          Color.WHITE);
-		JButton btnAnn = IhmUtils.bouton("Annuler",     new Color(100,100,100), Color.WHITE);
+		JButton btnOk  = IhmUtils.bouton("Enregistrer", IhmUtils.VERT,           Color.WHITE);
+		JButton btnAnn = IhmUtils.bouton("Annuler",     new Color(100, 100, 100), Color.WHITE);
 		btnAnn.addActionListener(e -> dispose());
 		btnOk .addActionListener(e -> valider());
 
@@ -154,10 +149,9 @@ public class DialogEditSociete extends JDialog
 		fNom   .setText(soc.getNom() != null ? soc.getNom() : "");
 		fCe    .setText(soc.getCe()  != null ? soc.getCe()  : "");
 		fHeures.setText(String.valueOf(soc.getTotalHeuresCE()));
+		fEffect.setText(String.valueOf(soc.getEffectifTotal()));
 		for (Ace a : soc.getAces())
 			modelAces.addRow(new Object[]{a.getNom(), a.getNbPers(), a.getEffectifActuel()});
-		fEffect.setText(String.valueOf(soc.getEffectifTotal()));
-
 	}
 
 	private void valider()
