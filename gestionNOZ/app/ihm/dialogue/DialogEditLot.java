@@ -1,6 +1,6 @@
 package app.ihm.dialogue;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.gestionlot.PanelAffectation;
@@ -33,41 +33,28 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * Dialogue d'édition complète d'un lot existant.
- *
- * Emplacement : combo lettre (A/B/C/D/LTS/HD) + champ numéro libre
- *               → concaténés en un seul String pour le métier (ex: "B42")
- *               Les codes spéciaux LTS et HD n'ont pas de numéro.
- */
 public class DialogEditLot extends JDialog
 {
-	private final Controleur        ctrl;
+	private final IControleur       ctrl;
 	private final Lot               lot;
 	private final PanelAffectation  panelAff;
 	private final FenetrePrincipale fenetre;
 
-	// Champs formulaire
 	private JTextField  fTypologie, fAffaire, fNbPieces, fCadence, fValeur;
 	private JTextField  fSemaine, fLotACharge, fDateRec, fDatePai, fCommentaire;
 	private JCheckBox   fDouane;
 	private JComboBox<String> fStatut, fStatutEchant;
 	private JSpinner    fPriorite;
 
-	// Emplacement décomposé
 	private JComboBox<String> fEmplacementLettre;
 	private JTextField        fEmplacementNumero;
 
-	// Labels et erreur
 	private JLabel lblHeures, lblHeuresAce, lblErreur;
 
-	// Lettres pour lesquelles le numéro n'a pas de sens
 	private static final Set<String> SANS_NUMERO =
 		new HashSet<>(Arrays.asList("LTS", "HD", ""));
 
-	// ── Constructeur ──────────────────────────────────────────────────────
-
-	public DialogEditLot(FenetrePrincipale fenetre, Controleur ctrl,
+	public DialogEditLot(FenetrePrincipale fenetre, IControleur ctrl,
 	                     Lot lot, PanelAffectation panelAff)
 	{
 		super(fenetre, "Modifier le lot — N° " + lot.getNumCDE(), true);
@@ -82,8 +69,6 @@ public class DialogEditLot extends JDialog
 		add(creerBas(),        BorderLayout.SOUTH);
 		preRemplir();
 	}
-
-	// ── Formulaire ────────────────────────────────────────────────────────
 
 	private JScrollPane creerFormulaire()
 	{
@@ -100,19 +85,14 @@ public class DialogEditLot extends JDialog
 		fDouane      = new JCheckBox("Sous douane");
 		fPriorite    = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
 
-		fStatut = new JComboBox<>(new String[]{
-			"", "OU", "TC", "MR"});
+		fStatut = new JComboBox<>(new String[]{"", "OU", "TC", "MR"});
 		fStatutEchant = new JComboBox<>(new String[]{
-			"", "VA - Validé avec le CP", "BL - Bloqué", "EP - Envoi au CP",});
+			"", "VA - Validé avec le CP", "BL - Bloqué", "EP - Envoi au CP"});
 
-		// ── Sélecteur emplacement : lettre + numéro ───────────────────────
-		fEmplacementLettre = new JComboBox<>(new String[]{
-			"", "A", "B", "C", "D", "LTS", "HD"});
-
+		fEmplacementLettre = new JComboBox<>(new String[]{"", "A", "B", "C", "D", "LTS", "HD"});
 		fEmplacementNumero = new JTextField(5);
 		fEmplacementNumero.setToolTipText("Numéro de rangée (ex: 42)");
 
-		// Active/désactive le numéro selon la lettre choisie
 		fEmplacementLettre.addActionListener(e -> {
 			String lettre = s((String) fEmplacementLettre.getSelectedItem());
 			boolean avecNum = !SANS_NUMERO.contains(lettre);
@@ -120,7 +100,6 @@ public class DialogEditLot extends JDialog
 			if (!avecNum) fEmplacementNumero.setText("");
 		});
 
-		// Panel inline lettre + "—" + numéro
 		JPanel panelEmpl = new JPanel();
 		panelEmpl.setLayout(new BoxLayout(panelEmpl, BoxLayout.X_AXIS));
 		panelEmpl.setBackground(Color.WHITE);
@@ -133,7 +112,6 @@ public class DialogEditLot extends JDialog
 		panelEmpl.add(fEmplacementNumero);
 		panelEmpl.add(Box.createHorizontalGlue());
 
-		// Labels heures
 		lblHeures = new JLabel("—");
 		lblHeures.setForeground(IhmUtils.BLEU);
 		lblHeures.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -142,8 +120,8 @@ public class DialogEditLot extends JDialog
 		lblHeuresAce.setForeground(IhmUtils.BLEU);
 		lblHeuresAce.setFont(new Font("SansSerif", Font.BOLD, 13));
 
-		// Recalcul heures en temps réel
-		DocumentListener majH = new DocumentListener() {
+		DocumentListener majH = new DocumentListener()
+		{
 			public void insertUpdate (DocumentEvent e) { calculerHeures(); }
 			public void removeUpdate (DocumentEvent e) { calculerHeures(); }
 			public void changedUpdate(DocumentEvent e) { calculerHeures(); }
@@ -151,7 +129,6 @@ public class DialogEditLot extends JDialog
 		fNbPieces.getDocument().addDocumentListener(majH);
 		fCadence .getDocument().addDocumentListener(majH);
 
-		// Tableau de champs
 		Object[][] champs = {
 			{"Typologie *",      fTypologie},
 			{"Affaire",          fAffaire},
@@ -198,8 +175,8 @@ public class DialogEditLot extends JDialog
 		lblErreur.setForeground(IhmUtils.ROUGE);
 		lblErreur.setFont(new Font("SansSerif", Font.ITALIC, 12));
 
-		JButton btnOk  = IhmUtils.bouton("Enregistrer", IhmUtils.VERT,          Color.WHITE);
-		JButton btnAnn = IhmUtils.bouton("Annuler",     new Color(100,100,100), Color.WHITE);
+		JButton btnOk  = IhmUtils.bouton("Enregistrer", IhmUtils.VERT,           Color.WHITE);
+		JButton btnAnn = IhmUtils.bouton("Annuler",     new Color(100, 100, 100), Color.WHITE);
 		btnAnn.addActionListener(e -> dispose());
 		btnOk .addActionListener(e -> valider());
 
@@ -208,8 +185,6 @@ public class DialogEditLot extends JDialog
 		p.add(lblErreur); p.add(btnAnn); p.add(btnOk);
 		return p;
 	}
-
-	// ── Pré-remplissage ───────────────────────────────────────────────────
 
 	private void preRemplir()
 	{
@@ -232,14 +207,6 @@ public class DialogEditLot extends JDialog
 		calculerHeures();
 	}
 
-	/**
-	 * Décompose l'emplacement stocké en métier :
-	 *   "B42"  → lettre="B",   numéro="42"
-	 *   "A99"  → lettre="A",   numéro="99"
-	 *   "LTS"  → lettre="LTS", numéro="" (désactivé)
-	 *   "HD"   → lettre="HD",  numéro="" (désactivé)
-	 *   ""     → lettre="",    numéro="" (désactivé)
-	 */
 	private void decouperEmplacement(String empl)
 	{
 		if (empl == null || empl.isEmpty())
@@ -256,7 +223,6 @@ public class DialogEditLot extends JDialog
 			fEmplacementNumero.setEnabled(false);
 			return;
 		}
-		// Sépare lettres initiales du reste numérique
 		int i = 0;
 		while (i < empl.length() && Character.isLetter(empl.charAt(i))) i++;
 		String lettre = empl.substring(0, i);
@@ -266,7 +232,6 @@ public class DialogEditLot extends JDialog
 		fEmplacementNumero.setEnabled(true);
 	}
 
-	/** Reconstitue "B" + "42" → "B42" pour le métier. */
 	private String getEmplacementCombine()
 	{
 		String lettre = s((String) fEmplacementLettre.getSelectedItem());
@@ -281,8 +246,6 @@ public class DialogEditLot extends JDialog
 		for (int i = 0; i < combo.getItemCount(); i++)
 			if (combo.getItemAt(i).equals(valeur)) { combo.setSelectedIndex(i); return; }
 	}
-
-	// ── Calcul heures ─────────────────────────────────────────────────────
 
 	void calculerHeures()
 	{
@@ -303,8 +266,6 @@ public class DialogEditLot extends JDialog
 		}
 	}
 
-	// ── Validation ────────────────────────────────────────────────────────
-
 	private void valider()
 	{
 		try
@@ -315,14 +276,12 @@ public class DialogEditLot extends JDialog
 			int    nbPieces = Integer.parseInt(fNbPieces.getText().trim());
 			double cadence  = Double.parseDouble(fCadence.getText().trim().replace(",", "."));
 			int    valeur   = fValeur.getText().trim().isEmpty() ? 0
-							  : Integer.parseInt(fValeur.getText().trim());
+							: Integer.parseInt(fValeur.getText().trim());
 
 			ctrl.modifierLot(lot,
 				typo,
 				fAffaire     .getText().trim(),
-				nbPieces,
-				cadence,
-				valeur,
+				nbPieces, cadence, valeur,
 				(String) fStatut      .getSelectedItem(),
 				(String) fStatutEchant.getSelectedItem(),
 				fSemaine     .getText().trim(),
@@ -337,8 +296,8 @@ public class DialogEditLot extends JDialog
 
 			if (panelAff != null) fenetre.getPanelAffectation().remplirComboSocietes();
 			fenetre.rafraichirTout();
-			if (panelAff != null) panelAff.afficherStatut(
-				"Lot " + lot.getNumCDE() + " mis à jour.", IhmUtils.VERT);
+			if (panelAff != null)
+				panelAff.afficherStatut("Lot " + lot.getNumCDE() + " mis à jour.", IhmUtils.VERT);
 			dispose();
 		}
 		catch (NumberFormatException ex)

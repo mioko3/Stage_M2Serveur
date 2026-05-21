@@ -10,23 +10,24 @@ import java.util.ArrayList;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  SÉRIALISEUR JSON
+ *  SÉRIALISEUR JSON — version corrigée
  *
- *  Convertit les objets Java ↔ JSON (texte).
- *  Utilisé par le serveur pour répondre aux clients,
- *  et par le client pour envoyer/recevoir des données.
- *
- *  Aucune librairie externe — compatible avec votre projet
- *  sans Maven ni Gradle.
+ *  Corrections par rapport à la version précédente :
+ *   1. serialiserLotSeul : lot.getMethode() peut être null → esc(null) au lieu de NPE
+ *   2. serialiserLotSeul : champs manquants ajoutés :
+ *        dateDebut, dateFin, dateFinTheorique, cadenceReel,
+ *        collisage, nbPers, poucentrecupCartonFour
+ *   3. deserialiserLot   : restaure ces champs depuis le JSON
+ *   4. Ajout deserialiserAces() pour ServeurHTTP/MettreAJourAcesHandler
+ *   5. Ajout deserialiserFicheRoute() pour ControleurClient
  * ══════════════════════════════════════════════════════════════
  */
 public class JsonSerialiser
 {
 	// ══════════════════════════════════════════════════════════════════════
-	//  SÉRIALISATION : Java → JSON
+	//  SÉRIALISATION
 	// ══════════════════════════════════════════════════════════════════════
 
-	/** Convertit la liste complète des lots en tableau JSON. */
 	public static String serialiserLots(ArrayList<Lot> lots)
 	{
 		StringBuilder sb = new StringBuilder("[");
@@ -37,11 +38,15 @@ public class JsonSerialiser
 		return sb.append("]").toString();
 	}
 
-	/** Convertit un seul lot en objet JSON. */
+	/** Convertit un seul lot en objet JSON — TOUS les champs. */
 	public static String serialiserLotSeul(Lot lot)
 	{
 		SuivieProd sp = lot.getSuivieProd();
 		Phase      ph = lot.getPhase();
+
+		// ── FIX : methode peut être null ──────────────────────────────────
+		String nomMethode = (lot.getMethode() != null) ? lot.getMethode().getNom() : "";
+
 		return "{"
 			+ "\"numCDE\":"                  + lot.getNumCDE()                              + ","
 			+ "\"typologie\":"               + esc(lot.getTypologie())                      + ","
@@ -62,13 +67,23 @@ public class JsonSerialiser
 			+ "\"dateReception\":"           + esc(lot.getDateReception())                  + ","
 			+ "\"datePaiement\":"            + esc(lot.getDatePaiement())                   + ","
 			+ "\"commentaire\":"             + esc(lot.getCommentaire())                    + ","
-			+ "\"methode\":"                 + esc(lot.getMethode().getNom())               + ","
+			+ "\"methode\":"                 + esc(nomMethode)                              + ","
 			+ "\"distribution\":"            + esc(lot.getDistribution())                   + ","
 			+ "\"formatCarton\":"            + esc(lot.getFormatCarton())                   + ","
+			// ── Champs manquants dans l'ancienne version ──────────────────
+			+ "\"dateDebut\":"               + esc(lot.getDateDebut())                      + ","
+			+ "\"dateFin\":"                 + esc(lot.getdateFin())                        + ","
+			+ "\"dateFinTheorique\":"        + esc(lot.getdateFinT())                       + ","
+			+ "\"cadenceReel\":"             + lot.getCadenceReel()                         + ","
+			+ "\"collisage\":"               + lot.getCollisage()                           + ","
+			+ "\"nbPers\":"                  + lot.getNbPers()                              + ","
+			+ "\"poucentrecup\":"            + lot.getPoucentrecupCartonFour()              + ","
+			// ── Suivi production ──────────────────────────────────────────
 			+ "\"sp_nbPieceEtiq\":"          + (sp != null ? sp.getNbPieceEtiq()          : 0) + ","
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
 			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
 			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? sp.getNbHeureRepartRestant() : 0) + ","
+			// ── Phases ────────────────────────────────────────────────────
 			+ "\"ph_preTri\":"               + (ph != null && ph.isPreTri())               + ","
 			+ "\"ph_surPiste\":"             + (ph != null && ph.isSurPiste())             + ","
 			+ "\"ph_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())           + ","
@@ -77,11 +92,6 @@ public class JsonSerialiser
 			+ "}";
 	}
 
-	/**
-	 * Convertit la liste des sociétés en tableau JSON.
-	 * Les sociétés contiennent uniquement les numCDE des lots (pas les objets complets)
-	 * pour éviter la duplication avec le tableau /lots.
-	 */
 	public static String serialiserSocietes(ArrayList<Societe> societes)
 	{
 		StringBuilder sb = new StringBuilder("[");
@@ -94,7 +104,6 @@ public class JsonSerialiser
 
 	private static String serialiserSocieteSeule(Societe soc)
 	{
-		// IDs des lots affectés à cette société
 		StringBuilder lotsIds = new StringBuilder("[");
 		for (int i = 0; i < soc.getLots().size(); i++) {
 			if (i > 0) lotsIds.append(",");
@@ -102,7 +111,6 @@ public class JsonSerialiser
 		}
 		lotsIds.append("]");
 
-		// Liste des ACE
 		StringBuilder aces = new StringBuilder("[");
 		for (int i = 0; i < soc.getAces().size(); i++) {
 			if (i > 0) aces.append(",");
@@ -111,12 +119,12 @@ public class JsonSerialiser
 		aces.append("]");
 
 		return "{"
-			+ "\"nom\":"            + esc(soc.getNom())           + ","
-			+ "\"ce\":"             + esc(soc.getCe())            + ","
-			+ "\"effectifTotal\":"  + soc.getEffectifTotal()      + ","
-			+ "\"totalHeuresCE\":"  + soc.getTotalHeuresCE()      + ","
-			+ "\"lotsIds\":"        + lotsIds                     + ","
-			+ "\"aces\":"           + aces
+			+ "\"nom\":"           + esc(soc.getNom())      + ","
+			+ "\"ce\":"            + esc(soc.getCe())       + ","
+			+ "\"effectifTotal\":" + soc.getEffectifTotal() + ","
+			+ "\"totalHeuresCE\":" + soc.getTotalHeuresCE() + ","
+			+ "\"lotsIds\":"       + lotsIds                + ","
+			+ "\"aces\":"          + aces
 			+ "}";
 	}
 
@@ -130,32 +138,30 @@ public class JsonSerialiser
 		lotsIds.append("]");
 
 		return "{"
-			+ "\"nom\":"            + esc(ace.getNom())           + ","
-			+ "\"nbPers\":"         + ace.getNbPers()             + ","
-			+ "\"totalHeures\":"    + ace.getTotalHeures()        + ","
-			+ "\"effectif\":"       + ace.getEffectifActuel()     + ","
-			+ "\"lotsIds\":"        + lotsIds
+			+ "\"nom\":"        + esc(ace.getNom())       + ","
+			+ "\"nbPers\":"     + ace.getNbPers()         + ","
+			+ "\"totalHeures\":" + ace.getTotalHeures()   + ","
+			+ "\"effectif\":"   + ace.getEffectifActuel() + ","
+			+ "\"lotsIds\":"    + lotsIds
 			+ "}";
 	}
 
-	/** Sérialise une FicheRoute pour GET /ficheroute/{nom}. */
 	public static String serialiserFicheRoute(FicheRoute fdr)
 	{
 		String nomSoc = (fdr.getSociete() != null) ? fdr.getSociete().getNom() : "";
 		return "{"
-			+ "\"nomSociete\":"   + esc(nomSoc)                + ","
-			+ "\"sommeVVS\":"     + fdr.getSommeVVS()          + ","
-			+ "\"sommePieces\":"  + fdr.getSommePieces()       + ","
-			+ "\"prixUnitMoy\":"  + fdr.getPrixUntaireMoy()    + ","
-			+ "\"effectif\":"     + fdr.getEffectif()
+			+ "\"nomSociete\":"  + esc(nomSoc)             + ","
+			+ "\"sommeVVS\":"    + fdr.getSommeVVS()       + ","
+			+ "\"sommePieces\":" + fdr.getSommePieces()    + ","
+			+ "\"prixUnitMoy\":" + fdr.getPrixUntaireMoy() + ","
+			+ "\"effectif\":"    + fdr.getEffectif()
 			+ "}";
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  DÉSÉRIALISATION : JSON → Java
+	//  DÉSÉRIALISATION
 	// ══════════════════════════════════════════════════════════════════════
 
-	/** Convertit un tableau JSON en liste de Lot. */
 	public static ArrayList<Lot> deserialiserLots(String json)
 	{
 		ArrayList<Lot> liste = new ArrayList<>();
@@ -167,18 +173,17 @@ public class JsonSerialiser
 		return liste;
 	}
 
-	/** Convertit un objet JSON en Lot. */
 	public static Lot deserialiserLot(String obj)
 	{
-		int    numCDE       = getInt   (obj, "numCDE");
-		int    nbPieces     = getInt   (obj, "nbPieces");
-		double cadence      = getDouble(obj, "cadence");
-		double heures       = getDouble(obj, "heures");
-		int    valeurVente  = getInt   (obj, "valeurVente");
-		String statut       = getString(obj, "statut");
-		String statutEchant = getString(obj, "statutEchant");
-
-		Lot lot = new Lot(numCDE, nbPieces, cadence, heures, valeurVente, statut, statutEchant);
+		Lot lot = new Lot(
+			getInt   (obj, "numCDE"),
+			getInt   (obj, "nbPieces"),
+			getDouble(obj, "cadence"),
+			getDouble(obj, "heures"),
+			getInt   (obj, "valeurVente"),
+			getString(obj, "statut"),
+			getString(obj, "statutEchant")
+		);
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
@@ -194,6 +199,14 @@ public class JsonSerialiser
 		lot.setMethode      (getString(obj, "methode"));
 		lot.setDistribution (getString(obj, "distribution"));
 		lot.setFormatCarton (getString(obj, "formatCarton"));
+		// ── Champs restaurés ──────────────────────────────────────────────
+		lot.setDateDebut    (getString(obj, "dateDebut"));
+		lot.setdateFin      (getString(obj, "dateFin"));
+		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
+		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
+		lot.setCollisage    (getInt   (obj, "collisage"));
+		lot.setNbPers       (getInt   (obj, "nbPers"));
+		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
 
 		SuivieProd sp = new SuivieProd();
 		sp.setLot(lot);
@@ -214,17 +227,13 @@ public class JsonSerialiser
 		return lot;
 	}
 
-	/**
-	 * Convertit un tableau JSON de sociétés en objets Societe.
-	 * Retrouve les Lot par numCDE depuis la liste fournie.
-	 */
 	public static ArrayList<Societe> deserialiserSocietes(String json, ArrayList<Lot> lots)
 	{
 		ArrayList<Societe> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
 		for (String obj : extraireObjets(json)) {
 			try {
-				// 1. Construire les ACE d'abord (requis par le constructeur Societe)
+				// 1. Construire les ACE
 				ArrayList<Ace> aces = new ArrayList<>();
 				String blocsAces = extraireBloc(obj, "\"aces\"");
 				if (blocsAces != null) {
@@ -245,7 +254,7 @@ public class JsonSerialiser
 					}
 				}
 
-				// 2. Créer la Societe
+				// 2. Créer la Société
 				Societe soc = new Societe(
 					getString(obj, "nom"),
 					getString(obj, "ce"),
@@ -254,8 +263,7 @@ public class JsonSerialiser
 				);
 				soc.setEffectifTotal(getInt(obj, "effectifTotal"));
 
-				// 3. Re-lier les lots de la société (ajout direct dans la liste, sans décompter
-				//    les heures car elles sont déjà dans le JSON)
+				// 3. Relier les lots à la société (par numCDE, pas par référence)
 				String lotsIdsStr = extraireTableauPrimitif(obj, "lotsIds");
 				if (lotsIdsStr != null)
 					for (int id : parseIntArray(lotsIdsStr)) {
@@ -271,8 +279,31 @@ public class JsonSerialiser
 		return liste;
 	}
 
+	/** Désérialise une liste d'ACE sans lotsIds (pour mettreAJourAces). */
+	public static ArrayList<Ace> deserialiserAces(String json)
+	{
+		ArrayList<Ace> liste = new ArrayList<>();
+		if (json == null || json.isBlank()) return liste;
+		for (String obj : extraireObjets(json))
+			try {
+				liste.add(new Ace(
+					getString(obj, "nom"),
+					getInt   (obj, "nbPers"),
+					0,
+					getInt   (obj, "effectif")
+				));
+			} catch (Exception e) { System.err.println("[Json] ACE ignorée : " + e.getMessage()); }
+		return liste;
+	}
+
+	/** Désérialise une FicheRoute (reconstruction locale côté client). */
+	public static FicheRoute deserialiserFicheRoute(String json, Societe societe)
+	{
+		return new FicheRoute(societe);
+	}
+
 	// ══════════════════════════════════════════════════════════════════════
-	//  UTILITAIRES D'EXTRACTION — parseur JSON minimal
+	//  UTILITAIRES D'EXTRACTION
 	// ══════════════════════════════════════════════════════════════════════
 
 	public static String getString(String obj, String cle)
@@ -318,7 +349,8 @@ public class JsonSerialiser
 		pos += p.length();
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
-		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '.' || obj.charAt(end) == '-' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
+		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '.'
+			|| obj.charAt(end) == '-' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
 		try { return Double.parseDouble(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0.0; }
 	}
 
@@ -332,16 +364,12 @@ public class JsonSerialiser
 		return obj.startsWith("true", pos);
 	}
 
-	// Alias courts utilisés par ServeurHTTP et ControleurClient
+	// ── Alias pour ServeurHTTP et ControleurClient ────────────────────────
 	public static int     extraireInt   (String json, String cle) { return getInt   (json, cle); }
 	public static String  extraireString(String json, String cle) { return getString (json, cle); }
 	public static boolean extraireBool  (String json, String cle) { return getBool   (json, cle); }
 	public static double  extraireDouble(String json, String cle) { return getDouble (json, cle); }
 
-	/**
-	 * Extrait un bloc JSON (objet ou tableau) associé à une clé.
-	 * Ex: extraireBloc(json, "\"lots\"") → "[{...},{...}]"
-	 */
 	public static String extraireBloc(String json, String cle)
 	{
 		int pos = json.indexOf(cle);
@@ -359,7 +387,6 @@ public class JsonSerialiser
 		return null;
 	}
 
-	/** Extrait un tableau de primitifs : "lotsIds":[1,2,3] → "[1,2,3]" */
 	public static String extraireTableauPrimitif(String obj, String cle)
 	{
 		String pattern = "\"" + cle + "\"";
@@ -371,7 +398,6 @@ public class JsonSerialiser
 		return end < 0 ? null : obj.substring(pos, end + 1);
 	}
 
-	/** Extrait tous les objets JSON {} d'un tableau [...]. */
 	public static ArrayList<String> extraireObjets(String tableau)
 	{
 		ArrayList<String> liste = new ArrayList<>();
@@ -387,7 +413,6 @@ public class JsonSerialiser
 		return liste;
 	}
 
-	/** Parse un tableau JSON d'entiers [1,2,3]. */
 	private static ArrayList<Integer> parseIntArray(String tableau)
 	{
 		ArrayList<Integer> liste = new ArrayList<>();
@@ -404,53 +429,9 @@ public class JsonSerialiser
 		return null;
 	}
 
-	/** Échappe une chaîne pour inclusion dans du JSON. */
 	public static String esc(String s)
 	{
 		if (s == null) return "\"\"";
 		return "\"" + s.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n") + "\"";
 	}
-
-	 /**
-	 * Désérialise une liste d'ACE depuis un tableau JSON.
-	 * Format attendu : [{"nom":"A","nbPers":3,"effectif":2}, ...]
-	 * (sans lotsIds — utilisé pour mettreAJourAces)
-	 */
-	public static ArrayList<Ace> deserialiserAces(String json)
-	{
-		ArrayList<Ace> liste = new ArrayList<>();
-		if (json == null || json.isBlank()) return liste;
-		for (String obj : extraireObjets(json))
-		{
-			try
-			{
-				Ace ace = new Ace(
-					getString(obj, "nom"),
-					getInt   (obj, "nbPers"),
-					0,                          // totalHeures non transmis
-					getInt   (obj, "effectif")
-				);
-				liste.add(ace);
-			}
-			catch (Exception e)
-			{
-				System.err.println("[Json] ACE ignorée : " + e.getMessage());
-			}
-		}
-		return liste;
-	}
- 
-	/**
-	 * Désérialise une FicheRoute depuis JSON (réponse de GET /ficheroute/{nom}).
-	 * Le JSON ne contient que les totaux — la FicheRoute est reconstruite
-	 * côté client uniquement pour affichage.
-	 */
-	public static FicheRoute deserialiserFicheRoute(String json, Societe societe)
-	{
-		FicheRoute fr = new FicheRoute(societe);
-		// La FicheRoute se construit depuis la société — le JSON sert
-		// juste à confirmer les données. On retourne la fiche générée localement.
-		return fr;
-	}
-
 }

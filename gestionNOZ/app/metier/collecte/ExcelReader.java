@@ -162,6 +162,51 @@ public class ExcelReader
 		}
 	}
 
+	public static java.util.Map<String, Integer> lireHeuresSocietes(
+		String cheminXlsx, int semaine) throws IOException
+	{
+		java.util.Map<String, Integer> result = new java.util.LinkedHashMap<>();
+ 
+		try (FileInputStream fis = new FileInputStream(cheminXlsx);
+			 Workbook wb = WorkbookFactory.create(fis))
+		{
+			FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();
+ 
+			// Chercher la feuille "TDB V2" (même convention que ajouterHeuresDepuisExcel)
+			Sheet sh = wb.getSheet("TDB V2");
+			if (sh == null)
+			{
+				// Fallback : première feuille
+				sh = wb.getSheetAt(0);
+			}
+ 
+			// Même logique que SOCIETE_ROW dans ajouterHeuresDepuisExcel
+			java.util.Map<String, Integer> societeRow = new java.util.LinkedHashMap<>();
+			societeRow.put("PROD", 7);
+			societeRow.put("PA",   14);
+			societeRow.put("EUP",  21);
+			societeRow.put("CFP",  28);
+ 
+			int colStart = 5 + (semaine - 1) * 7;
+ 
+			for (java.util.Map.Entry<String, Integer> entry : societeRow.entrySet())
+			{
+				String nom    = entry.getKey();
+				int    rowIdx = entry.getValue();
+ 
+				Row row = sh.getRow(rowIdx - 1);
+				if (row == null) continue;
+ 
+				// hAff = heures affectées (même colonne que dans ajouterHeuresDepuisExcel)
+				int hAff = (int) Math.round(numSafe(getCell(row, colStart + 3), evaluator));
+				if (hAff > 0)
+					result.put(nom, hAff);
+			}
+		}
+ 
+		return result;
+	}
+
 	private static Cell getCell(Row row, int index)
 	{
 		return row == null ? null : row.getCell(index);

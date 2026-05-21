@@ -1,6 +1,6 @@
 package app.ihm.gestionlot;
 
-import app.Controleur;
+import app.IControleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.dialogue.DialogEditSociete;
@@ -25,20 +25,16 @@ import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Onglet "Sociétés & heures".
- * Double-clic → dialogue d'édition.
- */
 public class PanelSocietes extends JPanel
 {
-	private final Controleur        ctrl;
+	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private DefaultTableModel modelSocietes;
 	private JTable            tbl;
 	private JTextArea         detailAce;
 
-	public PanelSocietes(Controleur ctrl, FenetrePrincipale fenetre)
+	public PanelSocietes(IControleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;
@@ -46,9 +42,9 @@ public class PanelSocietes extends JPanel
 		setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		setBackground(IhmUtils.FOND);
 
-		add(creerBoutons(),        BorderLayout.NORTH);
-		add(creerTableau(),        BorderLayout.CENTER);
-		add(creerDetailPanel(),    BorderLayout.SOUTH);
+		add(creerBoutons(),     BorderLayout.NORTH);
+		add(creerTableau(),     BorderLayout.CENTER);
+		add(creerDetailPanel(), BorderLayout.SOUTH);
 	}
 
 	private JPanel creerBoutons()
@@ -61,23 +57,25 @@ public class PanelSocietes extends JPanel
 		btnNew.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		btnNew.setAlignmentX(Component.LEFT_ALIGNMENT);
 		btnNew.addActionListener(e -> ouvrirNouvelleHeure());
+
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(IhmUtils.FOND);
 		p.add(btnEdit, BorderLayout.WEST);
-		p.add(btnNew, BorderLayout.EAST);
+		p.add(btnNew,  BorderLayout.EAST);
 		return p;
 	}
 
 	private JPanel creerTableau()
 	{
 		String[] cols = {"Société", "CE", "H initiales", "H restantes", "% consommé", "Lots", "ACE"};
-		modelSocietes = new DefaultTableModel(cols, 0) {
+		modelSocietes = new DefaultTableModel(cols, 0)
+		{
 			public boolean isCellEditable(int r, int c) { return false; }
 		};
 		tbl = IhmUtils.creerTable(modelSocietes);
 
-		// Colorer H restantes
-		tbl.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer(){
+		tbl.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer()
+		{
 			public Component getTableCellRendererComponent(JTable t, Object v,
 					boolean sel, boolean foc, int r, int c)
 			{
@@ -99,7 +97,8 @@ public class PanelSocietes extends JPanel
 			if (row >= 0 && row < ctrl.getSocietes().size())
 				detailAce.setText(buildDetail(ctrl.getSocietes().get(row)));
 		});
-		tbl.addMouseListener(new MouseAdapter(){
+		tbl.addMouseListener(new MouseAdapter()
+		{
 			public void mouseClicked(MouseEvent e)
 			{
 				if (e.getClickCount() == 2) ouvrirEdition();
@@ -137,35 +136,22 @@ public class PanelSocietes extends JPanel
 
 	private void ouvrirNouvelleHeure()
 	{
-		// Popup pour saisir la semaine
 		String input = JOptionPane.showInputDialog(
-			fenetre,
-			"Entrez le numéro de semaine (1 à 53) :",
-			JOptionPane.QUESTION_MESSAGE
-		);
+			fenetre, "Entrez le numéro de semaine (1 à 53) :", JOptionPane.QUESTION_MESSAGE);
 
-		// Si l'utilisateur n'annule pas
 		if (input != null)
 		{
 			try
 			{
 				int semaine = Integer.parseInt(input.trim());
-
-				// Vérification de l'intervalle
-				if (semaine < 1 || semaine > 53)
-					throw new NumberFormatException();
-
-				// Appel du contrôleur
+				if (semaine < 1 || semaine > 53) throw new NumberFormatException();
 				ctrl.nouvelleHeurePourSociete(semaine);
 			}
 			catch (NumberFormatException ex)
 			{
-				JOptionPane.showMessageDialog(
-					fenetre,
+				JOptionPane.showMessageDialog(fenetre,
 					"Saisie invalide. Veuillez entrer un nombre entre 1 et 53.",
-					"Erreur",
-					JOptionPane.ERROR_MESSAGE
-				);
+					"Erreur", JOptionPane.ERROR_MESSAGE);
 			}
 		}
 		this.fenetre.rafraichirTout();
@@ -183,7 +169,6 @@ public class PanelSocietes extends JPanel
 		if (!soc.getLots().isEmpty())
 		{
 			sb.append("\nLots affectés :\n");
-			// trié par Ace
 			ArrayList<Lot> lots = new ArrayList<>(soc.getLots());
 			lots.sort((l1, l2) -> {
 				Ace a1 = ctrl.getAceDuLot(l1);
@@ -196,7 +181,7 @@ public class PanelSocietes extends JPanel
 			{
 				Ace a = ctrl.getAceDuLot(l);
 				String typo = l.getTypologie() != null ? l.getTypologie() : "";
-				if (typo.length() > 32) typo = typo.substring(0, 32) + "…";	
+				if (typo.length() > 32) typo = typo.substring(0, 32) + "…";
 				sb.append(String.format("  • %-10d %-34s %5.1fh  [%s]%n",
 					l.getNumCDE(), typo, l.getHeures(), a != null ? a.getNom() : "—"));
 			}
