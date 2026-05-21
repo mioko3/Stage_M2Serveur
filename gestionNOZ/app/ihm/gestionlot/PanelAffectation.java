@@ -15,6 +15,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -30,20 +32,36 @@ import javax.swing.ListSelectionModel;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Onglet "Affectation des lots".
+ *
+ * Modifications issues de livraison :
+ *   - lotsDisponiblesAffiches / lotsAffectesAffiches : listes de référence
+ *     pour getLotSelectionne() — plus de compteur fragile dans une boucle
+ *   - combFiltreStatut intégré dans le tableau gauche (sous la recherche)
+ */
 public class PanelAffectation extends JPanel
 {
 	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
+	// ── Listes de référence (cf. livraison) ───────────────────────────────
+	private List<Lot> lotsDisponiblesAffiches = new ArrayList<>();
+	private List<Lot> lotsAffectesAffiches    = new ArrayList<>();
+
+	// ── Tableau gauche : lots disponibles ─────────────────────────────────
 	private DefaultTableModel modelDisponibles;
 	private JTable            tblDisponibles;
 	private JTextField        txtRechercheDisp;
+	private JComboBox<String> combFiltreStatut;
 
+	// ── Panneau central ───────────────────────────────────────────────────
 	private JTextArea         infoLot;
 	private JComboBox<String> combSociete;
 	private JComboBox<String> combAce;
 	private JLabel            lblStatut;
 
+	// ── Tableau droit : lots affectés ─────────────────────────────────────
 	private DefaultTableModel modelAffectes;
 	private JTable            tblAffectes;
 	private JTextField        txtRechercheAff;
@@ -61,9 +79,12 @@ public class PanelAffectation extends JPanel
 		add(creerTableauAffectes(),    BorderLayout.EAST);
 	}
 
+	// ── Tableau gauche ────────────────────────────────────────────────────
+
 	private JPanel creerTableauDisponibles()
 	{
-		String[] cols = {"N° CDE", "Typologie", "H", "Statut"};
+		// Colonne "Nb pcs" ajoutée (cf. livraison)
+		String[] cols = {"N° CDE", "Typologie", "Nb pcs", "H", "Statut"};
 		modelDisponibles = new DefaultTableModel(cols, 0)
 		{
 			public boolean isCellEditable(int r, int c) { return false; }
@@ -82,6 +103,10 @@ public class PanelAffectation extends JPanel
 			public void keyReleased(KeyEvent e) { rafraichirTableauDisponibles(); }
 		});
 
+		combFiltreStatut = new JComboBox<>(new String[]{
+			"Tous les statuts", "VA - Validé avec le CP", "BL - Bloqué", "EP - Envoi au CP"});
+		combFiltreStatut.addActionListener(e -> rafraichirTableauDisponibles());
+
 		JPanel p = new JPanel(new BorderLayout(0, 4));
 		p.setBackground(IhmUtils.FOND);
 		p.setPreferredSize(new Dimension(340, 0));
@@ -89,7 +114,8 @@ public class PanelAffectation extends JPanel
 		JPanel top = new JPanel(new BorderLayout(4, 0));
 		top.setBackground(IhmUtils.FOND);
 		top.add(IhmUtils.labelSection("Lots disponibles"), BorderLayout.WEST);
-		top.add(txtRechercheDisp, BorderLayout.CENTER);
+		top.add(txtRechercheDisp,  BorderLayout.CENTER);
+		top.add(combFiltreStatut,  BorderLayout.SOUTH);   // filtre sous la recherche
 
 		JPanel tblPanel = new JPanel(new BorderLayout());
 		tblPanel.setBackground(Color.WHITE);
@@ -100,6 +126,8 @@ public class PanelAffectation extends JPanel
 		p.add(tblPanel, BorderLayout.CENTER);
 		return p;
 	}
+
+	// ── Panneau central ───────────────────────────────────────────────────
 
 	private JPanel creerPanelCentral()
 	{
@@ -124,11 +152,11 @@ public class PanelAffectation extends JPanel
 		combAce.setAlignmentX(Component.LEFT_ALIGNMENT);
 		combAce.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
-		JButton btnAffecter = IhmUtils.bouton("▶ Affecter →",         IhmUtils.HEADER,         Color.WHITE);
-		JButton btnRetirer  = IhmUtils.bouton("◀ Retirer",            new Color(200, 50, 50),  Color.WHITE);
-		JButton btnEditer   = IhmUtils.bouton("✏ Modifier ce lot",     IhmUtils.BLEU,           Color.WHITE);
-		JButton btnAjouter  = IhmUtils.bouton("+ Nouveau lot",         new Color(60, 140, 60),  Color.WHITE);
-		JButton btnNewLots  = IhmUtils.bouton("importer nouveau lots", new Color(100, 20, 70),  Color.WHITE);
+		JButton btnAffecter = IhmUtils.bouton("▶ Affecter →",          IhmUtils.HEADER,        Color.WHITE);
+		JButton btnRetirer  = IhmUtils.bouton("◀ Retirer",             new Color(200, 50, 50), Color.WHITE);
+		JButton btnEditer   = IhmUtils.bouton("✏ Modifier ce lot",      IhmUtils.BLEU,          Color.WHITE);
+		JButton btnAjouter  = IhmUtils.bouton("+ Nouveau lot",          new Color(60, 140, 60), Color.WHITE);
+		JButton btnNewLots  = IhmUtils.bouton("importer nouveau lots",  new Color(100, 20, 70), Color.WHITE);
 
 		btnAffecter.addActionListener(e -> affecterLot());
 		btnRetirer .addActionListener(e -> retirerAffectation());
@@ -166,6 +194,8 @@ public class PanelAffectation extends JPanel
 		return p;
 	}
 
+	// ── Tableau droit ─────────────────────────────────────────────────────
+
 	private JPanel creerTableauAffectes()
 	{
 		String[] cols = {"N° CDE", "Typologie", "Société", "ACE", "H Piste"};
@@ -201,6 +231,8 @@ public class PanelAffectation extends JPanel
 		return p;
 	}
 
+	// ── Combos ────────────────────────────────────────────────────────────
+
 	public void remplirComboSocietes()
 	{
 		combSociete.removeAllItems();
@@ -217,12 +249,12 @@ public class PanelAffectation extends JPanel
 		if (idx < 0 || idx >= ctrl.getSocietes().size()) return;
 		for (Ace a : ctrl.getSocietes().get(idx).getAces())
 		{
-			int nbPcs = 0;
-			for (Lot l : a.getLots())
-				nbPcs = l.getNbPieces();
+			int nbPcs = a.getLots().stream().mapToInt(Lot::getNbPieces).sum();
 			combAce.addItem(a.getNom() + " (" + a.getLots().size() + " Lot(s) pour " + nbPcs + " Pieces )");
 		}
 	}
+
+	// ── Info lot ──────────────────────────────────────────────────────────
 
 	private void majInfoLot()
 	{
@@ -244,6 +276,8 @@ public class PanelAffectation extends JPanel
 	}
 
 	private String safe(String s) { return (s != null && !s.isEmpty()) ? s : "—"; }
+
+	// ── Actions ───────────────────────────────────────────────────────────
 
 	private void affecterLot()
 	{
@@ -292,47 +326,25 @@ public class PanelAffectation extends JPanel
 		new DialogEditLot(fenetre, ctrl, lot, this).setVisible(true);
 	}
 
+	// ── Sélection depuis listes de référence (cf. livraison) ─────────────
+
 	private Lot getLotSelectionne()
 	{
 		int row = tblDisponibles.getSelectedRow();
-		if (row < 0) return null;
-		String filtre = txtRechercheDisp.getText().toLowerCase();
-		int compteur = 0;
-		for (Lot l : ctrl.getLots())
-		{
-			if (l.isEstSousDouane() || l.getStatutEchant().contains("BL")) continue;
-			if (ctrl.getSocieteDuLot(l) != null) continue;
-			if (l.getStatut() != null && l.getStatut().contains("BL")) continue;
-			if (!filtre.isEmpty()
-				&& !String.valueOf(l.getNumCDE()).contains(filtre)
-				&& !safe2(l.getTypologie()).toLowerCase().contains(filtre)
-				&& !safe2(l.getAffaire()).toLowerCase().contains(filtre)) continue;
-			if (compteur == row) return l;
-			compteur++;
-		}
-		return null;
+		if (row < 0 || row >= lotsDisponiblesAffiches.size()) return null;
+		return lotsDisponiblesAffiches.get(row);
 	}
 
 	private Lot getLotAffecteSelectionne()
 	{
 		int row = tblAffectes.getSelectedRow();
-		if (row < 0) return null;
-		String filtre = txtRechercheAff.getText().toLowerCase();
-		int compteur = 0;
-		for (Societe soc : ctrl.getSocietes())
-			for (Lot l : soc.getLots())
-			{
-				if (!filtre.isEmpty()
-					&& !String.valueOf(l.getNumCDE()).contains(filtre)
-					&& !safe2(l.getTypologie()).toLowerCase().contains(filtre)
-					&& !safe2(soc.getNom()).toLowerCase().contains(filtre)) continue;
-				if (compteur == row) return l;
-				compteur++;
-			}
-		return null;
+		if (row < 0 || row >= lotsAffectesAffiches.size()) return null;
+		return lotsAffectesAffiches.get(row);
 	}
 
 	private String safe2(String s) { return s != null ? s : ""; }
+
+	// ── Rafraîchissement ──────────────────────────────────────────────────
 
 	public void rafraichir()
 	{
@@ -345,24 +357,35 @@ public class PanelAffectation extends JPanel
 	private void rafraichirTableauDisponibles()
 	{
 		modelDisponibles.setRowCount(0);
-		String filtre = txtRechercheDisp != null ? txtRechercheDisp.getText().toLowerCase() : "";
+		lotsDisponiblesAffiches.clear();
+
+		String filtre    = combFiltreStatut != null && combFiltreStatut.getSelectedIndex() > 0
+			? (String) combFiltreStatut.getSelectedItem() : "";
+		String recherche = txtRechercheDisp != null ? txtRechercheDisp.getText().toLowerCase() : "";
+
 		for (Lot l : ctrl.getLots())
 		{
-			if (l.isEstSousDouane() || l.getStatutEchant().contains("BL")) continue;
+			if (l.isEstSousDouane()) continue;
 			if (ctrl.getSocieteDuLot(l) != null) continue;
-			if (l.getStatut() != null && l.getStatut().contains("BL")) continue;
-			if (!filtre.isEmpty()
-				&& !String.valueOf(l.getNumCDE()).contains(filtre)
-				&& !safe2(l.getTypologie()).toLowerCase().contains(filtre)
-				&& !safe2(l.getAffaire()).toLowerCase().contains(filtre)) continue;
 
-			Societe soc = ctrl.getSocieteDuLot(l);
+			if (!filtre.isEmpty()
+				&& !filtre.equals(l.getStatutEchant())
+				&& !filtre.equals(l.getStatut())) continue;
+
+			if (!recherche.isEmpty()
+				&& !String.valueOf(l.getNumCDE()).contains(recherche)
+				&& !safe2(l.getTypologie()).toLowerCase().contains(recherche)
+				&& !safe2(l.getAffaire()).toLowerCase().contains(recherche)) continue;
+
+			lotsDisponiblesAffiches.add(l);
+
 			modelDisponibles.addRow(new Object[]{
 				l.getNumCDE(),
 				safe2(l.getTypologie()).length() > 28
 					? safe2(l.getTypologie()).substring(0, 28) + "…" : safe2(l.getTypologie()),
+				l.getNbPieces(),
 				IhmUtils.fmt(l.getHeures()),
-				soc != null ? "✔ Affecté" : safe2(l.getStatutEchant())
+				safe2(l.getStatutEchant())
 			});
 		}
 	}
@@ -372,7 +395,7 @@ public class PanelAffectation extends JPanel
 		try
 		{
 			if (combSociete != null) remplirComboSocietes();
-			if (combAce != null)     remplirComboAce();
+			if (combAce     != null) remplirComboAce();
 		}
 		catch (NullPointerException ignored) {}
 	}
@@ -380,7 +403,10 @@ public class PanelAffectation extends JPanel
 	private void rafraichirTableauAffectes()
 	{
 		modelAffectes.setRowCount(0);
+		lotsAffectesAffiches.clear();
+
 		String filtre = txtRechercheAff != null ? txtRechercheAff.getText().toLowerCase() : "";
+
 		for (Societe soc : ctrl.getSocietes())
 			for (Lot l : soc.getLots())
 			{
@@ -390,6 +416,8 @@ public class PanelAffectation extends JPanel
 					&& !soc.getNom().toLowerCase().contains(filtre)) continue;
 
 				Ace ace = ctrl.getAceDuLot(l);
+				lotsAffectesAffiches.add(l);
+
 				modelAffectes.addRow(new Object[]{
 					l.getNumCDE(),
 					safe2(l.getTypologie()).length() > 22
