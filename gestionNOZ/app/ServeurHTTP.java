@@ -17,62 +17,30 @@ import java.util.ArrayList;
 import java.util.concurrent.Executors;
 
 /**
- * ══════════════════════════════════════════════════════════════
- *  ServeurHTTP — serveur de données pour gestionNOZ
+ * Serveur HTTP — port 8080
+ * Lance avec : java -cp ... app.ServeurHTTP
  *
- *  Routes LOTS :
- *    GET  /lots
- *    POST /lots/ajouter
- *    POST /lots/supprimer
- *    POST /lots/modifier
- *    POST /lots/affecter
- *    POST /lots/desaffecter
- *    POST /lots/suiviprod
- *    POST /lots/commencer
- *    POST /lots/annuler
- *    POST /lots/terminer
- *    POST /lots/phase
- *
- *  Routes SOCIÉTÉS / ACE :
- *    GET  /societes
- *    POST /societes/modifier
- *    POST /aces/modifier
- *    POST /aces/mettreajour      ← ajouté
- *
- *  Routes SYSTÈME :
- *    GET  /ficheroute/{nom}
- *    POST /sauvegarder
- *    POST /charger
- *    POST /nouveaux
- *    POST /nouvelleheure         ← implémenté (données JSON du fichier Excel non dispo côté serveur
- *                                   → le serveur met à jour les heures depuis le JSON reçu)
- *    POST /semainesup            ← ajouté
- *    POST /autosave/lots         ← ajouté
- *    POST /autosave/societes     ← ajouté
- * ══════════════════════════════════════════════════════════════
+ * Pas de Swing, pas de Controleur — utilise PlanningGlobal directement.
  */
 public class ServeurHTTP
 {
 	private PlanningGlobal     metier;
 	private DonneesSauvegarder savDonnees;
 
-	private String cheminLotsJson;
-	private String cheminSocietesJson;
+	private String cheminLotsJson     = "app/data/courutilisation/lots.json";
+	private String cheminSocietesJson = "app/data/courutilisation/societes.json";
 
-	private static final int PORT = 8080;
+	private static final int    PORT   = 8080;
+	private final        Object verrou = new Object();
 
-	private final Object verrou = new Object();
-
-	// ── Constructeur ─────────────────────────────────────────────────────
+	// ── Démarrage ─────────────────────────────────────────────────────────
 
 	public ServeurHTTP() throws Exception
 	{
 		this.metier     = new PlanningGlobal();
 		this.savDonnees = new DonneesSauvegarder();
 
-		this.cheminLotsJson     = "app/data/courutilisation/lots.json";
-		this.cheminSocietesJson = "app/data/courutilisation/societes.json";
-
+		// Chargement initial si des données existent
 		try
 		{
 			savDonnees.charger(metier, "app/data/courutilisation");
@@ -80,12 +48,12 @@ public class ServeurHTTP
 		}
 		catch (Exception e)
 		{
-			System.out.println("[Serveur] Aucun chargement initial : " + e.getMessage());
+			System.out.println("[Serveur] Démarrage à vide : " + e.getMessage());
 		}
 
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 
-		// ── LOTS ─────────────────────────────────────────────────────────
+		// ── Routes LOTS ──────────────────────────────────────────────────
 		server.createContext("/lots",             ex -> new GetLotsHandler()       .handle(ex));
 		server.createContext("/lots/ajouter",     ex -> new AjouterLotHandler()    .handle(ex));
 		server.createContext("/lots/supprimer",   ex -> new SupprimerLotHandler()  .handle(ex));
@@ -98,62 +66,47 @@ public class ServeurHTTP
 		server.createContext("/lots/terminer",    ex -> new TerminerLotHandler()   .handle(ex));
 		server.createContext("/lots/phase",       ex -> new ModifierPhaseHandler() .handle(ex));
 
-		// ── SOCIÉTÉS / ACE ────────────────────────────────────────────────
+		// ── Routes SOCIETES / ACE ─────────────────────────────────────────
 		server.createContext("/societes",          ex -> new GetSocietesHandler()    .handle(ex));
 		server.createContext("/societes/modifier", ex -> new ModifierSocieteHandler().handle(ex));
 		server.createContext("/aces/modifier",     ex -> new ModifierAceHandler()    .handle(ex));
 		server.createContext("/aces/mettreajour",  ex -> new MettreAJourAcesHandler().handle(ex));
 
-		// ── SYSTÈME ───────────────────────────────────────────────────────
+		// ── Routes SYSTEME ────────────────────────────────────────────────
 		server.createContext("/ficheroute/",       ex -> new FicheRouteHandler()    .handle(ex));
 		server.createContext("/sauvegarder",       ex -> new SauvegarderHandler()   .handle(ex));
 		server.createContext("/charger",           ex -> new ChargerHandler()       .handle(ex));
 		server.createContext("/nouveaux",          ex -> new NouveauxHandler()      .handle(ex));
-		server.createContext("/nouvelleheure",     ex -> new NouvelleHeureHandler() .handle(ex));
 		server.createContext("/semainesup",        ex -> new SemaineSupHandler()    .handle(ex));
 		server.createContext("/autosave/lots",     ex -> new AutoSaveLotsHandler()  .handle(ex));
-		server.createContext("/autosave/societes", ex -> new AutoSaveSocietesHandler().handle(ex));
+		server.createContext("/autosave/societes", ex -> new AutoSaveSocHandler()   .handle(ex));
 
 		server.setExecutor(Executors.newFixedThreadPool(10));
 		server.start();
-
-		System.out.println("[Serveur] Démarré sur port " + PORT);
+		System.out.println("[Serveur] Démarré → http://localhost:" + PORT);
+		System.out.println("[Serveur] Lancer le client avec : java -cp ... app.ControleurClient <IP>");
 	}
 
-	// ══════════════════════════════════════════════════════════════════════
-	// UTILS
-	// ══════════════════════════════════════════════════════════════════════
+	// ── Utilitaires ───────────────────────────────────────────────────────
 
 	private String lire(HttpExchange ex) throws IOException
-	{
-		return new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-	}
+	{ return new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8); }
 
 	private void rep(HttpExchange ex, int code, String body) throws IOException
 	{
 		byte[] b = body.getBytes(StandardCharsets.UTF_8);
-		ex.getResponseHeaders().set("Content-Type",                 "application/json; charset=UTF-8");
-		ex.getResponseHeaders().set("Access-Control-Allow-Origin",  "*");
+		ex.getResponseHeaders().set("Content-Type",                "application/json; charset=UTF-8");
+		ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
 		ex.sendResponseHeaders(code, b.length);
 		try (OutputStream os = ex.getResponseBody()) { os.write(b); }
 	}
 
 	private Lot findLot(int id)
-	{
-		for (Lot l : metier.getLots())
-			if (l.getNumCDE() == id) return l;
-		return null;
-	}
+	{ for (Lot l : metier.getLots()) if (l.getNumCDE() == id) return l; return null; }
 
 	private Societe findSociete(String nom)
-	{
-		if (nom == null) return null;
-		for (Societe s : metier.getSocietes())
-			if (s.getNom().equals(nom)) return s;
-		return null;
-	}
+	{ if (nom==null) return null; for (Societe s : metier.getSocietes()) if (s.getNom().equals(nom)) return s; return null; }
 
-	/** Sauvegarde automatique dans les fichiers courants. */
 	private void save()
 	{
 		try
@@ -161,76 +114,53 @@ public class ServeurHTTP
 			savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson);
 			savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson);
 		}
-		catch (Exception e)
-		{
-			System.err.println("[Serveur] Save error: " + e.getMessage());
-		}
+		catch (Exception e) { System.err.println("[Serveur] Save : " + e.getMessage()); }
 	}
 
-	/** Réponse JSON double : lots + sociétés. */
-	private String repDual()
+	private String dual()
 	{
 		return "{\"lots\":"     + JsonSerialiser.serialiserLots    (metier.getLots())
-			 + ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes())
-			 + "}";
+		     + ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}";
 	}
 
-	// ══════════════════════════════════════════════════════════════════════
-	// HANDLERS — LOTS
-	// ══════════════════════════════════════════════════════════════════════
+	// ── Handlers LOTS ─────────────────────────────────────────────────────
 
-	class GetLotsHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
+	class GetLotsHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
 			rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 		}
 	}
 
-	class AjouterLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
+	class AjouterLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try {
 					Lot l = JsonSerialiser.deserialiserLot(lire(ex));
 					metier.ajouterLot(l);
 					save();
 					rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-				}
-				catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	class SupprimerLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				int id = JsonSerialiser.extraireInt(lire(ex), "numCDE");
-				Lot l  = findLot(id);
+	class SupprimerLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
 				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-				metier.supprimerLot(l);
-				save();
+				metier.supprimerLot(l); save();
 				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			}
 		}
 	}
 
-	class ModifierLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
+	class ModifierLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
 				String c = lire(ex);
 				Lot l = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
 				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-
 				metier.modifierLot(l,
 					JsonSerialiser.extraireString(c, "typologie"),
 					JsonSerialiser.extraireString(c, "affaire"),
@@ -254,119 +184,86 @@ public class ServeurHTTP
 		}
 	}
 
-	class AffecterLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
+	class AffecterLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
 				String  c   = lire(ex);
 				Lot     l   = findLot(JsonSerialiser.extraireInt   (c, "numCDE"));
 				Societe s   = findSociete(JsonSerialiser.extraireString(c, "nomSociete"));
 				if (l == null || s == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
 				Ace     a   = s.getAce(JsonSerialiser.extraireString(c, "nomAce"));
 				if (a == null) { rep(ex, 404, "{\"err\":\"ACE not found\"}"); return; }
-
-				boolean ok = metier.affecterLot(l, s, a);
-				if (!ok) { rep(ex, 409, "{\"err\":\"heures insuffisantes\"}"); return; }
-
+				if (!metier.affecterLot(l, s, a)) { rep(ex, 409, "{\"err\":\"heures insuffisantes\"}"); return; }
 				save();
-				rep(ex, 200, repDual());
+				rep(ex, 200, dual());
 			}
 		}
 	}
 
-	class DesaffecterLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
+	class DesaffecterLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
 				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
 				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-				metier.desaffecterLot(l);
-				save();
-				rep(ex, 200, repDual());
+				metier.desaffecterLot(l); save();
+				rep(ex, 200, dual());
 			}
 		}
 	}
 
-	class SuiviProdHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
-					String c = lire(ex);
-					Lot    l = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
-					if (l == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
-					l.getSuivieProd().setNbPieceEtiq  (JsonSerialiser.extraireInt(c, "nbPieceEtiq"));
-					l.getSuivieProd().setNbPieceRepart(JsonSerialiser.extraireInt(c, "nbPieceRepart"));
-					save();
-					rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-				}
-				catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			}
-		}
-	}
-
-	class CommencerLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
-				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-				metier.commencerLot(l);
-				save();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-			}
-		}
-	}
-
-	class AnnulerLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
-				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-				metier.annulerLot(l);
-				save();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-			}
-		}
-	}
-
-	class TerminerLotHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
-				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
-				metier.marquerLotTermine(l);
-				save();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-			}
-		}
-	}
-
-	class ModifierPhaseHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
+	class SuiviProdHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
 				String c = lire(ex);
-				Lot    l = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				Lot l = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
 				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
+				l.getSuivieProd().setNbPieceEtiq  (JsonSerialiser.extraireInt(c, "nbPieceEtiq"));
+				l.getSuivieProd().setNbPieceRepart(JsonSerialiser.extraireInt(c, "nbPieceRepart"));
+				save();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			}
+		}
+	}
 
+	class CommencerLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
+				metier.commencerLot(l); save();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			}
+		}
+	}
+
+	class AnnulerLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
+				metier.annulerLot(l); save();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			}
+		}
+	}
+
+	class TerminerLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				Lot l = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
+				metier.marquerLotTermine(l); save();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			}
+		}
+	}
+
+	class ModifierPhaseHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				String c = lire(ex);
+				Lot l = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (l == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
 				metier.modifierPhase(l,
 					JsonSerialiser.extraireBool(c, "preTri"),
 					JsonSerialiser.extraireBool(c, "surPiste"),
@@ -380,28 +277,20 @@ public class ServeurHTTP
 		}
 	}
 
-	// ══════════════════════════════════════════════════════════════════════
-	// HANDLERS — SOCIÉTÉS / ACE
-	// ══════════════════════════════════════════════════════════════════════
+	// ── Handlers SOCIETES / ACE ───────────────────────────────────────────
 
-	class GetSocietesHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
+	class GetSocietesHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
 			rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
 		}
 	}
 
-	class ModifierSocieteHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
+	class ModifierSocieteHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
 				String  c = lire(ex);
 				Societe s = findSociete(JsonSerialiser.extraireString(c, "nomActuel"));
-				if (s == null) { rep(ex, 404, "{\"err\":\"societe not found\"}"); return; }
-
+				if (s == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
 				metier.modifierSociete(s,
 					JsonSerialiser.extraireString(c, "nom"),
 					JsonSerialiser.extraireString(c, "ce"),
@@ -414,28 +303,15 @@ public class ServeurHTTP
 		}
 	}
 
-	/**
-	 * Modifier une ACE individuelle.
-	 * Corps : { "societe":"NomSoc", "nomActuel":"AncienNom",
-	 *           "nom":"NouveauNom", "nbPers":N, "effectif":N }
-	 * Note : le ControleurClient envoie "societe" (pas "nomSociete").
-	 */
-	class ModifierAceHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
+	class ModifierAceHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try {
 					String  c   = lire(ex);
-					// ← clé "societe" (envoyée par ControleurClient)
 					Societe soc = findSociete(JsonSerialiser.extraireString(c, "societe"));
 					if (soc == null) { rep(ex, 404, "{\"err\":\"societe not found\"}"); return; }
-
 					Ace a = soc.getAce(JsonSerialiser.extraireString(c, "nomActuel"));
 					if (a == null) { rep(ex, 404, "{\"err\":\"ACE not found\"}"); return; }
-
 					metier.modifierAce(a,
 						JsonSerialiser.extraireString(c, "nom"),
 						JsonSerialiser.extraireInt   (c, "nbPers"),
@@ -443,249 +319,120 @@ public class ServeurHTTP
 					);
 					save();
 					rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
-				}
-				catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	/**
-	 * Remplacer la liste complète des ACE d'une société.
-	 * Corps : { "societe":"NomSoc",
-	 *           "aces": [{"nom":"A1","nbPers":3,"effectif":2}, ...] }
-	 */
-	class MettreAJourAcesHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
+	class MettreAJourAcesHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try {
 					String  c   = lire(ex);
 					Societe soc = findSociete(JsonSerialiser.extraireString(c, "societe"));
 					if (soc == null) { rep(ex, 404, "{\"err\":\"societe not found\"}"); return; }
 
-					// Désérialiser la liste d'ACE depuis le JSON
-					ArrayList<Ace> nouvellesAces = JsonSerialiser.deserialiserAces(
-						JsonSerialiser.extraireBloc(c, "\"aces\"")
-					);
+					ArrayList<Ace> nouvelles = JsonSerialiser.deserialiserAces(
+						JsonSerialiser.extraireBloc(c, "\"aces\""));
 
-					// Vérifier qu'on ne supprime pas une ACE avec des lots
 					java.util.List<Ace> aces = soc.getAces();
-					for (int i = nouvellesAces.size(); i < aces.size(); i++)
+					for (int i = nouvelles.size(); i < aces.size(); i++)
 						if (!aces.get(i).getLots().isEmpty())
-						{
-							rep(ex, 409, "{\"err\":\"ACE avec lots affectés\"}");
-							return;
-						}
+						{ rep(ex, 409, "{\"err\":\"ACE avec lots\"}"); return; }
 
-					// Appliquer les modifications
-					int min = Math.min(aces.size(), nouvellesAces.size());
+					int min = Math.min(aces.size(), nouvelles.size());
 					for (int i = 0; i < min; i++)
-					{
-						Ace ancien  = aces.get(i);
-						Ace nouveau = nouvellesAces.get(i);
-						metier.modifierAce(ancien,
-							nouveau.getNom(), nouveau.getNbPers(), nouveau.getEffectifActuel());
-					}
-					for (int i = aces.size() - 1; i >= nouvellesAces.size(); i--)
-						aces.remove(i);
-					for (int i = min; i < nouvellesAces.size(); i++)
-					{
-						Ace n = nouvellesAces.get(i);
+						metier.modifierAce(aces.get(i), nouvelles.get(i).getNom(),
+							nouvelles.get(i).getNbPers(), nouvelles.get(i).getEffectifActuel());
+					for (int i = aces.size()-1; i >= nouvelles.size(); i--) aces.remove(i);
+					for (int i = min; i < nouvelles.size(); i++) {
+						Ace n = nouvelles.get(i);
 						aces.add(new Ace(n.getNom(), n.getNbPers(), n.getEffectifActuel()));
 					}
-
 					save();
 					rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
-				}
-				catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	// ══════════════════════════════════════════════════════════════════════
-	// HANDLERS — SYSTÈME
-	// ══════════════════════════════════════════════════════════════════════
+	// ── Handlers SYSTEME ─────────────────────────────────────────────────
 
-	class FicheRouteHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			String  nom = ex.getRequestURI().getPath().replace("/ficheroute/", "");
-			Societe s   = findSociete(nom);
-			if (s == null) { rep(ex, 404, "{\"err\":\"societe not found\"}"); return; }
-			FicheRoute f = metier.genererFicheRoute(s);
-			rep(ex, 200, JsonSerialiser.serialiserFicheRoute(f));
+	class FicheRouteHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			String  nom = java.net.URLDecoder.decode(
+				ex.getRequestURI().getPath().replace("/ficheroute/", ""),
+				StandardCharsets.UTF_8);
+			Societe s = findSociete(nom);
+			if (s == null) { rep(ex, 404, "{\"err\":\"not found\"}"); return; }
+			rep(ex, 200, JsonSerialiser.serialiserFicheRoute(metier.genererFicheRoute(s)));
 		}
 	}
 
-	class SauvegarderHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
+	class SauvegarderHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try {
 					String c       = lire(ex);
 					String chemin  = JsonSerialiser.extraireString(c, "chemin");
 					String semaine = JsonSerialiser.extraireString(c, "semaine");
 					String dossier = chemin + "/S" + semaine;
-
 					java.nio.file.Files.createDirectories(java.nio.file.Paths.get(dossier));
 					savDonnees.sauvegarderLots    (metier.getLots(),     dossier + "/lots.json");
 					savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), dossier + "/societes.json");
-
 					cheminLotsJson     = dossier + "/lots.json";
 					cheminSocietesJson = dossier + "/societes.json";
 					rep(ex, 200, "{\"ok\":true}");
-				}
-				catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
+				} catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	class ChargerHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
+	class ChargerHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try {
 					String chemin = JsonSerialiser.extraireString(lire(ex), "chemin");
 					savDonnees.charger(metier, chemin);
 					cheminLotsJson     = chemin + "/lots.json";
 					cheminSocietesJson = chemin + "/societes.json";
-					rep(ex, 200, repDual());
-				}
-				catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
+					rep(ex, 200, dual());
+				} catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	class NouveauxHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				metier.nouveau();
-				save();
+	class NouveauxHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				metier.nouveau(); save();
 				rep(ex, 200, "{\"ok\":true}");
 			}
 		}
 	}
 
-	/**
-	 * Nouvelle heure pour une société.
-	 * Le fichier Excel n'est pas disponible côté serveur — le client
-	 * envoie directement les données d'heures parsées.
-	 * Corps : { "societe":"NomSoc", "heures":N }
-	 * OU pour mettre à jour plusieurs sociétés :
-	 * Corps : { "societes": [{"nom":"S1","heures":120}, ...] }
-	 */
-	class NouvelleHeureHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
-					String c = lire(ex);
-
-					// Cas 1 : mise à jour d'une seule société
-					String nomSoc = JsonSerialiser.extraireString(c, "societe");
-					if (nomSoc != null && !nomSoc.isEmpty())
-					{
-						Societe s = findSociete(nomSoc);
-						if (s != null)
-						{
-							int heures = JsonSerialiser.extraireInt(c, "heures");
-							s.setTotalHeuresCE(s.getTotalHeuresCE() + heures);
-						}
-					}
-					else
-					{
-						// Cas 2 : liste de sociétés
-						// Format: {"societes":[{"nom":"X","heures":N},...]}
-						String bloc = JsonSerialiser.extraireBloc(c, "\"societes\"");
-						if (bloc != null && !bloc.isEmpty())
-						{
-							// Parsing simple : chaque {"nom":"X","heures":N}
-							String[] entries = bloc.replace("[","").replace("]","").split("\\},\\{");
-							for (String entry : entries)
-							{
-								entry = entry.replace("{","").replace("}","");
-								String nom    = JsonSerialiser.extraireString("{" + entry + "}", "nom");
-								int    heures = JsonSerialiser.extraireInt   ("{" + entry + "}", "heures");
-								Societe s = findSociete(nom);
-								if (s != null) s.setTotalHeuresCE(s.getTotalHeuresCE() + heures);
-							}
-						}
-					}
-					save();
-					rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
-				}
-				catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			}
-		}
-	}
-
-	/**
-	 * Toggle heures supplémentaires.
-	 * Corps : {} (simple toggle côté serveur)
-	 */
-	class SemaineSupHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				metier.setestHeureSup();
-				save();
+	class SemaineSupHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				metier.setestHeureSup(); save();
 				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			}
 		}
 	}
 
-	/**
-	 * Auto-sauvegarde lots (appelé périodiquement par le client).
-	 * Contenu ignoré — on sauvegarde simplement l'état courant.
-	 */
-	class AutoSaveLotsHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
-					savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson);
-					rep(ex, 200, "{\"ok\":true}");
-				}
+	class AutoSaveLotsHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); rep(ex, 200, "{\"ok\":true}"); }
 				catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
 
-	/**
-	 * Auto-sauvegarde sociétés (appelé périodiquement par le client).
-	 */
-	class AutoSaveSocietesHandler implements HttpHandler
-	{
-		public void handle(HttpExchange ex) throws IOException
-		{
-			synchronized (verrou)
-			{
-				try
-				{
-					savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson);
-					rep(ex, 200, "{\"ok\":true}");
-				}
+	class AutoSaveSocHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			synchronized (verrou) {
+				try { savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson); rep(ex, 200, "{\"ok\":true}"); }
 				catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
@@ -696,5 +443,6 @@ public class ServeurHTTP
 	public static void main(String[] args) throws Exception
 	{
 		new ServeurHTTP();
+		// Le thread HTTP reste actif — pas besoin de boucle
 	}
 }

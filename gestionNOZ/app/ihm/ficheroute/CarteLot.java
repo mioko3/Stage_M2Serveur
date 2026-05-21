@@ -1,6 +1,6 @@
 package app.ihm.ficheroute;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.IhmUtils;
 import app.metier.lot.LigneColisage;
 import app.metier.lot.Lot;
@@ -32,7 +32,7 @@ public class CarteLot extends JPanel implements ActionListener
 	private static boolean estcommencer;
 
 	private final Lot         lot;
-	private final IControleur ctrl;
+	private final Controleur ctrl;
 	private final PanelFicheRoute m;
 	private       Ace         couranAce;   // ACE courante mémorisée
 
@@ -60,7 +60,7 @@ public class CarteLot extends JPanel implements ActionListener
 	private JPanel ligne1;
 
 	// ── Constructeur principal ─────────────────────────────────────────
-	public CarteLot(Lot lot, Color color, IControleur ctrl, PanelFicheRoute m)
+	public CarteLot(Lot lot, Color color, Controleur ctrl, PanelFicheRoute m)
 	{
 		this.lot  = lot;
 		this.ctrl = ctrl;
@@ -113,7 +113,7 @@ public class CarteLot extends JPanel implements ActionListener
 	}
 
 	/** Constructeur avec ACE (mémorise couranAce). */
-	public CarteLot(Lot lot, Ace ace, IControleur ctrl, PanelFicheRoute m)
+	public CarteLot(Lot lot, Ace ace, Controleur ctrl, PanelFicheRoute m)
 	{
 		this(lot, ace.getColor(), ctrl, m);
 		this.couranAce = ace;

@@ -1,6 +1,6 @@
 package app.ihm.diagrame;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import java.awt.*;
@@ -9,11 +9,11 @@ import javax.swing.border.EmptyBorder;
 
 public class PanelDiagrame extends JPanel
 {
-	private IControleur       ctrl;
+	private Controleur       ctrl;
 	private FenetrePrincipale fP;
 	private PanelGantt        panelGantt;
 
-	public PanelDiagrame(IControleur ctrl, FenetrePrincipale fP)
+	public PanelDiagrame(Controleur ctrl, FenetrePrincipale fP)
 	{
 		this.ctrl = ctrl;
 		this.fP   = fP;

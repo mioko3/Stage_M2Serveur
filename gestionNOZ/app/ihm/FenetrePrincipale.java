@@ -1,6 +1,6 @@
 package app.ihm;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.diagrame.*;
 import app.ihm.ficheroute.PanelFicheRoute;
 import app.ihm.gestionlot.PanelAffectation;
@@ -29,7 +29,7 @@ import javax.swing.SwingUtilities;
 
 public class FenetrePrincipale extends JFrame
 {
-	private final IControleur ctrl;
+	private final Controleur ctrl;
 
 	private PanelAffectation panelAffectation;
 	private PanelSocietes    panelSocietes;
@@ -39,7 +39,7 @@ public class FenetrePrincipale extends JFrame
 	private PanelDiagrame    panelAuto;
 	private JLabel           lblInfo;
 
-	public FenetrePrincipale(IControleur ctrl)
+	public FenetrePrincipale(Controleur ctrl)
 	{
 		this.ctrl = ctrl;
 		setTitle("Planning Global Futura — PAM ");

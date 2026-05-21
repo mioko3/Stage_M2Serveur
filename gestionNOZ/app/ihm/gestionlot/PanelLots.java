@@ -1,6 +1,6 @@
 package app.ihm.gestionlot;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.dialogue.DialogEditLot;
@@ -32,7 +32,7 @@ import javax.swing.table.DefaultTableModel;
 
 public class PanelLots extends JPanel
 {
-	private final IControleur       ctrl;
+	private final Controleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private DefaultTableModel  modelLots;
@@ -41,7 +41,7 @@ public class PanelLots extends JPanel
 	private JCheckBox          chkSousDouane;
 	private JTextField         txtRecherche;
 
-	public PanelLots(IControleur ctrl, FenetrePrincipale fenetre)
+	public PanelLots(Controleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;

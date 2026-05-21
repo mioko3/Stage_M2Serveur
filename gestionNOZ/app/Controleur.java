@@ -20,29 +20,23 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
- * Contrôleur MVC — mode standalone.
- * Implémente IControleur pour être interchangeable avec ControleurClient.
- *
- * Cycle de vie :
- *   1. main()           → new Controleur()
- *   2. Controleur()     → affiche FenetreLogin (aucun chargement de données)
- *   3. FenetreLogin     → appelle ctrl.lancerApp(login, utiliserExcel)
- *   4. lancerApp()      → charge les données (Excel ou JSON) puis ouvre FenetrePrincipale
+ * Contrôleur MVC — livraison tel quel.
+ * Un constructeur protégé est ajouté pour que ControleurClient
+ * puisse hériter sans lancer la FenetreLogin.
  */
-public class Controleur implements IControleur
+public class Controleur
 {
-	private FenetrePrincipale  fenetre;
-	private PlanningGlobal     metier;
-	private DonneesSauvegarder savDonnees;
-	private String             cheminLotsJson;
-	private String             cheminSocietesJson;
+	protected FenetrePrincipale  fenetre;
+	protected PlanningGlobal     metier;
+	protected DonneesSauvegarder savDonnees;
+	protected String             cheminLotsJson;
+	protected String             cheminSocietesJson;
 
-	// ── Chemins par défaut ────────────────────────────────────────────────
-	private static final String LOTS_JSON     = "app/data/courutilisation/lots.json";
-	private static final String SOCIETES_JSON = "app/data/courutilisation/societes.json";
-	private static final String SOCIETES_REF  = "app/data/pastouche/societes.json";
+	protected static final String LOTS_JSON     = "app/data/courutilisation/lots.json";
+	protected static final String SOCIETES_JSON = "app/data/courutilisation/societes.json";
+	protected static final String SOCIETES_REF  = "app/data/pastouche/societes.json";
 
-	// ── Constructeur ──────────────────────────────────────────────────────
+	// ── Constructeur STANDALONE (livraison) ───────────────────────────────
 
 	public Controleur()
 	{
@@ -50,11 +44,19 @@ public class Controleur implements IControleur
 		this.savDonnees         = new DonneesSauvegarder();
 		this.cheminLotsJson     = LOTS_JSON;
 		this.cheminSocietesJson = SOCIETES_JSON;
-
 		SwingUtilities.invokeLater(() -> new FenetreLogin(this));
 	}
 
-	// ── Point d'entrée appelé par FenetreLogin ────────────────────────────
+	/**
+	 * Constructeur protégé pour sous-classes (ControleurClient).
+	 * Ne lance PAS FenetreLogin.
+	 */
+	protected Controleur(boolean modeReseau)
+	{
+		// Rien — la sous-classe gère tout
+	}
+
+	// ── Appelé par FenetreLogin ───────────────────────────────────────────
 
 	public void lancerApp(String login, boolean utiliserExcel)
 	{
@@ -64,12 +66,11 @@ public class Controleur implements IControleur
 				chargerDepuisExcelInteractif();
 			else
 				chargerFallbackJson();
-
 			this.fenetre = new FenetrePrincipale(this);
 		});
 	}
 
-	// ── Chargement des données ────────────────────────────────────────────
+	// ── Chargement ───────────────────────────────────────────────────────
 
 	private void chargerDepuisExcelInteractif()
 	{
@@ -83,85 +84,54 @@ public class Controleur implements IControleur
 				if (!tempLots.isEmpty())
 				{
 					String sem = tempLots.get(0).getSemaine();
-					try
-					{
-						semaine = Integer.parseInt(
-							"" + sem.charAt(sem.length() - 2)
-							   + sem.charAt(sem.length() - 1));
-					}
+					try { semaine = Integer.parseInt("" + sem.charAt(sem.length()-2) + sem.charAt(sem.length()-1)); }
 					catch (NumberFormatException ignored) {}
 				}
-
-				String xlsxHeures = demanderFichierExcel(
-					"Sélectionner le fichier des heures ACE (XLSX / XLSM)");
+				String xlsxHeures = demanderFichierExcel("Sélectionner le fichier des heures ACE (XLSX / XLSM)");
 				if (xlsxHeures == null) xlsxHeures = xlsx;
-
 				metier.chargerDepuisExcel(xlsx, SOCIETES_REF, semaine, xlsxHeures);
 			}
 			catch (IOException e)
 			{
 				JOptionPane.showMessageDialog(null,
-					"Erreur lors du chargement Excel :\n" + e.getMessage()
-					+ "\n\nRetour aux données JSON.",
-					"Erreur de chargement", JOptionPane.WARNING_MESSAGE);
+					"Erreur Excel :\n" + e.getMessage() + "\n\nRetour au JSON.",
+					"Erreur", JOptionPane.WARNING_MESSAGE);
 				chargerFallbackJson();
 			}
 		}
-		else
-		{
-			chargerFallbackJson();
-		}
+		else chargerFallbackJson();
 	}
 
 	private void chargerFallbackJson()
 	{
-		File lotsFile = new File(LOTS_JSON);
-		if (!lotsFile.exists())
-		{
-			System.out.println("[Controleur] Aucun JSON existant, démarrage à vide.");
-			return;
-		}
-
-		try
-		{
-			metier.chargerDepuisJson(LOTS_JSON, SOCIETES_JSON);
-		}
+		if (!new File(LOTS_JSON).exists()) { System.out.println("[Controleur] Démarrage à vide."); return; }
+		try { metier.chargerDepuisJson(LOTS_JSON, SOCIETES_JSON); }
 		catch (IOException e)
-		{
-			JOptionPane.showMessageDialog(null,
-				"Impossible de charger les données JSON :\n" + e.getMessage(),
-				"Erreur", JOptionPane.WARNING_MESSAGE);
-		}
+		{ JOptionPane.showMessageDialog(null, "Impossible de charger le JSON :\n" + e.getMessage(), "Erreur", JOptionPane.WARNING_MESSAGE); }
 	}
 
-	private String demanderFichierExcel(String titre)
+	protected String demanderFichierExcel(String titre)
 	{
-		JFileChooser chooser = new JFileChooser();
-		chooser.setDialogTitle(titre);
-		chooser.setFileFilter(
-			new FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
-		File dossierDefaut = new File("app/data");
-		if (dossierDefaut.exists() && dossierDefaut.isDirectory())
-			chooser.setCurrentDirectory(dossierDefaut);
-		int resultat = chooser.showOpenDialog(null);
-		if (resultat == JFileChooser.APPROVE_OPTION)
-			return chooser.getSelectedFile().getAbsolutePath();
-		return null;
+		JFileChooser fc = new JFileChooser();
+		fc.setDialogTitle(titre);
+		fc.setFileFilter(new FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+		File def = new File("app/data");
+		if (def.exists()) fc.setCurrentDirectory(def);
+		return fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION
+			? fc.getSelectedFile().getAbsolutePath() : null;
 	}
 
-	// ── IControleur : Données ─────────────────────────────────────────────
+	// ── Données ───────────────────────────────────────────────────────────
 
-	@Override public ArrayList<Societe> getSocietes()          { return metier.getSocietes(); }
-	@Override public ArrayList<Lot>     getLots()              { return metier.getLots();     }
-	@Override public String             getCheminLotsJson()    { return cheminLotsJson;       }
-	@Override public String             getCheminSocietesJson(){ return cheminSocietesJson;   }
+	public ArrayList<Societe> getSocietes() { return metier.getSocietes(); }
+	public ArrayList<Lot>     getLots()     { return metier.getLots();     }
 
-	// ── IControleur : Gestion des lots ───────────────────────────────────
+	public void semaineSup() { this.metier.setestHeureSup(); }
 
-	@Override
-	public void ajouterLot(Lot lot) { metier.ajouterLot(lot); autoSauvegarderLots(); }
+	// ── Lots ──────────────────────────────────────────────────────────────
 
-	@Override
+	public void supprimerLot(Lot lot) { metier.supprimerLot(lot); autoSauvegarderLots(); }
+
 	public void ajouterLot(int numCDE, String typologie, String affaire,
 	                       int nbPieces, double cadence, int valeurVente,
 	                       String statut, String statutEchant,
@@ -171,61 +141,31 @@ public class Controleur implements IControleur
 	                       String datePaiement, String commentaire)
 	{
 		metier.ajouterLot(numCDE, typologie, affaire, nbPieces, cadence, valeurVente,
-		                  statut, statutEchant, semaine, priorite,
-		                  lotACharge, emplacement, sousDouane, dateReception,
-		                  datePaiement, commentaire);
+		                  statut, statutEchant, semaine, priorite, lotACharge, emplacement,
+		                  sousDouane, dateReception, datePaiement, commentaire);
 		autoSauvegarderLots();
 	}
 
-	@Override
-	public void supprimerLot(Lot lot)
-	{ metier.supprimerLot(lot); autoSauvegarderLots(); }
+	public void ajouterLot(Lot lot) { metier.ajouterLot(lot); autoSauvegarderLots(); }
 
-	@Override
-	public void sauvegarderLots()
-	{ autoSauvegarderLots(); }
-
-	@Override
 	public void exportNewLot()
 	{
 		String xlsx = demanderFichierExcel("Sélectionner le fichier des nouveaux lots");
-		if (xlsx == null)
-		{
-			JOptionPane.showMessageDialog(null,
-				"Aucun fichier sélectionné. Opération annulée.",
-				"Import lots", JOptionPane.INFORMATION_MESSAGE);
-			return;
-		}
-		try
-		{
-			metier.importerNouveauxLots(xlsx);
-			autoSauvegarderLots();
-		}
-		catch (IOException e)
-		{
-			JOptionPane.showMessageDialog(null,
-				"Erreur lors de l'import :\n" + e.getMessage(),
-				"Import lots", JOptionPane.ERROR_MESSAGE);
-		}
+		if (xlsx == null) { JOptionPane.showMessageDialog(null, "Aucun fichier.", "Import lots", JOptionPane.INFORMATION_MESSAGE); return; }
+		try { metier.importerNouveauxLots(xlsx); autoSauvegarderLots(); }
+		catch (IOException e) { JOptionPane.showMessageDialog(null, "Erreur : " + e.getMessage(), "Import lots", JOptionPane.ERROR_MESSAGE); }
 	}
 
-	// ── IControleur : Affectation ─────────────────────────────────────────
+	// ── Affectation ───────────────────────────────────────────────────────
 
-	@Override
 	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
-	{
-		boolean ok = metier.affecterLot(lot, societe, ace);
-		if (ok) autoSauvegarderSocietes();
-		return ok;
-	}
+	{ boolean ok = metier.affecterLot(lot, societe, ace); if (ok) autoSauvegarderSocietes(); return ok; }
 
-	@Override
 	public void desaffecterLot(Lot lot)
 	{ metier.desaffecterLot(lot); autoSauvegarderSocietes(); }
 
-	// ── IControleur : Modification lots ──────────────────────────────────
+	// ── Modification lots ─────────────────────────────────────────────────
 
-	@Override
 	public void modifierLot(Lot lot, String typologie, String affaire,
 	                        int nbPieces, double cadence, int valeurVente,
 	                        String statut, String statutEchant,
@@ -235,60 +175,41 @@ public class Controleur implements IControleur
 	                        String datePaiement, String commentaire)
 	{
 		metier.modifierLot(lot, typologie, affaire, nbPieces, cadence, valeurVente,
-		                   statut, statutEchant, semaine, priorite,
-		                   lotACharge, emplacement, sousDouane, dateReception,
-		                   datePaiement, commentaire);
+		                   statut, statutEchant, semaine, priorite, lotACharge, emplacement,
+		                   sousDouane, dateReception, datePaiement, commentaire);
 		autoSauvegarderLots();
 	}
 
-	public void modifierLotMethodeDistribution(Lot lot, String typologie, String lotACharge)
-	{ metier.modifierLotMethodeDistribution(lot, typologie, lotACharge); autoSauvegarderLots(); }
+	public void modifierLotMethodeDistribution(Lot lot, String methode, String lotACharge)
+	{ metier.modifierLotMethodeDistribution(lot, methode, lotACharge); autoSauvegarderLots(); }
 
-	@Override
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{ metier.modifierPhase(lot, preTri, surPiste, sortieEtiq, tri, finit); autoSauvegarderLots(); }
 
-	@Override
 	public void marquerLotTermine(Lot lot)
 	{ metier.marquerLotTermine(lot); autoSauvegarderLots(); }
 
-	@Override
-	public void commencerLot(Lot l) { this.metier.commencerLot(l); }
+	public void commencerLot(Lot l) { metier.commencerLot(l); }
+	public void annulerLot  (Lot l) { metier.annulerLot(l);   }
 
-	@Override
-	public void annulerLot(Lot l)   { this.metier.annulerLot(l);   }
+	// ── Sociétés ──────────────────────────────────────────────────────────
 
-	// ── IControleur : Modification sociétés ──────────────────────────────
-
-	@Override
 	public void modifierSociete(Societe soc, String nom, String ce,
 	                            int totalHeuresCE, int effectif)
 	{ metier.modifierSociete(soc, nom, ce, totalHeuresCE, effectif); autoSauvegarderSocietes(); }
 
-	@Override
-	public void modifierAce(Ace ace, String nom, int nbPers, int effectif)
-	{ metier.modifierAce(ace, nom, nbPers, effectif); autoSauvegarderSocietes(); }
-
-	@Override
 	public boolean mettreAJourAces(Societe soc, List<Ace> nouvellesAces)
 	{
 		List<Ace> aces = soc.getAces();
 		for (int i = nouvellesAces.size(); i < aces.size(); i++)
 			if (!aces.get(i).getLots().isEmpty()) return false;
-
 		int min = Math.min(aces.size(), nouvellesAces.size());
 		for (int i = 0; i < min; i++)
-		{
-			Ace ancien  = aces.get(i);
-			Ace nouveau = nouvellesAces.get(i);
-			metier.modifierAce(ancien, nouveau.getNom(),
-				nouveau.getNbPers(), nouveau.getEffectifActuel());
-		}
-		for (int i = aces.size() - 1; i >= nouvellesAces.size(); i--)
-			aces.remove(i);
-		for (int i = min; i < nouvellesAces.size(); i++)
-		{
+			metier.modifierAce(aces.get(i), nouvellesAces.get(i).getNom(),
+				nouvellesAces.get(i).getNbPers(), nouvellesAces.get(i).getEffectifActuel());
+		for (int i = aces.size()-1; i >= nouvellesAces.size(); i--) aces.remove(i);
+		for (int i = min; i < nouvellesAces.size(); i++) {
 			Ace n = nouvellesAces.get(i);
 			aces.add(new Ace(n.getNom(), n.getNbPers(), n.getEffectifActuel()));
 		}
@@ -296,89 +217,54 @@ public class Controleur implements IControleur
 		return true;
 	}
 
-	@Override
 	public void nouvelleHeurePourSociete(int semaine)
 	{
 		String xlsx = demanderFichierExcel("Sélectionner le fichier des heures ACE");
-		if (xlsx == null)
-		{
-			JOptionPane.showMessageDialog(null,
-				"Aucun fichier sélectionné. Opération annulée.",
-				"Nouvelle heure", JOptionPane.INFORMATION_MESSAGE);
-			return;
-		}
-		try
-		{
+		if (xlsx == null) { JOptionPane.showMessageDialog(null, "Aucun fichier.", "Nouvelle heure", JOptionPane.INFORMATION_MESSAGE); return; }
+		try {
 			metier.mettreAJourHeuresSocietes(xlsx, semaine);
 			autoSauvegarderSocietes();
-			JOptionPane.showMessageDialog(null,
-				"Heures ajoutées avec succès !",
-				"Nouvelle heure", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Heures ajoutées avec succès !", "Nouvelle heure", JOptionPane.INFORMATION_MESSAGE);
 		}
-		catch (IOException e)
-		{
-			JOptionPane.showMessageDialog(null,
-				"Erreur lors du chargement du fichier Excel :\n" + e.getMessage(),
-				"Nouvelle heure", JOptionPane.ERROR_MESSAGE);
-		}
+		catch (IOException e) { JOptionPane.showMessageDialog(null, "Erreur :\n" + e.getMessage(), "Nouvelle heure", JOptionPane.ERROR_MESSAGE); }
 	}
 
-	@Override
-	public void semaineSup()
-	{ this.metier.setestHeureSup(); }
+	// ── Suivi prod ────────────────────────────────────────────────────────
 
-	// ── IControleur : Suivi production ───────────────────────────────────
-
-	@Override
 	public void mettreAJourSuiviProd(Lot lot, int nbPieceEtiq, int nbPieceRepart)
 	{
-		if (nbPieceEtiq <= lot.getNbPieces() && nbPieceRepart <= lot.getNbPieces())
-		{
+		if (nbPieceEtiq <= lot.getNbPieces() && nbPieceRepart <= lot.getNbPieces()) {
 			lot.getSuivieProd().setNbPieceEtiq  (nbPieceEtiq);
 			lot.getSuivieProd().setNbPieceRepart(nbPieceRepart);
 		}
 		autoSauvegarderLots();
 	}
 
-	// ── IControleur : Recherche ───────────────────────────────────────────
+	// ── Recherche ─────────────────────────────────────────────────────────
 
-	@Override public Societe       getSocieteDuLot(Lot lot) { return metier.getSocieteDuLot(lot); }
-	@Override public Ace           getAceDuLot    (Lot lot) { return metier.getAceDuLot(lot);     }
-	@Override public ArrayList<Ace> getTouteAces  ()        { return metier.getTouteAces();        }
+	public Societe        getSocieteDuLot(Lot lot) { return metier.getSocieteDuLot(lot); }
+	public Ace            getAceDuLot    (Lot lot) { return metier.getAceDuLot(lot);     }
+	public ArrayList<Ace> getTouteAces  ()          { return metier.getTouteAces();        }
 
-	// ── IControleur : Fiche de route ─────────────────────────────────────
+	// ── Fiche de route ────────────────────────────────────────────────────
 
-	@Override
-	public FicheRoute genererFicheRoute(Societe societe)
-	{ return metier.genererFicheRoute(societe); }
+	public FicheRoute genererFicheRoute(Societe societe) { return metier.genererFicheRoute(societe); }
 
-	// ── IControleur : Sauvegarde / Chargement ────────────────────────────
+	// ── Sauvegarde / Chargement ───────────────────────────────────────────
 
-	@Override
 	public void sauvegarderDonnees(String cheminDossier, String semaine)
 	{
-		try
-		{
-			String dossierSemaine = cheminDossier + "/S" + semaine;
-			if (!Files.exists(Paths.get(dossierSemaine)))
-				Files.createDirectories(Paths.get(dossierSemaine));
-			String destLots     = dossierSemaine + "/lots.json";
-			String destSocietes = dossierSemaine + "/societes.json";
-			Files.copy(Paths.get(cheminLotsJson),     Paths.get(destLots),
-				java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			Files.copy(Paths.get(cheminSocietesJson), Paths.get(destSocietes),
-				java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			this.cheminLotsJson     = destLots;
-			this.cheminSocietesJson = destSocietes;
-			System.out.println("[Controleur] Données sauvegardées : " + dossierSemaine);
+		try {
+			String dossier = cheminDossier + "/S" + semaine;
+			if (!Files.exists(Paths.get(dossier))) Files.createDirectories(Paths.get(dossier));
+			Files.copy(Paths.get(cheminLotsJson),     Paths.get(dossier + "/lots.json"),     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			Files.copy(Paths.get(cheminSocietesJson), Paths.get(dossier + "/societes.json"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			this.cheminLotsJson     = dossier + "/lots.json";
+			this.cheminSocietesJson = dossier + "/societes.json";
 		}
-		catch (IOException e)
-		{
-			System.err.println("[Controleur] Erreur sauvegarde : " + e.getMessage());
-		}
+		catch (IOException e) { System.err.println("[Controleur] Erreur sauvegarde : " + e.getMessage()); }
 	}
 
-	@Override
 	public void chargerDonnees(String chemin) throws IOException
 	{
 		savDonnees.charger(metier, chemin);
@@ -387,44 +273,33 @@ public class Controleur implements IControleur
 		if (fenetre != null) fenetre.rafraichirTout();
 	}
 
-	@Override
 	public void nouveaux()
 	{
 		this.cheminLotsJson     = LOTS_JSON;
 		this.cheminSocietesJson = SOCIETES_JSON;
-		this.metier.nouveau();
-		this.chargerDepuisExcelInteractif();
+		metier.nouveau();
+		chargerDepuisExcelInteractif();
 		autoSauvegarderLots();
 		autoSauvegarderSocietes();
 	}
 
-	// ── IControleur : Auto-sauvegarde ────────────────────────────────────
+	public void autoSauvegarde() { autoSauvegarderLots(); autoSauvegarderSocietes(); }
 
-	@Override
-	public void autoSauvegarde()
+	protected void autoSauvegarderLots()
 	{
-		autoSauvegarderLots();
-		autoSauvegarderSocietes();
+		if (cheminLotsJson == null) return;
+		try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); }
+		catch (Exception e) { System.err.println("[AutoSave Lots] " + e.getMessage()); }
 	}
 
-	private void autoSauvegarderLots()
+	protected void autoSauvegarderSocietes()
 	{
-		if (cheminLotsJson != null)
-			try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); }
-			catch (Exception e)
-			{ System.err.println("[AutoSave Lots] Échec : " + e.getMessage()); }
+		if (cheminSocietesJson == null) return;
+		try { savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson); }
+		catch (Exception e) { System.err.println("[AutoSave Soc] " + e.getMessage()); }
 	}
 
-	private void autoSauvegarderSocietes()
-	{
-		if (cheminSocietesJson != null)
-			try { savDonnees.sauvegarderSocietes(
-					metier.getSocietes(), metier.getLots(), cheminSocietesJson); }
-			catch (Exception e)
-			{ System.err.println("[AutoSave Sociétés] Échec : " + e.getMessage()); }
-	}
-
-	// ── Point d'entrée ────────────────────────────────────────────────────
+	// ── Main ──────────────────────────────────────────────────────────────
 
 	public static void main(String[] args)
 	{

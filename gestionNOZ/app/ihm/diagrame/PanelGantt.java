@@ -1,6 +1,6 @@
 package app.ihm.diagrame;
 
-import app.IControleur;
+import app.Controleur;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import java.awt.*;
@@ -13,7 +13,7 @@ import javax.swing.*;
 public class PanelGantt extends JPanel
 {
 	private ArrayList<Lot> lots = new ArrayList<>();
-	private IControleur    ctrl;
+	private Controleur    ctrl;
 
 	private final DateTimeFormatter fmt =
 		DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
@@ -28,7 +28,7 @@ public class PanelGantt extends JPanel
 
 	private final String[] DAYS = {"Lun", "Mar", "Mer", "Jeu", "Ven"};
 
-	public PanelGantt(IControleur ctrl)
+	public PanelGantt(Controleur ctrl)
 	{
 		setBackground(Color.WHITE);
 		this.ctrl = ctrl;

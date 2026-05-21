@@ -1,6 +1,6 @@
 package app.ihm.dialogue;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.gestionlot.PanelAffectation;
@@ -34,7 +34,7 @@ import javax.swing.SpinnerNumberModel;
 
 public class DialogAjoutLot extends JDialog
 {
-	private final IControleur       ctrl;
+	private final Controleur       ctrl;
 	private final PanelAffectation  panelAff;
 	private final FenetrePrincipale fenetre;
 
@@ -52,7 +52,7 @@ public class DialogAjoutLot extends JDialog
 	private static final Set<String> SANS_NUMERO =
 		new HashSet<>(Arrays.asList("LTS", "HD", ""));
 
-	public DialogAjoutLot(FenetrePrincipale fenetre, IControleur ctrl, PanelAffectation panelAff)
+	public DialogAjoutLot(FenetrePrincipale fenetre, Controleur ctrl, PanelAffectation panelAff)
 	{
 		super(fenetre, "Créer un nouveau lot", true);
 		this.fenetre  = fenetre;

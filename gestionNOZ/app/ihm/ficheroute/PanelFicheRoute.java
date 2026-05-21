@@ -1,6 +1,6 @@
 package app.ihm.ficheroute;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.metier.lot.Lot;
@@ -16,7 +16,7 @@ import javax.swing.*;
 
 public class PanelFicheRoute extends JPanel
 {
-	private final IControleur       ctrl;
+	private final Controleur       ctrl;
 	private final FenetrePrincipale fenetre;
 	private java.util.Map<Ace, Boolean> aceExpanded = new java.util.HashMap<>();
 
@@ -35,7 +35,7 @@ public class PanelFicheRoute extends JPanel
 	private Ace     aceCourante;
 	private String  nomAceMemorise = null;
 
-	public PanelFicheRoute(IControleur ctrl, FenetrePrincipale fenetre)
+	public PanelFicheRoute(Controleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;

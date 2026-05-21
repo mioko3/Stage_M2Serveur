@@ -291,6 +291,11 @@ public class PlanningGlobal
 		lots.add(lot);
 	}
 
+	public void ajouterLot(Lot l)
+	{
+		this.lots.add(l);
+	}
+
 	public void supprimerLot(Lot lot) { lots.remove(lot); }
 
 	// ── Fiche de route ────────────────────────────────────────────────────

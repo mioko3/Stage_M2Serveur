@@ -1,6 +1,6 @@
 package app.ihm.map;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.metier.lot.Lot;
@@ -15,7 +15,7 @@ import javax.swing.*;
  */
 public class PanelMap extends JPanel
 {
-	private final IControleur       ctrl;
+	private final Controleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	private JTextArea         infoLot;
@@ -44,7 +44,7 @@ public class PanelMap extends JPanel
 
 	// ── Constructeur ──────────────────────────────────────────────────────
 
-	public PanelMap(IControleur ctrl, FenetrePrincipale fenetre)
+	public PanelMap(Controleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;

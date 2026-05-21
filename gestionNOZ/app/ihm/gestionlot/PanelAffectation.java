@@ -1,6 +1,6 @@
 package app.ihm.gestionlot;
 
-import app.IControleur;
+import app.Controleur;
 import app.ihm.FenetrePrincipale;
 import app.ihm.IhmUtils;
 import app.ihm.dialogue.DialogAjoutLot;
@@ -42,7 +42,7 @@ import javax.swing.table.DefaultTableModel;
  */
 public class PanelAffectation extends JPanel
 {
-	private final IControleur       ctrl;
+	private final Controleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
 	// ── Listes de référence (cf. livraison) ───────────────────────────────
@@ -66,7 +66,7 @@ public class PanelAffectation extends JPanel
 	private JTable            tblAffectes;
 	private JTextField        txtRechercheAff;
 
-	public PanelAffectation(IControleur ctrl, FenetrePrincipale fenetre)
+	public PanelAffectation(Controleur ctrl, FenetrePrincipale fenetre)
 	{
 		this.ctrl    = ctrl;
 		this.fenetre = fenetre;
