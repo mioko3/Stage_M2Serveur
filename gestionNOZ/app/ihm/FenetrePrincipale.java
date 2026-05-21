@@ -58,8 +58,8 @@ public class FenetrePrincipale extends JFrame
 		this.panelLots        = new PanelLots       (ctrl, this);
 		this.panelFicheRoute  = new PanelFicheRoute (ctrl, this);
 		this.panelMap         = new PanelMap        (ctrl, this);
-		this.panelAuto        = new PanelDiagrame   (ctrl, this);
-
+		this.panelAuto        = new PanelDiagrame       (ctrl, this);
+	
 		JTabbedPane onglets = new JTabbedPane();
 		onglets.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		onglets.addTab("⊕ Affectation",      panelAffectation);
@@ -67,9 +67,10 @@ public class FenetrePrincipale extends JFrame
 		onglets.addTab("☰ Liste des lots",    panelLots);
 		onglets.addTab("🕒 Sociétés & heures", panelSocietes);
 		onglets.addTab("🗺 Carte entrepôt",    panelMap);
-		onglets.addTab("⚙ DiagrameGantt",     panelAuto);
+		onglets.addTab("⚙ DiagrameGantt",panelAuto);
 		add(onglets, BorderLayout.CENTER);
 
+		// Rafraîchir fiche de route quand on clique sur l'onglet
 		onglets.addChangeListener(e -> {
 			if (onglets.getSelectedComponent() == panelFicheRoute)
 				panelFicheRoute.rafraichir();
@@ -139,6 +140,7 @@ public class FenetrePrincipale extends JFrame
 
 	private void sauvegarder()
 	{
+		// Demande toujours le dossier de destination pour copier les fichiers JSON
 		sauvegarderSous();
 	}
 
@@ -148,19 +150,26 @@ public class FenetrePrincipale extends JFrame
 		fc.setDialogTitle("Copier les fichiers JSON vers…");
 		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		fc.setAcceptAllFileFilterUsed(false);
-
+		
 		if (fc.showDialog(this, "Copier") != JFileChooser.APPROVE_OPTION) return;
 
 		String dossier = fc.getSelectedFile().getAbsolutePath();
-		String numSemaine = JOptionPane.showInputDialog(
-			this, "Numéro de semaine :", "Sauvegarde — semaine", JOptionPane.PLAIN_MESSAGE);
+		// Demande le numéro de semaine avant la sauvegarde
+		String numSeamine = JOptionPane.showInputDialog(
+			this,
+			"Numéro de semaine :",
+			"Sauvegarde — semaine",
+			JOptionPane.PLAIN_MESSAGE
+		);
 
-		if (numSemaine == null || numSemaine.isBlank()) return;
-		numSemaine = numSemaine.trim();
+		if (numSeamine == null || numSeamine.isBlank())
+			return; // l'utilisateur a annulé ou laissé vide
+
+		numSeamine = numSeamine.trim();
 
 		try
 		{
-			ctrl.sauvegarderDonnees(dossier, numSemaine);
+			ctrl.sauvegarderDonnees(dossier, numSeamine);
 			JOptionPane.showMessageDialog(this,
 				"Fichiers copiés vers : " + fc.getSelectedFile().getName(),
 				"Sauvegarde OK", JOptionPane.INFORMATION_MESSAGE);
@@ -186,7 +195,7 @@ public class FenetrePrincipale extends JFrame
 		}
 	}
 
-	// ── En-tête ───────────────────────────────────────────────────────────
+	// ── En-tête (identique à l'original) ─────────────────────────────────
 
 	private JPanel creerEntete()
 	{
@@ -219,10 +228,10 @@ public class FenetrePrincipale extends JFrame
 		panelBtn.add(btnSup);
 		panelBtn.add(btnRafraichir);
 
-		p.add(titre,    BorderLayout.WEST);
-		p.add(lblInfo,  BorderLayout.EAST);
-		p.add(panelBtn, BorderLayout.SOUTH);
-
+		p.add(titre,   BorderLayout.WEST);
+		p.add(lblInfo, BorderLayout.EAST);
+		p.add(panelBtn,BorderLayout.SOUTH);
+		
 		return p;
 	}
 
@@ -231,27 +240,30 @@ public class FenetrePrincipale extends JFrame
 		long nbAff = ctrl.getSocietes().stream().mapToLong(s -> s.getLots().size()).sum();
 		int  nbH   = ctrl.getSocietes().stream().mapToInt(s -> s.getTotalHeuresCE()).sum();
 		String heureSup = PlanningGlobal.estHeureSup ? "oui" : "non";
-		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot" + getHeureLotTotal()
+		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot"+ getHeureLotTotal() +
 			+ ctrl.getSocietes().size() + " sociétés  |  "
 			+ nbAff + " affectés  |  "
-			+ nbH + "h disponibles  |  " + "Heures Sup : " + heureSup;
+			+ nbH + "h disponibles  |  " + "Heures Sup : "+ heureSup;
 	}
 
 	public String getHeureLotTotal()
 	{
+		// uniquement des lot non affecté et non bloqué
 		int total = 0;
 		for (Lot lot : ctrl.getLots())
 		{
 			if (!lot.getStatut().contains("bloqué") && !lot.isEstSousDouane())
 			{
 				if (ctrl.getSocieteDuLot(lot) == null)
+				{
 					total += lot.getHeures();
+				}
 			}
 		}
 		return total > 0 ? " (" + total + "h)  |  " : "  |  ";
 	}
 
-	// ── Rafraîchissement global ───────────────────────────────────────────
+	// ── Rafraîchissement global (identique à l'original) ─────────────────
 
 	public void rafraichirTout()
 	{

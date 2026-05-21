@@ -32,25 +32,39 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 
+/**
+ * Dialogue de création manuelle d'un nouveau lot.
+ *
+ * Emplacement : combo lettre (A/B/C/D/LTS/HD) + champ numéro libre
+ *               → concaténés en un seul String pour le métier (ex: "B42")
+ *               Les codes spéciaux LTS et HD n'ont pas de numéro.
+ * Heures = NbPieces / Cadence (calcul en temps réel).
+ */
 public class DialogAjoutLot extends JDialog
 {
-	private final Controleur       ctrl;
+	private final Controleur        ctrl;
 	private final PanelAffectation  panelAff;
 	private final FenetrePrincipale fenetre;
 
+	// Champs formulaire
 	private JTextField        fNumCDE, fTypologie, fAffaire, fNbPieces, fCadence;
 	private JTextField        fValeur, fSemaine, fLotACharge, fDateRec, fDatePai, fCommentaire;
 	private JComboBox<String> fStatut, fStatutEchant;
 	private JCheckBox         fDouane;
 	private JSpinner          fPriorite;
 
+	// Emplacement décomposé
 	private JComboBox<String> fEmplacementLettre;
 	private JTextField        fEmplacementNumero;
 
+	// Labels et erreur
 	private JLabel lblHeures, lblErreur;
 
+	// Lettres pour lesquelles le numéro n'a pas de sens
 	private static final Set<String> SANS_NUMERO =
 		new HashSet<>(Arrays.asList("LTS", "HD", ""));
+
+	// ── Constructeur ──────────────────────────────────────────────────────
 
 	public DialogAjoutLot(FenetrePrincipale fenetre, Controleur ctrl, PanelAffectation panelAff)
 	{
@@ -64,6 +78,8 @@ public class DialogAjoutLot extends JDialog
 		add(creerFormulaire(), BorderLayout.CENTER);
 		add(creerBas(),        BorderLayout.SOUTH);
 	}
+
+	// ── Formulaire ────────────────────────────────────────────────────────
 
 	private JScrollPane creerFormulaire()
 	{
@@ -81,15 +97,20 @@ public class DialogAjoutLot extends JDialog
 		fDouane      = new JCheckBox("Sous douane");
 		fPriorite    = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
 
-		fStatut = new JComboBox<>(new String[]{"", "OU", "TC", "MR"});
+		fStatut = new JComboBox<>(new String[]{
+			"", "OU", "TC", "MR"});
 		fStatutEchant = new JComboBox<>(new String[]{
 			"", "VA - Validé avec le CP", "BL - Bloqué", "EP - Envoi au CP"});
 
-		fEmplacementLettre = new JComboBox<>(new String[]{"", "A", "B", "C", "D", "LTS", "HD"});
+		// ── Sélecteur emplacement : lettre + numéro ───────────────────────
+		fEmplacementLettre = new JComboBox<>(new String[]{
+			"", "A", "B", "C", "D", "LTS", "HD"});
+
 		fEmplacementNumero = new JTextField(5);
 		fEmplacementNumero.setToolTipText("Numéro de rangée (ex: 42)");
-		fEmplacementNumero.setEnabled(false);
+		fEmplacementNumero.setEnabled(false); // désactivé par défaut (lettre vide)
 
+		// Active/désactive le numéro selon la lettre choisie
 		fEmplacementLettre.addActionListener(e -> {
 			String lettre = s((String) fEmplacementLettre.getSelectedItem());
 			boolean avecNum = !SANS_NUMERO.contains(lettre);
@@ -97,6 +118,7 @@ public class DialogAjoutLot extends JDialog
 			if (!avecNum) fEmplacementNumero.setText("");
 		});
 
+		// Panel inline lettre + "—" + numéro
 		JPanel panelEmpl = new JPanel();
 		panelEmpl.setLayout(new BoxLayout(panelEmpl, BoxLayout.X_AXIS));
 		panelEmpl.setBackground(Color.WHITE);
@@ -109,17 +131,19 @@ public class DialogAjoutLot extends JDialog
 		panelEmpl.add(fEmplacementNumero);
 		panelEmpl.add(Box.createHorizontalGlue());
 
+		// Label heures calculées
 		lblHeures = new JLabel("—");
 		lblHeures.setForeground(IhmUtils.BLEU);
 		lblHeures.setFont(new Font("SansSerif", Font.BOLD, 13));
 
-		KeyAdapter majH = new KeyAdapter()
-		{
+		// Recalcul en temps réel
+		KeyAdapter majH = new KeyAdapter() {
 			public void keyReleased(KeyEvent e) { calculerHeures(); }
 		};
 		fNbPieces.addKeyListener(majH);
 		fCadence .addKeyListener(majH);
 
+		// Tableau de champs
 		Object[][] champs = {
 			{"N° CDE *",         fNumCDE},
 			{"Typologie *",      fTypologie},
@@ -177,6 +201,8 @@ public class DialogAjoutLot extends JDialog
 		return p;
 	}
 
+	// ── Calcul heures ─────────────────────────────────────────────────────
+
 	private void calculerHeures()
 	{
 		try
@@ -194,6 +220,8 @@ public class DialogAjoutLot extends JDialog
 		}
 	}
 
+	// ── Reconstitue "B" + "42" → "B42" pour le métier ────────────────────
+
 	private String getEmplacementCombine()
 	{
 		String lettre = s((String) fEmplacementLettre.getSelectedItem());
@@ -201,6 +229,8 @@ public class DialogAjoutLot extends JDialog
 		if (SANS_NUMERO.contains(lettre)) return lettre;
 		return lettre + fEmplacementNumero.getText().trim();
 	}
+
+	// ── Validation ────────────────────────────────────────────────────────
 
 	private void valider()
 	{
@@ -210,16 +240,19 @@ public class DialogAjoutLot extends JDialog
 			String typo = fTypologie.getText().trim();
 			if (typo.isEmpty()) { lblErreur.setText("La typologie est obligatoire."); return; }
 
-			int    nb  = Integer.parseInt(fNbPieces.getText().trim());
-			double cad = Double.parseDouble(fCadence.getText().trim().replace(",", "."));
-			double h   = cad > 0 ? nb / cad : 0.0;
-			int    val = fValeur.getText().trim().isEmpty() ? 0
-						: Integer.parseInt(fValeur.getText().trim());
+			int    nb   = Integer.parseInt(fNbPieces.getText().trim());
+			double cad  = Double.parseDouble(fCadence.getText().trim().replace(",", "."));
+			double h    = cad > 0 ? nb / cad : 0.0;
+			int    val  = fValeur.getText().trim().isEmpty() ? 0
+						  : Integer.parseInt(fValeur.getText().trim());
 
 			ctrl.ajouterLot(
-				cde, typo,
+				cde,
+				typo,
 				fAffaire     .getText().trim(),
-				nb, cad, val,
+				nb,
+				cad,
+				val,
 				(String) fStatut      .getSelectedItem(),
 				(String) fStatutEchant.getSelectedItem(),
 				fSemaine     .getText().trim(),
@@ -234,8 +267,8 @@ public class DialogAjoutLot extends JDialog
 
 			if (panelAff != null) panelAff.remplirComboSocietes();
 			fenetre.rafraichirTout();
-			if (panelAff != null)
-				panelAff.afficherStatut("Lot " + cde + " créé (" + String.format("%.2fh", h) + ")", IhmUtils.VERT);
+			if (panelAff != null) panelAff.afficherStatut(
+				"Lot " + cde + " créé (" + String.format("%.2fh", h) + ")", IhmUtils.VERT);
 			dispose();
 		}
 		catch (NumberFormatException ex)

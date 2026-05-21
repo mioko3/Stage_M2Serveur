@@ -36,4 +36,5 @@ app/ihm/gestionlot/PanelSocietes.java
 app/ihm/IhmUtils.java
 app/ihm/FenetrePrincipale.java
 
+app/IControleur.java
 app/Controleur.java
