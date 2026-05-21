@@ -6,7 +6,6 @@ import app.metier.ficheroute.FicheRoute;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,363 +13,851 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
+import javax.swing.SwingUtilities;
 
 /**
- * ══════════════════════════════════════════════════════════════
- *  CONTRÔLEUR CLIENT
+ * Contrôleur MVC — mode CLIENT.
  *
- *  Implémente IControleur.
- *  Chaque méthode envoie une requête HTTP au ServeurHTTP
- *  au lieu d'agir localement. L'IHM Swing ne voit aucune différence.
- *
- *  Lancement :
- *    run_CLIENT.bat   (double-clic, demande l'IP du serveur)
- *    — ou —
- *    java -cp "bin;app/jar/..." app.ControleurClient 192.168.1.15
- * ══════════════════════════════════════════════════════════════
+ * Même structure que Controleur mais
+ * toutes les actions passent par HTTP.
  */
 public class ControleurClient implements IControleur
 {
-    private final String     urlServeur;
-    private final HttpClient http;
+	private FenetrePrincipale fenetre;
 
-    // Cache local — mis à jour après chaque réponse du serveur
-    private ArrayList<Lot>     lots;
-    private ArrayList<Societe> societes;
+	private final String     urlServeur;
+	private final HttpClient http;
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  CONSTRUCTEUR
-    // ══════════════════════════════════════════════════════════════════════
+	private ArrayList<Lot>     lots;
+	private ArrayList<Societe> societes;
 
-    public ControleurClient(String ipServeur)
-    {
-        this.urlServeur = "http://" + ipServeur + ":8080";
-        this.http       = HttpClient.newHttpClient();
-        this.lots       = new ArrayList<>();
-        this.societes   = new ArrayList<>();
+	private String cheminLotsJson;
+	private String cheminSocietesJson;
 
-        System.out.println("[Client] Connexion → " + urlServeur);
-        chargerDepuisServeur();
-        new FenetrePrincipale(this);
-    }
+	// ── Constructeur ─────────────────────────────────────────────
 
-    private void chargerDepuisServeur()
-    {
-        try {
-            this.lots     = JsonSerialiser.deserialiserLots(get("/lots"));
-            this.societes = JsonSerialiser.deserialiserSocietes(get("/societes"), this.lots);
-            System.out.println("[Client] " + lots.size() + " lots, "
-                    + societes.size() + " sociétés chargés.");
-        } catch (Exception e) {
-            System.err.println("[Client] Impossible de contacter le serveur : " + e.getMessage());
-            System.err.println("  → Vérifiez que run_SERVEUR.bat tourne sur le PC serveur.");
-            System.err.println("  → Vérifiez l'IP : " + urlServeur);
-        }
-    }
+	public ControleurClient(String ipServeur)
+	{
+		this.urlServeur = "http://" + ipServeur + ":8080";
+		this.http       = HttpClient.newHttpClient();
 
-    /**
-     * Recharge les données depuis le serveur.
-     * Retourne true si les données ont changé (utile pour le timer de sync).
-     * Appelé par le bouton ⟳ et automatiquement toutes les 5 secondes.
-     */
-    public boolean rechargerDepuisServeur()
-    {
-        try {
-            String jsonLots = get("/lots");
-            String jsonSoc  = get("/societes");
-            ArrayList<Lot>     nouveauxLots      = JsonSerialiser.deserialiserLots(jsonLots);
-            ArrayList<Societe> nouvellesSocietes  = JsonSerialiser.deserialiserSocietes(jsonSoc, nouveauxLots);
-            // Détection de changement : compare les tailles + la sérialisation du premier lot
-            boolean changed =
-                nouveauxLots.size() != this.lots.size()
-                || nouvellesSocietes.size() != this.societes.size()
-                || !JsonSerialiser.serialiserLots(nouveauxLots)
-                                  .equals(JsonSerialiser.serialiserLots(this.lots));
-            this.lots     = nouveauxLots;
-            this.societes = nouvellesSocietes;
-            return changed;
-        } catch (Exception e) {
-            System.err.println("[Client] Erreur sync : " + e.getMessage());
-            return false;
-        }
-    }
+		this.lots       = new ArrayList<>();
+		this.societes   = new ArrayList<>();
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  ACCÈS AUX DONNÉES
-    // ══════════════════════════════════════════════════════════════════════
+		this.cheminLotsJson     = "";
+		this.cheminSocietesJson = "";
 
-    @Override public ArrayList<Lot>     getLots()               { return lots;     }
-    @Override public ArrayList<Societe> getSocietes()           { return societes; }
-    @Override public String             getCheminLotsJson()     { return "";       }
-    @Override public String             getCheminSocietesJson() { return "";       }
+		System.out.println("[Client] Connexion → " + urlServeur);
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  GESTION DES LOTS
-    // ══════════════════════════════════════════════════════════════════════
+		SwingUtilities.invokeLater(() ->
+		{
+			chargerDepuisServeur();
+			this.fenetre = new FenetrePrincipale(this);
+		});
+	}
 
-    @Override
-    public void ajouterLot(Lot lot)
-    {
-        try {
-            this.lots = JsonSerialiser.deserialiserLots(
-                post("/lots/ajouter", JsonSerialiser.serialiserLotSeul(lot)));
-        } catch (Exception e) { err("ajouterLot", e); }
-    }
+	// ── Chargement ───────────────────────────────────────────────
 
-    @Override
-    public void supprimerLot(Lot lot)
-    {
-        try {
-            this.lots = JsonSerialiser.deserialiserLots(
-                post("/lots/supprimer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
-        } catch (Exception e) { err("supprimerLot", e); }
-    }
+	private void chargerDepuisServeur()
+	{
+		try
+		{
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					get("/lots"));
 
-    @Override
-    public void sauvegarderLots() { /* géré automatiquement par le serveur */ }
+			this.societes =
+				JsonSerialiser.deserialiserSocietes(
+					get("/societes"),
+					this.lots);
 
-    @Override
-    public void modifierLot(Lot lot, String typologie, String affaire,
-                             int nbPieces, double cadence, int valeurVente,
-                             String statut, String statutEchant, String semaine,
-                             int priorite, String lotACharge, String emplacement,
-                             boolean sousDouane, String dateReception,
-                             String datePaiement, String commentaire)
-    {
-        try {
-            String corps = "{"
-                + "\"numCDE\":"        + lot.getNumCDE()    + ","
-                + "\"typologie\":"     + e(typologie)       + ","
-                + "\"affaire\":"       + e(affaire)         + ","
-                + "\"nbPieces\":"      + nbPieces           + ","
-                + "\"cadence\":"       + cadence            + ","
-                + "\"valeurVente\":"   + valeurVente        + ","
-                + "\"statut\":"        + e(statut)          + ","
-                + "\"statutEchant\":"  + e(statutEchant)    + ","
-                + "\"semaine\":"       + e(semaine)         + ","
-                + "\"priorite\":"      + priorite           + ","
-                + "\"lotACharge\":"    + e(lotACharge)      + ","
-                + "\"emplacement\":"   + e(emplacement)     + ","
-                + "\"estSousDouane\":" + sousDouane         + ","
-                + "\"dateReception\":" + e(dateReception)   + ","
-                + "\"datePaiement\":"  + e(datePaiement)    + ","
-                + "\"commentaire\":"   + e(commentaire)     + "}";
-            this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifier", corps));
-        } catch (Exception e) { err("modifierLot", e); }
-    }
+			System.out.println(
+				"[Client] "
+				+ lots.size()
+				+ " lots chargés.");
+		}
+		catch (Exception e)
+		{
+			System.err.println(
+				"[Client] Impossible de contacter le serveur : "
+				+ e.getMessage());
+		}
+	}
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  AFFECTATION
-    // ══════════════════════════════════════════════════════════════════════
+	public boolean rechargerDepuisServeur()
+	{
+		try
+		{
+			String jsonLots = get("/lots");
+			String jsonSoc  = get("/societes");
 
-    @Override
-    public boolean affecterLot(Lot lot, Societe societe, Ace ace)
-    {
-        try {
-            String corps = "{"
-                + "\"numCDE\":"    + lot.getNumCDE()              + ","
-                + "\"nomSociete\":" + e(societe.getNom())         + ","
-                + "\"nomAce\":"    + e(ace != null ? ace.getNom() : "") + "}";
-            String rep = post("/lots/affecter", corps);
-            mettreAJourDepuisReponseDual(rep);
-            return true;
-        } catch (Exception e) { err("affecterLot", e); return false; }
-    }
+			ArrayList<Lot> nouveauxLots =
+				JsonSerialiser.deserialiserLots(jsonLots);
 
-    @Override
-    public void desaffecterLot(Lot lot)
-    {
-        try {
-            String rep = post("/lots/desaffecter", "{\"numCDE\":" + lot.getNumCDE() + "}");
-            mettreAJourDepuisReponseDual(rep);
-        } catch (Exception e) { err("desaffecterLot", e); }
-    }
+			ArrayList<Societe> nouvellesSocietes =
+				JsonSerialiser.deserialiserSocietes(
+					jsonSoc,
+					nouveauxLots);
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  MODIFICATION SOCIÉTÉ / ACE
-    // ══════════════════════════════════════════════════════════════════════
+			boolean changed =
+				!JsonSerialiser.serialiserLots(nouveauxLots)
+					.equals(
+						JsonSerialiser.serialiserLots(this.lots));
 
-    @Override
-    public void modifierSociete(Societe soc, String nom, String ce, int totalHeuresCE, int effectif)
-    {
-        try {
-            String corps = "{"
-                + "\"nomActuel\":"    + e(soc.getNom()) + ","
-                + "\"nom\":"          + e(nom)          + ","
-                + "\"ce\":"           + e(ce)           + ","
-                + "\"totalHeuresCE\":" + totalHeuresCE  + ","
-                + "\"effectif\":"     + effectif        + "}";
-            this.societes = JsonSerialiser.deserialiserSocietes(
-                post("/societes/modifier", corps), this.lots);
-        } catch (Exception e) { err("modifierSociete", e); }
-    }
+			this.lots      = nouveauxLots;
+			this.societes  = nouvellesSocietes;
 
-    @Override
-    public void modifierAce(Ace ace, String nom, int nbPers, int effectif)
-    {
-        try {
-            Societe soc = getSocieteDeAce(ace);
-            String corps = "{"
-                + "\"nomSociete\":"   + e(soc != null ? soc.getNom() : "") + ","
-                + "\"nomActuelAce\":" + e(ace.getNom()) + ","
-                + "\"nom\":"          + e(nom)          + ","
-                + "\"nbPers\":"       + nbPers          + ","
-                + "\"effectif\":"     + effectif        + "}";
-            this.societes = JsonSerialiser.deserialiserSocietes(
-                post("/aces/modifier", corps), this.lots);
-        } catch (Exception e) { err("modifierAce", e); }
-    }
+			return changed;
+		}
+		catch (Exception e)
+		{
+			System.err.println(
+				"[Client] Erreur sync : "
+				+ e.getMessage());
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  SUIVI PRODUCTION
-    // ══════════════════════════════════════════════════════════════════════
+			return false;
+		}
+	}
 
-    @Override
-    public void mettreAJourSuiviProd(Lot lot, int nbPieceEtiq, int nbPieceRepart)
-    {
-        try {
-            String corps = "{"
-                + "\"numCDE\":"       + lot.getNumCDE() + ","
-                + "\"nbPieceEtiq\":"  + nbPieceEtiq    + ","
-                + "\"nbPieceRepart\":" + nbPieceRepart  + "}";
-            this.lots = JsonSerialiser.deserialiserLots(post("/lots/suiviprod", corps));
-        } catch (Exception e) { err("mettreAJourSuiviProd", e); }
-    }
+	// ── IControleur : Données ───────────────────────────────────
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  RECHERCHE
-    // ══════════════════════════════════════════════════════════════════════
+	@Override
+	public ArrayList<Societe> getSocietes()
+	{
+		return societes;
+	}
 
-    @Override
-    public Societe getSocieteDuLot(Lot lot)
-    {
-        for (Societe s : societes)
-            for (Lot l : s.getLots())
-                if (l.getNumCDE() == lot.getNumCDE()) return s;
-        return null;
-    }
+	@Override
+	public ArrayList<Lot> getLots()
+	{
+		return lots;
+	}
 
-    @Override
-    public Ace getAceDuLot(Lot lot)
-    {
-        for (Societe s : societes)
-            for (Ace a : s.getAces())
-                for (Lot l : a.getLots())
-                    if (l.getNumCDE() == lot.getNumCDE()) return a;
-        return null;
-    }
+	@Override
+	public String getCheminLotsJson()
+	{
+		return cheminLotsJson;
+	}
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  FICHE DE ROUTE
-    // ══════════════════════════════════════════════════════════════════════
+	@Override
+	public String getCheminSocietesJson()
+	{
+		return cheminSocietesJson;
+	}
 
-    @Override
-    public FicheRoute genererFicheRoute(Societe societe)
-    {
-        // La fiche de route utilise directement les lots de la société
-        // qui sont déjà dans le cache local — pas besoin d'un aller-retour réseau.
-        // On retourne simplement la fiche recalculée localement.
-        return new app.metier.ficheroute.FicheRoute(societe);
-    }
+	// ── IControleur : Gestion lots ──────────────────────────────
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  SAUVEGARDE / CHARGEMENT
-    // ══════════════════════════════════════════════════════════════════════
+	@Override
+	public void ajouterLot(Lot lot)
+	{
+		try
+		{
+			String rep =
+				post(
+					"/lots/ajouter",
+					JsonSerialiser.serialiserLotSeul(lot));
 
-    @Override
-    public void sauvegarderDonnees(String cheminDossier, String semaine)
-    {
-        try {
-            // Le chemin est relatif au PC serveur (pas au client)
-            post("/sauvegarder", "{\"chemin\":" + e(cheminDossier) + ",\"semaine\":" + e(semaine) + "}");
-            System.out.println("[Client] Sauvegarde envoyée au serveur.");
-        } catch (Exception ex) { err("sauvegarderDonnees", ex); }
-    }
+			this.lots =
+				JsonSerialiser.deserialiserLots(rep);
 
-    @Override
-    public void chargerDonnees(String chemin) throws IOException
-    {
-        try {
-            String rep = post("/charger", "{\"chemin\":" + e(chemin) + "}");
-            mettreAJourDepuisReponseDual(rep);
-        } catch (Exception ex) { throw new IOException(ex.getMessage()); }
-    }
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("ajouterLot", e);
+		}
+	}
 
-    @Override
-    public void nouveaux()
-    {
-        try {
-            post("/nouveaux", "{}");
-            chargerDepuisServeur();
-        } catch (Exception e) { err("nouveaux", e); }
-    }
+	@Override
+	public void ajouterLot(
+		int numCDE,
+		String typologie,
+		String affaire,
+		int nbPieces,
+		double cadence,
+		int valeurVente,
+		String statut,
+		String statutEchant,
+		String semaine,
+		int priorite,
+		String lotACharge,
+		String emplacement,
+		boolean sousDouane,
+		String dateReception,
+		String datePaiement,
+		String commentaire)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"numCDE\":"        + numCDE           + ","
+				+ "\"typologie\":"     + e(typologie)     + ","
+				+ "\"affaire\":"       + e(affaire)       + ","
+				+ "\"nbPieces\":"      + nbPieces         + ","
+				+ "\"cadence\":"       + cadence          + ","
+				+ "\"valeurVente\":"   + valeurVente      + ","
+				+ "\"statut\":"        + e(statut)        + ","
+				+ "\"statutEchant\":"  + e(statutEchant)  + ","
+				+ "\"semaine\":"       + e(semaine)       + ","
+				+ "\"priorite\":"      + priorite         + ","
+				+ "\"lotACharge\":"    + e(lotACharge)    + ","
+				+ "\"emplacement\":"   + e(emplacement)   + ","
+				+ "\"sousDouane\":"    + sousDouane       + ","
+				+ "\"dateReception\":" + e(dateReception) + ","
+				+ "\"datePaiement\":"  + e(datePaiement)  + ","
+				+ "\"commentaire\":"   + e(commentaire)
+				+ "}";
 
-    @Override
-    public void NouvelleHeurePourSociete(int semaine)
-    {
-        try {
-            String rep = post("/nouvelleheure", "{\"semaine\":" + semaine + "}");
-            this.societes = JsonSerialiser.deserialiserSocietes(rep, this.lots);
-        } catch (Exception e) { err("NouvelleHeurePourSociete", e); }
-    }
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post("/lots/ajoutercomplet", corps));
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  UTILITAIRES PRIVÉS
-    // ══════════════════════════════════════════════════════════════════════
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("ajouterLotComplet", e);
+		}
+	}
 
-    /** Décompose une réponse {"lots":[...],"societes":[...]} et met à jour le cache. */
-    private void mettreAJourDepuisReponseDual(String rep)
-    {
-        String jsonLots = JsonSerialiser.extraireBloc(rep, "\"lots\"");
-        String jsonSoc  = JsonSerialiser.extraireBloc(rep, "\"societes\"");
-        if (jsonLots != null) this.lots     = JsonSerialiser.deserialiserLots(jsonLots);
-        if (jsonSoc  != null) this.societes = JsonSerialiser.deserialiserSocietes(jsonSoc, this.lots);
-    }
+	@Override
+	public void supprimerLot(Lot lot)
+	{
+		try
+		{
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post(
+						"/lots/supprimer",
+						"{\"numCDE\":"
+						+ lot.getNumCDE()
+						+ "}"));
 
-    private Societe getSocieteDeAce(Ace ace)
-    {
-        for (Societe s : societes)
-            for (Ace a : s.getAces())
-                if (a.getNom().equals(ace.getNom())) return s;
-        return null;
-    }
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("supprimerLot", e);
+		}
+	}
 
-    private String get(String route) throws Exception
-    {
-        HttpRequest req = HttpRequest.newBuilder()
-            .uri(URI.create(urlServeur + route)).GET().build();
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (resp.statusCode() >= 400)
-            throw new Exception("HTTP " + resp.statusCode() + " : " + resp.body());
-        return resp.body();
-    }
+	@Override
+	public void sauvegarderLots()
+	{
+		autoSauvegarderLots();
+	}
 
-    private String post(String route, String json) throws Exception
-    {
-        HttpRequest req = HttpRequest.newBuilder()
-            .uri(URI.create(urlServeur + route))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-            .build();
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (resp.statusCode() >= 400)
-            throw new Exception("HTTP " + resp.statusCode() + " : " + resp.body());
-        return resp.body();
-    }
+	@Override
+	public void exportNewLot()
+	{
+		try
+		{
+			post("/lots/exportnew", "{}");
+			chargerDepuisServeur();
+		}
+		catch (Exception e)
+		{
+			err("exportNewLot", e);
+		}
+	}
 
-    private static String e(String s) { return JsonSerialiser.esc(s); }
+	// ── Affectation ─────────────────────────────────────────────
 
-    private void err(String m, Exception e)
-    { System.err.println("[Client] " + m + " : " + e.getMessage()); }
+	@Override
+	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"numCDE\":" + lot.getNumCDE() + ","
+				+ "\"societe\":" + e(societe.getNom()) + ","
+				+ "\"ace\":" + e(ace.getNom())
+				+ "}";
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  MAIN
-    // ══════════════════════════════════════════════════════════════════════
+			String rep =
+				post("/lots/affecter", corps);
 
-    public static void main(String[] args)
-    {
-        String ip = args.length > 0 ? args[0] : "localhost";
-        System.out.println("[Client] Connexion au serveur : " + ip);
-        new ControleurClient(ip);
-    }
+			mettreAJourDepuisReponseDual(rep);
+
+			autoSauvegarderSocietes();
+
+			return true;
+		}
+		catch (Exception e)
+		{
+			err("affecterLot", e);
+			return false;
+		}
+	}
+
+	@Override
+	public void desaffecterLot(Lot lot)
+	{
+		try
+		{
+			String rep =
+				post(
+					"/lots/desaffecter",
+					"{\"numCDE\":"
+					+ lot.getNumCDE()
+					+ "}");
+
+			mettreAJourDepuisReponseDual(rep);
+
+			autoSauvegarderSocietes();
+		}
+		catch (Exception e)
+		{
+			err("desaffecterLot", e);
+		}
+	}
+
+	// ── Modification lots ───────────────────────────────────────
+
+	@Override
+	public void modifierLot(
+		Lot lot,
+		String typologie,
+		String affaire,
+		int nbPieces,
+		double cadence,
+		int valeurVente,
+		String statut,
+		String statutEchant,
+		String semaine,
+		int priorite,
+		String lotACharge,
+		String emplacement,
+		boolean sousDouane,
+		String dateReception,
+		String datePaiement,
+		String commentaire)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"numCDE\":"        + lot.getNumCDE() + ","
+				+ "\"typologie\":"     + e(typologie)    + ","
+				+ "\"affaire\":"       + e(affaire)      + ","
+				+ "\"nbPieces\":"      + nbPieces        + ","
+				+ "\"cadence\":"       + cadence         + ","
+				+ "\"valeurVente\":"   + valeurVente     + ","
+				+ "\"statut\":"        + e(statut)       + ","
+				+ "\"statutEchant\":"  + e(statutEchant) + ","
+				+ "\"semaine\":"       + e(semaine)      + ","
+				+ "\"priorite\":"      + priorite        + ","
+				+ "\"lotACharge\":"    + e(lotACharge)   + ","
+				+ "\"emplacement\":"   + e(emplacement)  + ","
+				+ "\"sousDouane\":"    + sousDouane      + ","
+				+ "\"dateReception\":" + e(dateReception)+ ","
+				+ "\"datePaiement\":"  + e(datePaiement) + ","
+				+ "\"commentaire\":"   + e(commentaire)
+				+ "}";
+
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post("/lots/modifier", corps));
+
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("modifierLot", e);
+		}
+	}
+
+	@Override
+	public void modifierPhase(
+		Lot lot,
+		boolean preTri,
+		boolean surPiste,
+		boolean sortieEtiq,
+		boolean tri,
+		boolean finit)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"numCDE\":" + lot.getNumCDE() + ","
+				+ "\"preTri\":" + preTri + ","
+				+ "\"surPiste\":" + surPiste + ","
+				+ "\"sortieEtiq\":" + sortieEtiq + ","
+				+ "\"tri\":" + tri + ","
+				+ "\"finit\":" + finit
+				+ "}";
+
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post("/lots/modifierphase", corps));
+
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("modifierPhase", e);
+		}
+	}
+
+	@Override
+	public void marquerLotTermine(Lot lot)
+	{
+		try
+		{
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post(
+						"/lots/terminer",
+						"{\"numCDE\":"
+						+ lot.getNumCDE()
+						+ "}"));
+
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("marquerLotTermine", e);
+		}
+	}
+
+	@Override
+	public void commencerLot(Lot l)
+	{
+		try
+		{
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post(
+						"/lots/commencer",
+						"{\"numCDE\":"
+						+ l.getNumCDE()
+						+ "}"));
+		}
+		catch (Exception e)
+		{
+			err("commencerLot", e);
+		}
+	}
+
+	@Override
+	public void annulerLot(Lot l)
+	{
+		try
+		{
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post(
+						"/lots/annuler",
+						"{\"numCDE\":"
+						+ l.getNumCDE()
+						+ "}"));
+		}
+		catch (Exception e)
+		{
+			err("annulerLot", e);
+		}
+	}
+
+	// ── Sociétés ────────────────────────────────────────────────
+
+	@Override
+	public void modifierSociete(
+		Societe soc,
+		String nom,
+		String ce,
+		int totalHeuresCE,
+		int effectif)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"nomActuel\":" + e(soc.getNom()) + ","
+				+ "\"nom\":" + e(nom) + ","
+				+ "\"ce\":" + e(ce) + ","
+				+ "\"totalHeuresCE\":" + totalHeuresCE + ","
+				+ "\"effectif\":" + effectif
+				+ "}";
+
+			this.societes =
+				JsonSerialiser.deserialiserSocietes(
+					post("/societes/modifier", corps),
+					this.lots);
+
+			autoSauvegarderSocietes();
+		}
+		catch (Exception e)
+		{
+			err("modifierSociete", e);
+		}
+	}
+
+	@Override
+	public void modifierAce(
+		Ace ace,
+		String nom,
+		int nbPers,
+		int effectif)
+	{
+		try
+		{
+			Societe soc = getSocieteDeAce(ace);
+
+			String corps = "{"
+				+ "\"societe\":" + e(soc.getNom()) + ","
+				+ "\"nomActuel\":" + e(ace.getNom()) + ","
+				+ "\"nom\":" + e(nom) + ","
+				+ "\"nbPers\":" + nbPers + ","
+				+ "\"effectif\":" + effectif
+				+ "}";
+
+			this.societes =
+				JsonSerialiser.deserialiserSocietes(
+					post("/aces/modifier", corps),
+					this.lots);
+
+			autoSauvegarderSocietes();
+		}
+		catch (Exception e)
+		{
+			err("modifierAce", e);
+		}
+	}
+
+	@Override
+	public boolean mettreAJourAces(
+		Societe soc,
+		List<Ace> nouvellesAces)
+	{
+		try
+		{
+			post("/aces/mettreajour", "{}");
+
+			chargerDepuisServeur();
+
+			autoSauvegarderSocietes();
+
+			return true;
+		}
+		catch (Exception e)
+		{
+			err("mettreAJourAces", e);
+			return false;
+		}
+	}
+
+	@Override
+	public void nouvelleHeurePourSociete(int semaine)
+	{
+		try
+		{
+			post(
+				"/nouvelleheure",
+				"{\"semaine\":"
+				+ semaine
+				+ "}");
+
+			chargerDepuisServeur();
+
+			autoSauvegarderSocietes();
+		}
+		catch (Exception e)
+		{
+			err("nouvelleHeurePourSociete", e);
+		}
+	}
+
+	@Override
+	public void semaineSup()
+	{
+		try
+		{
+			post("/semainesup", "{}");
+			chargerDepuisServeur();
+		}
+		catch (Exception e)
+		{
+			err("semaineSup", e);
+		}
+	}
+
+	// ── Suivi prod ──────────────────────────────────────────────
+
+	@Override
+	public void mettreAJourSuiviProd(
+		Lot lot,
+		int nbPieceEtiq,
+		int nbPieceRepart)
+	{
+		try
+		{
+			String corps = "{"
+				+ "\"numCDE\":" + lot.getNumCDE() + ","
+				+ "\"nbPieceEtiq\":" + nbPieceEtiq + ","
+				+ "\"nbPieceRepart\":" + nbPieceRepart
+				+ "}";
+
+			this.lots =
+				JsonSerialiser.deserialiserLots(
+					post("/lots/suiviprod", corps));
+
+			autoSauvegarderLots();
+		}
+		catch (Exception e)
+		{
+			err("mettreAJourSuiviProd", e);
+		}
+	}
+
+	// ── Recherche ───────────────────────────────────────────────
+
+	@Override
+	public Societe getSocieteDuLot(Lot lot)
+	{
+		for (Societe s : societes)
+			for (Lot l : s.getLots())
+				if (l.getNumCDE() == lot.getNumCDE())
+					return s;
+
+		return null;
+	}
+
+	@Override
+	public Ace getAceDuLot(Lot lot)
+	{
+		for (Societe s : societes)
+			for (Ace a : s.getAces())
+				for (Lot l : a.getLots())
+					if (l.getNumCDE() == lot.getNumCDE())
+						return a;
+
+		return null;
+	}
+
+	@Override
+	public ArrayList<Ace> getTouteAces()
+	{
+		ArrayList<Ace> lst = new ArrayList<>();
+
+		for (Societe s : societes)
+			lst.addAll(s.getAces());
+
+		return lst;
+	}
+
+	// ── Fiche route ─────────────────────────────────────────────
+
+	@Override
+	public FicheRoute genererFicheRoute(Societe societe)
+	{
+		return new FicheRoute(societe);
+	}
+
+	// ── Sauvegarde / chargement ─────────────────────────────────
+
+	@Override
+	public void sauvegarderDonnees(
+		String cheminDossier,
+		String semaine)
+	{
+		try
+		{
+			post(
+				"/sauvegarder",
+				"{\"chemin\":"
+				+ e(cheminDossier)
+				+ ",\"semaine\":"
+				+ e(semaine)
+				+ "}");
+		}
+		catch (Exception e)
+		{
+			err("sauvegarderDonnees", e);
+		}
+	}
+
+	@Override
+	public void chargerDonnees(String chemin)
+		throws IOException
+	{
+		try
+		{
+			post(
+				"/charger",
+				"{\"chemin\":"
+				+ e(chemin)
+				+ "}");
+
+			chargerDepuisServeur();
+
+			if (fenetre != null)
+				fenetre.rafraichirTout();
+		}
+		catch (Exception e)
+		{
+			throw new IOException(e.getMessage());
+		}
+	}
+
+	@Override
+	public void nouveaux()
+	{
+		try
+		{
+			post("/nouveaux", "{}");
+
+			chargerDepuisServeur();
+
+			this.autoSauvegarde();
+		}
+		catch (Exception e)
+		{
+			err("nouveaux", e);
+		}
+	}
+
+	// ── Auto save ───────────────────────────────────────────────
+
+	@Override
+	public void autoSauvegarde()
+	{
+		autoSauvegarderLots();
+		autoSauvegarderSocietes();
+	}
+
+	private void autoSauvegarderLots()
+	{
+		try
+		{
+			post("/autosave/lots", "{}");
+		}
+		catch (Exception e)
+		{
+			err("autoSauvegarderLots", e);
+		}
+	}
+
+	private void autoSauvegarderSocietes()
+	{
+		try
+		{
+			post("/autosave/societes", "{}");
+		}
+		catch (Exception e)
+		{
+			err("autoSauvegarderSocietes", e);
+		}
+	}
+
+	// ── Utilitaires ─────────────────────────────────────────────
+
+	private void mettreAJourDepuisReponseDual(String rep)
+	{
+		String jsonLots =
+			JsonSerialiser.extraireBloc(rep, "\"lots\"");
+
+		String jsonSoc =
+			JsonSerialiser.extraireBloc(rep, "\"societes\"");
+
+		if (jsonLots != null)
+			this.lots =
+				JsonSerialiser.deserialiserLots(jsonLots);
+
+		if (jsonSoc != null)
+			this.societes =
+				JsonSerialiser.deserialiserSocietes(
+					jsonSoc,
+					this.lots);
+	}
+
+	private Societe getSocieteDeAce(Ace ace)
+	{
+		for (Societe s : societes)
+			for (Ace a : s.getAces())
+				if (a.getNom().equals(ace.getNom()))
+					return s;
+
+		return null;
+	}
+
+	private String get(String route) throws Exception
+	{
+		HttpRequest req =
+			HttpRequest.newBuilder()
+				.uri(URI.create(urlServeur + route))
+				.GET()
+				.build();
+
+		HttpResponse<String> resp =
+			http.send(
+				req,
+				HttpResponse.BodyHandlers.ofString(
+					StandardCharsets.UTF_8));
+
+		if (resp.statusCode() >= 400)
+			throw new Exception(
+				"HTTP "
+				+ resp.statusCode()
+				+ " : "
+				+ resp.body());
+
+		return resp.body();
+	}
+
+	private String post(String route, String json)
+		throws Exception
+	{
+		HttpRequest req =
+			HttpRequest.newBuilder()
+				.uri(URI.create(urlServeur + route))
+				.header(
+					"Content-Type",
+					"application/json")
+				.POST(
+					HttpRequest.BodyPublishers.ofString(
+						json,
+						StandardCharsets.UTF_8))
+				.build();
+
+		HttpResponse<String> resp =
+			http.send(
+				req,
+				HttpResponse.BodyHandlers.ofString(
+					StandardCharsets.UTF_8));
+
+		if (resp.statusCode() >= 400)
+			throw new Exception(
+				"HTTP "
+				+ resp.statusCode()
+				+ " : "
+				+ resp.body());
+
+		return resp.body();
+	}
+
+	private static String e(String s)
+	{
+		return JsonSerialiser.esc(s);
+	}
+
+	private void err(String methode, Exception e)
+	{
+		System.err.println(
+			"[Client] "
+			+ methode
+			+ " : "
+			+ e.getMessage());
+	}
+
+	// ── MAIN ────────────────────────────────────────────────────
+
+	public static void main(String[] args)
+	{
+		String ip =
+			args.length > 0
+				? args[0]
+				: "localhost";
+
+		SwingUtilities.invokeLater(
+			() -> new ControleurClient(ip));
+	}
 }
