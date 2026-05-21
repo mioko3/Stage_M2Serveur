@@ -123,7 +123,8 @@ public class Lot
 	{
 		this.heuresAce = arrondi2((this.cadenceReel > 0) ? this.nbPieces / (this.cadenceReel * eff) : this.nbPieces / (this.cadence * eff));
 		calculDateFinThéorique();
-		this.suivieProd.miseAJJourAvancement();
+		if (this.suivieProd != null)
+			this.suivieProd.miseAJJourAvancement();
 	}
 
 	public void calculColisRecup()
@@ -338,7 +339,7 @@ public class Lot
 
 	public void recalculNbPalette()
 	{
-		if (collisage <= 0 || formatCarton == "") 
+		if (collisage <= 0 || formatCarton == null || formatCarton.isEmpty())
 		{
 			this.nbColisPrevue = 0;
 			this.nbPalettes    = 0;
@@ -353,7 +354,7 @@ public class Lot
 			case "1/4":  this.nbPalettes = (int) Math.ceil(nbcarton / 16); break;
 			case "1/2":  this.nbPalettes = (int) Math.ceil(nbcarton / 8);  break;
 			case "box":  this.nbPalettes = (int) Math.ceil(nbcarton);      break;
-			default:     throw new AssertionError();
+			default:     this.nbPalettes = 0; break;  // ← plus de AssertionError
 		}
 	}
 
@@ -439,7 +440,8 @@ public class Lot
 	{
 		if (v > 0) this.cadenceReel = v;
 		else       this.cadenceReel = this.cadence;
-		this.calculHeuresPiste(this.nbPers);
+		if (this.nbPers > 0)
+			this.calculHeuresPiste(this.nbPers);
 		this.recalculerHeures();
 	}
 	public void setHeures(double v)        { this.heures       = v; }

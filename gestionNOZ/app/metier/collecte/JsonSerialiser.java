@@ -199,7 +199,6 @@ public class JsonSerialiser
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
-		// heuresAce peut être Long.MAX_VALUE/60 (≈9.22E16) si pas calculée → 0
 		double heuresAce = getDouble(obj, "heuresAce");
 		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
 		lot.setSemaine      (getString(obj, "semaine"));
@@ -211,16 +210,21 @@ public class JsonSerialiser
 		lot.setDatePaiement (getString(obj, "datePaiement"));
 		lot.setCommentaire  (getString(obj, "commentaire"));
 		lot.setMethode      (getString(obj, "methode"));
+		System.out.println("[Json] apres setMethode");
 		lot.setDistribution (getString(obj, "distribution"));
 		lot.setFormatCarton (getString(obj, "formatCarton"));
-		// ── Champs restaurés ──────────────────────────────────────────────
+		System.out.println("[Json] apres setFormatCarton");
 		lot.setDateDebut    (getString(obj, "dateDebut"));
 		lot.setdateFin      (getString(obj, "dateFin"));
 		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
+		System.out.println("[Json] apres setCadenceReel");
 		lot.setCollisage    (getInt   (obj, "collisage"));
+		System.out.println("[Json] apres setCollisage");
 		lot.setNbPers       (getInt   (obj, "nbPers"));
+		System.out.println("[Json] apres setNbPers");
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
+		System.out.println("[Json] apres setPoucentrecup");
 
 		SuivieProd sp = new SuivieProd();
 		sp.setLot(lot);
