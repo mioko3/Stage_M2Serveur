@@ -52,11 +52,11 @@ public class JsonSerialiser
 			+ "\"typologie\":"               + esc(lot.getTypologie())                      + ","
 			+ "\"affaire\":"                 + esc(lot.getAffaire())                        + ","
 			+ "\"nbPieces\":"                + lot.getNbPieces()                            + ","
-			+ "\"cadence\":"                 + lot.getCadence()                             + ","
-			+ "\"heures\":"                  + lot.getHeures()                              + ","
-			+ "\"heuresAce\":"               + lot.getHeuresAce()                           + ","
+			+ "\"cadence\":"                 + d2(lot.getCadence())                             + ","
+			+ "\"heures\":"                  + d2(lot.getHeures())                              + ","
+			+ "\"heuresAce\":"               + d2(lot.getHeuresAce())                           + ","
 			+ "\"valeurVente\":"             + lot.getValeurVente()                         + ","
-			+ "\"prixUnitaire\":"            + lot.getPrixUnitaire()                        + ","
+			+ "\"prixUnitaire\":"            + d2(lot.getPrixUnitaire())                        + ","
 			+ "\"statut\":"                  + esc(lot.getStatut())                         + ","
 			+ "\"statutEchant\":"            + esc(lot.getStatutEchant())                   + ","
 			+ "\"semaine\":"                 + esc(lot.getSemaine())                        + ","
@@ -74,7 +74,7 @@ public class JsonSerialiser
 			+ "\"dateDebut\":"               + esc(lot.getDateDebut())                      + ","
 			+ "\"dateFin\":"                 + esc(lot.getdateFin())                        + ","
 			+ "\"dateFinTheorique\":"        + esc(lot.getdateFinT())                       + ","
-			+ "\"cadenceReel\":"             + lot.getCadenceReel()                         + ","
+			+ "\"cadenceReel\":"             + d2(lot.getCadenceReel())                         + ","
 			+ "\"collisage\":"               + lot.getCollisage()                           + ","
 			+ "\"nbPers\":"                  + lot.getNbPers()                              + ","
 			+ "\"poucentrecup\":"            + lot.getPoucentrecupCartonFour()              + ","
@@ -166,15 +166,26 @@ public class JsonSerialiser
 	{
 		ArrayList<Lot> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
-		for (String obj : extraireObjets(json)) {
-			try { liste.add(deserialiserLot(obj)); }
-			catch (Exception e) { System.err.println("[Json] Lot ignoré : " + e.getMessage()); }
+		ArrayList<String> objets = extraireObjets(json);
+		System.out.println("[Json] " + objets.size() + " objets extraits du JSON");
+		for (int idx = 0; idx < objets.size(); idx++) {
+			String obj = objets.get(idx);
+			try {
+				liste.add(deserialiserLot(obj));
+			}
+			catch (Throwable e) {
+				System.out.println("[Json] Lot #" + idx + " ERREUR : " + e.getClass().getName() + " : " + e.getMessage());
+				e.printStackTrace(System.out);
+				System.out.println("[Json] JSON lot #" + idx + " debut : " + obj.substring(0, Math.min(300, obj.length())));
+			}
 		}
+		System.out.println("[Json] " + liste.size() + " lots désérialisés avec succès");
 		return liste;
 	}
 
 	public static Lot deserialiserLot(String obj)
 	{
+		System.out.println("[Json] deserialiserLot entree, numCDE=" + getInt(obj,"numCDE"));
 		Lot lot = new Lot(
 			getInt   (obj, "numCDE"),
 			getInt   (obj, "nbPieces"),
@@ -184,10 +195,13 @@ public class JsonSerialiser
 			getString(obj, "statut"),
 			getString(obj, "statutEchant")
 		);
+		System.out.println("[Json] new Lot() OK pour numCDE=" + lot.getNumCDE());
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
-		lot.setHeuresAce    (getDouble(obj, "heuresAce"));
+		// heuresAce peut être Long.MAX_VALUE/60 (≈9.22E16) si pas calculée → 0
+		double heuresAce = getDouble(obj, "heuresAce");
+		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
 		lot.setSemaine      (getString(obj, "semaine"));
 		lot.setPriorite     (getInt   (obj, "priorite"));
 		lot.setLotACharge   (getString(obj, "lotACharge"));
@@ -212,8 +226,9 @@ public class JsonSerialiser
 		sp.setLot(lot);
 		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
 		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
-		sp.setNbHeureEtiqRestant  (getInt(obj, "sp_nbHeureEtiqRestant"));
-		sp.setNbHeureRepartRestant(getInt(obj, "sp_nbHeureRepartRestant"));
+		// Ces valeurs peuvent être Long.MAX_VALUE si pas encore calculées → 0
+		sp.setNbHeureEtiqRestant  (Math.min(getInt(obj, "sp_nbHeureEtiqRestant"),   999999));
+		sp.setNbHeureRepartRestant(Math.min(getInt(obj, "sp_nbHeureRepartRestant"), 999999));
 		lot.setSuivieProd(sp);
 
 		Phase ph = new Phase();
@@ -337,8 +352,20 @@ public class JsonSerialiser
 		pos += p.length();
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
-		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-')) end++;
-		try { return Integer.parseInt(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0; }
+		// Lire tous les caractères numériques (incl. point et E pour notation scientifique)
+		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-'
+			|| obj.charAt(end) == '.' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
+		String val = obj.substring(pos, end);
+		try {
+			// Si notation scientifique ou décimal, convertir via double
+			if (val.contains(".") || val.contains("E") || val.contains("e")) {
+				double d = Double.parseDouble(val);
+				// Valeur absurde (Long.MAX_VALUE / 60 ≈ 9.2E16) → retourner 0
+				if (d > Integer.MAX_VALUE || d < Integer.MIN_VALUE) return 0;
+				return (int) d;
+			}
+			return Integer.parseInt(val);
+		} catch (NumberFormatException e) { return 0; }
 	}
 
 	public static double getDouble(String obj, String cle)
@@ -350,8 +377,14 @@ public class JsonSerialiser
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
 		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '.'
-			|| obj.charAt(end) == '-' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
-		try { return Double.parseDouble(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0.0; }
+			|| obj.charAt(end) == '-' || obj.charAt(end) == '+' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
+		try {
+			double d = Double.parseDouble(obj.substring(pos, end));
+			// Valeur absurde → retourner 0
+			if (Double.isInfinite(d) || Double.isNaN(d)) return 0.0;
+			// Arrondir à 2 décimales
+			return Math.round(d * 100.0) / 100.0;
+		} catch (NumberFormatException e) { return 0.0; }
 	}
 
 	public static boolean getBool(String obj, String cle)
@@ -362,6 +395,13 @@ public class JsonSerialiser
 		pos += p.length();
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		return obj.startsWith("true", pos);
+	}
+
+	/** Arrondit un double à 2 décimales pour la sérialisation JSON. */
+	private static double d2(double v)
+	{
+		if (Double.isInfinite(v) || Double.isNaN(v) || v > 1_000_000_000) return 0.0;
+		return Math.round(v * 100.0) / 100.0;
 	}
 
 	// ── Alias pour ServeurHTTP et ControleurClient ────────────────────────

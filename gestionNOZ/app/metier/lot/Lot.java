@@ -465,7 +465,7 @@ public class Lot
 	public void setNbColisPrevue(int v)     { this.nbColisPrevue = v;}
 	public void setNbColisRecup(int v)      { this.nbColisRecup = v; }
 	public void setCollisage(int v)         { this.collisage = v; recalculNbPalette(); }
-	public void setPoucentrecupCartonFour(int v) { this.poucentrecupCartonFour = v; calculColisRecup();System.err.println("bouboubou");}
+	public void setPoucentrecupCartonFour(int v) { this.poucentrecupCartonFour = v; calculColisRecup(); }
 	public void setDateDebut(String v)      { this.dateDebut = v;    }
 	public void setdateFin(String v)        { this.dateFin = v;      }
 	public void setdateFinT(String v)       { this.dateFinTheorique = v; }

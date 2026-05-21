@@ -51,20 +51,18 @@ public class ControleurClient implements IControleur
 
 		System.out.println("[Client] Connexion → " + urlServeur);
 
-		SwingUtilities.invokeLater(() ->
+		// Chargement dans un thread séparé pour ne pas bloquer l'EDT
+		new Thread(() ->
 		{
 			boolean ok = chargerDepuisServeur();
-			if (ok)
+			SwingUtilities.invokeLater(() ->
 			{
-				// Connexion réussie → ouvrir l'application
-				this.fenetre = new FenetrePrincipale(this);
-			}
-			else
-			{
-				// Échec → retourner à l'écran de connexion
-				new app.ihm.login.FenetreConnexionClient();
-			}
-		});
+				if (ok)
+					this.fenetre = new FenetrePrincipale(this);
+				else
+					new app.ihm.login.FenetreConnexionClient();
+			});
+		}).start();
 	}
 
 	/**
@@ -74,18 +72,40 @@ public class ControleurClient implements IControleur
 	{
 		try
 		{
-			this.lots     = JsonSerialiser.deserialiserLots(get("/lots"));
-			this.societes = JsonSerialiser.deserialiserSocietes(get("/societes"), this.lots);
-			System.out.println("[Client] " + lots.size() + " lots, " + societes.size() + " sociétés.");
+			System.out.println("[Client] GET /lots...");
+			String jsonLots = get("/lots");
+			System.out.println("[Client] /lots reçu (" + jsonLots.length() + " chars)");
+
+			System.out.println("[Client] Début désérialisation lots...");
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(jsonLots);
+			} catch (Exception ex) {
+				System.err.println("[Client] CRASH deserialiserLots : " + ex);
+				ex.printStackTrace(System.out);
+				throw ex;
+			}
+			System.out.println("[Client] " + lots.size() + " lots désérialisés");
+
+			System.out.println("[Client] GET /societes...");
+			String jsonSoc = get("/societes");
+			System.out.println("[Client] /societes reçu (" + jsonSoc.length() + " chars)");
+
+			this.societes = JsonSerialiser.deserialiserSocietes(jsonSoc, this.lots);
+			System.out.println("[Client] " + societes.size() + " sociétés désérialisées");
+
+			System.out.println("[Client] ✓ Chargement OK → ouverture FenetrePrincipale");
 			return true;
 		}
-		catch (Exception e)
+		catch (Throwable e)
 		{
-			JOptionPane.showMessageDialog(null,
-				"Impossible de contacter le serveur :\n" + urlServeur
-				+ "\n\n" + e.getMessage()
-				+ "\n\nVérifiez que ServeurHTTP est démarré et que l'IP est correcte.",
-				"Erreur de connexion", JOptionPane.ERROR_MESSAGE);
+			System.out.println("[Client] ERREUR chargerDepuisServeur : " + e.getClass().getName());
+			System.out.println("[Client] Message : " + e.getMessage());
+			e.printStackTrace(System.out);
+			SwingUtilities.invokeLater(() ->
+				JOptionPane.showMessageDialog(null,
+					"Impossible de charger les données :\n" + e.getClass().getName() + "\n" + e.getMessage(),
+					"Erreur de connexion", JOptionPane.ERROR_MESSAGE)
+			);
 			return false;
 		}
 	}
@@ -452,7 +472,10 @@ public class ControleurClient implements IControleur
 
 	public static void main(String[] args)
 	{
-		// Sans argument → fenêtre de connexion pour entrer l'IP
-		SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
+		if (args.length > 0)
+			SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
+		else
+			// Sans argument → fenêtre de connexion pour entrer l'IP
+			SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
 	}
 }
