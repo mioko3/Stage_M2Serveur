@@ -12,10 +12,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
 /**
- * Couche métier pure — AUCUNE dépendance Swing.
+ * Couche métier pure — aucune dépendance Swing.
  *
  * Toute interaction avec l'utilisateur (JFileChooser, JOptionPane, System.exit)
- * est gérée par le Contrôleur, pas ici.
+ * a été retirée. PlanningGlobal reçoit des chemins de fichiers en paramètre,
+ * lance des exceptions en cas d'erreur, et laisse le Contrôleur décider
+ * comment réagir (afficher un dialogue, logger, quitter…).
  */
 public class PlanningGlobal
 {
@@ -27,6 +29,11 @@ public class PlanningGlobal
 
 	// ── Constructeur ──────────────────────────────────────────────────────
 
+	/**
+	 * Constructeur vide : le planning est initialisé à vide.
+	 * C'est le Contrôleur qui appellera chargerDepuisExcel() ou chargerDepuisJson()
+	 * selon le choix de l'utilisateur.
+	 */
 	public PlanningGlobal()
 	{
 		this.societes   = new ArrayList<>();
@@ -37,6 +44,15 @@ public class PlanningGlobal
 
 	// ── Chargement des données ────────────────────────────────────────────
 
+	/**
+	 * Charge les lots depuis un fichier Excel (XLSX/XLSM).
+	 * Lance une IOException si le fichier est illisible.
+	 *
+	 * @param cheminXlsx chemin absolu vers le fichier Excel
+	 * @param cheminSocietes chemin vers le JSON des sociétés
+	 * @param semaine numéro de semaine (pour les heures ACE)
+	 * @param cheminXlsxHeures chemin vers le fichier Excel des heures (peut être le même)
+	 */
 	public void chargerDepuisExcel(String cheminXlsx, String cheminSocietes,
 	                               int semaine, String cheminXlsxHeures) throws IOException
 	{
@@ -45,24 +61,38 @@ public class PlanningGlobal
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsxHeures, this.societes, semaine);
 	}
 
+	/**
+	 * Charge les lots et sociétés depuis les fichiers JSON de secours.
+	 *
+	 * @param cheminLotsJson    chemin vers lots.json
+	 * @param cheminSocietesJson chemin vers societes.json
+	 */
 	public void chargerDepuisJson(String cheminLotsJson, String cheminSocietesJson) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminLotsJson);
 		this.societes = ExcelReader.lireSocietes(cheminSocietesJson);
 	}
 
+	/**
+	 * Importe de nouveaux lots depuis un fichier Excel et les ajoute
+	 * à la liste existante (sans effacer les lots déjà présents).
+	 *
+	 * @param cheminXlsx chemin absolu vers le fichier Excel
+	 */
 	public void importerNouveauxLots(String cheminXlsx) throws IOException
 	{
 		ArrayList<Lot> nouveaux = ExcelReader.lireLots(cheminXlsx);
-		for (Lot ln : nouveaux)
-		{
-			boolean deja = false;
-			for (Lot l : this.lots)
-				if (l.getNumCDE() == ln.getNumCDE()) { deja = true; break; }
-			if (!deja) this.lots.add(ln);
-		}
+		for (Lot l : this.lots)
+			for (Lot ln : nouveaux)
+				if (!l.equals(ln)) this.lots.add(ln);
 	}
 
+	/**
+	 * Met à jour les heures disponibles des sociétés depuis un fichier Excel.
+	 *
+	 * @param cheminXlsx chemin absolu vers le fichier Excel
+	 * @param semaine    numéro de semaine à lire
+	 */
 	public void mettreAJourHeuresSocietes(String cheminXlsx, int semaine) throws IOException
 	{
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsx, this.societes, semaine);
@@ -70,11 +100,11 @@ public class PlanningGlobal
 
 	public void nouveau()
 	{
-		this.lots       = new ArrayList<>();
+		this.lots = new ArrayList<Lot>();
 		this.ficheRoute = new ArrayList<>();
 	}
 
-	// ── Modification lots ─────────────────────────────────────────────────
+	// ── Méthodes IHM (inchangées, pas de Swing) ───────────────────────────
 
 	public void modifierLot(Lot lot, String typologie, String affaire,
 	                        int nbPieces, double cadence, int valeurVente,
@@ -113,9 +143,9 @@ public class PlanningGlobal
 		}
 	}
 
-	public void modifierLotMethodeDistribution(Lot lot, String methode, String lotACharge)
+	public void modifierLotMethodeDistribution(Lot lot, String typologie, String lotACharge)
 	{
-		lot.setMethode   (methode    != null ? methode    : "");
+		lot.setMethode(typologie  != null ? typologie  : "");
 		lot.setLotACharge(lotACharge != null ? lotACharge : "");
 	}
 
@@ -123,18 +153,20 @@ public class PlanningGlobal
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{
 		Phase phase = lot.getPhase();
-		phase.setPreTri     (preTri);
-		phase.setSurPiste   (surPiste);
-		phase.setSortieEtiq (sortieEtiq);
-		phase.setTri        (tri);
-		phase.setFinit      (finit);
+		phase.setPreTri      (preTri);
+		phase.setSurPiste    (surPiste);
+		phase.setSortieEtiq  (sortieEtiq);
+		phase.setTri         (tri);
+		phase.setFinit       (finit);
 		if (finit)
 		{
-			String formatted = LocalDateTime.now()
-				.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+			LocalDateTime now = LocalDateTime.now();
+			DateTimeFormatter formatter =
+				DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+			String formatted = now.format(formatter);
 			lot.setdateFin(formatted);
 		}
-		else { lot.setdateFin(""); }
+		else { lot.setdateFin("");}
 	}
 
 	public void marquerLotTermine(Lot lot)
@@ -143,26 +175,6 @@ public class PlanningGlobal
 		lot.getSuivieProd().setNbPieceEtiq  (lot.getNbPieces());
 		lot.getSuivieProd().setNbPieceRepart(lot.getNbPieces());
 	}
-
-	public void commencerLot(Lot l)
-	{
-		String formatted = LocalDateTime.now()
-			.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
-		l.setDateDebut(formatted);
-	}
-
-	public void annulerLot(Lot l)
-	{
-		l.setDateDebut("");
-		l.setdateFin("");
-		l.getPhase().setPreTri     (false);
-		l.getPhase().setSurPiste   (false);
-		l.getPhase().setSortieEtiq (false);
-		l.getPhase().setTri        (false);
-		l.getPhase().setFinit      (false);
-	}
-
-	// ── Modification sociétés / ACE ───────────────────────────────────────
 
 	public void modifierSociete(Societe soc, String nom, String ce,
 	                            int totalHeuresCE, int effectif)
@@ -178,6 +190,26 @@ public class PlanningGlobal
 		ace.setNom           (nom);
 		ace.setNbPers        (nbPers);
 		ace.setEffectifActuel(effectif);
+	}
+
+	public void commencerLot(Lot l)
+	{
+		LocalDateTime now = LocalDateTime.now();
+		DateTimeFormatter formatter =
+			DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+		String formatted = now.format(formatter);
+		l.setDateDebut(formatted);
+	}
+	public void annulerLot(Lot l)
+	{
+		l.setDateDebut("");
+		l.setdateFin("");
+		l.getPhase().setPreTri     (false);
+		l.getPhase().setSurPiste   (false);
+		l.getPhase().setSortieEtiq (false);
+		l.getPhase().setTri        (false);
+		l.getPhase().setFinit      (false);
+
 	}
 
 	// ── Recherche ─────────────────────────────────────────────────────────
@@ -201,6 +233,11 @@ public class PlanningGlobal
 
 	// ── Affectation ───────────────────────────────────────────────────────
 
+	/**
+	 * @return true si succès, false si la société n'a pas assez d'heures
+	 * ou que la société et l'ACE sont déjà affectés au lot. Dans ce cas,
+	 * aucune modification n'est appliquée.
+	 */
 	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
 	{
 		Societe ancSociete = getSocieteDuLot(lot);
@@ -215,6 +252,7 @@ public class PlanningGlobal
 		}
 
 		societe.ajouterLot(lot, ace);
+
 		return true;
 	}
 
@@ -228,10 +266,6 @@ public class PlanningGlobal
 			soc.enleverLot(lot);
 		}
 	}
-
-	// ── Ajout / Suppression lots ──────────────────────────────────────────
-
-	public void ajouterLot(Lot lot) { lots.add(lot); }
 
 	public void ajouterLot(int numCDE, String typologie, String affaire,
 	                       int nbPieces, double cadence, int valeurVente,
@@ -272,10 +306,10 @@ public class PlanningGlobal
 
 	// ── Getters / Setters ─────────────────────────────────────────────────
 
-	public ArrayList<Societe> getSocietes() { return societes; }
-	public ArrayList<Lot>     getLots()     { return lots;     }
-
-	public ArrayList<Ace> getTouteAces()
+	
+	public ArrayList<Societe> getSocietes()       { return societes; }
+	public ArrayList<Lot>     getLots()           { return lots;     }
+	public ArrayList<Ace>     getTouteAces()
 	{
 		ArrayList<Ace> tout = new ArrayList<>();
 		for (Societe s : societes)
@@ -283,11 +317,12 @@ public class PlanningGlobal
 				tout.add(a);
 		return tout;
 	}
-
 	public void setestHeureSup()
 	{
 		estHeureSup = !estHeureSup;
 		for (Lot l : this.lots)
+		{
 			l.calculDateFinThéorique();
+		}
 	}
 }

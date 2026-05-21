@@ -75,7 +75,7 @@ public class Societe
 			ace.enleverLotACE(lot);
 	}
 
-	public void calculHAces()
+	private void calculHAces()
 	{
 		int totalEffectif = 0;
 

@@ -66,7 +66,7 @@ public class Ace
 		if (!this.lots.contains(lot))
 		{
 			this.lots.add(lot);
-			lot.setNbPers(this.effectifActuel);
+			if (lot.getNbPers() <= 0) lot.setNbPers(this.effectifActuel);
 		}
 	}
 

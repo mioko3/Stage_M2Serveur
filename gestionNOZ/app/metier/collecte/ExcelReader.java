@@ -205,81 +205,6 @@ public class ExcelReader
 		return value.isEmpty() ? "" : value;
 	}
 
-	 /**
-	 * Lit le fichier Excel des heures ACE et retourne une Map
-	 * nomSociété → heures pour la semaine donnée.
-	 *
-	 * Utilisé par ControleurClient.nouvelleHeurePourSociete() pour
-	 * lire l'Excel localement et envoyer les données JSON au serveur.
-	 *
-	 * Convention attendue dans le fichier Excel :
-	 *   - Colonne A : nom de la société
-	 *   - Colonnes B, C, D... : heures par semaine (colonne = semaine - 1)
-	 *   - Ligne 1 : en-têtes (ignorée)
-	 *
-	 * Adapte cette méthode au format réel de ton fichier Excel.
-	 */
-	public static java.util.Map<String, Integer> lireHeuresSocietes(
-		String cheminXlsx, int semaine) throws IOException
-	{
-		java.util.Map<String, Integer> result = new java.util.LinkedHashMap<>();
- 
-		try (FileInputStream fis = new FileInputStream(cheminXlsx);
-			 Workbook wb = WorkbookFactory.create(fis))
-		{
-			FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();
-			Sheet sh = wb.getSheetAt(0);
- 
-			// Colonne de la semaine : semaine 1 → col 1 (B), semaine 2 → col 2 (C)...
-			int colSemaine = semaine; // ajuste si ton fichier commence autrement
- 
-			for (int i = 1; i <= sh.getLastRowNum(); i++)
-			{
-				Row row = sh.getRow(i);
-				if (row == null) continue;
- 
-				String nomSoc = strSafe(getCell(row, 0), evaluator);
-				if (nomSoc == null || nomSoc.isBlank()) continue;
- 
-				Cell cellH = getCell(row, colSemaine);
-				int heures = 0;
-				if (cellH != null)
-				{
-					try { heures = (int) Math.round(dblSafe(cellH, evaluator)); }
-					catch (Exception ignored) {}
-				}
- 
-				if (heures > 0)
-					result.put(nomSoc.trim(), heures);
-			}
-		}
-		return result;
-	}
- 
-	// Alias interne pour compatibilité (si strSafe / dblSafe n'existent pas encore)
-	private static String strSafe(Cell cell, FormulaEvaluator ev)
-	{
-		if (cell == null) return "";
-		return FORMATTER.formatCellValue(cell, ev).trim();
-	}
- 
-	private static double dblSafe(Cell cell, FormulaEvaluator ev)
-	{
-		if (cell == null) return 0.0;
-		try
-		{
-			if (cell.getCellType() == CellType.NUMERIC) return cell.getNumericCellValue();
-			if (cell.getCellType() == CellType.FORMULA)
-			{
-				try { return cell.getNumericCellValue(); }
-				catch (Exception e) { return 0.0; }
-			}
-			String s = FORMATTER.formatCellValue(cell, ev).trim().replace(",", ".");
-			return s.isEmpty() ? 0.0 : Double.parseDouble(s);
-		}
-		catch (Exception e) { return 0.0; }
-	}
-
 	// ── Lecture JSON ──────────────────────────────────────────────────────
 
 	private static ArrayList<Societe> lireSocietesJson(String cheminJson) throws IOException
@@ -391,6 +316,7 @@ public class ExcelReader
 			lot.setCollisage    (getInt   (obj, "collisage"));
 			lot.setEstMachine   (getBool  (obj, "estMachine"));
 			lot.setNbPers       (getInt(obj, "nbPers"));
+			lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
 
 			// ── Lignes de colisage multiples ──────────────────────────────
 			String blocLignes = extraireBloc(obj, "\"lignesColisage\"");

@@ -13,8 +13,6 @@ import java.util.ArrayList;
 
 public class DonneesSauvegarder
 {
-	private static final int VERSION = 2;
-
 	private static final String FICHIER_LOTS     = "lots.json";
 	private static final String FICHIER_SOCIETES = "societes.json";
 
@@ -64,6 +62,7 @@ public class DonneesSauvegarder
 				pw.println("    \"collisage\": "                + l.getCollisage()                                    + ",");
 				pw.println("    \"estMachine\": "               + l.estMachine()                                      + ",");
 				pw.println("    \"nbPers\": "                   + l.getNbPers()                                       + ",");
+				pw.println("    \"cadenceReel\": "              + l.getCadenceReel()                                  + ",");
 
 				// ── Lignes de colisage multiples ──────────────────────────
 				ArrayList<LigneColisage> lc = l.getLignesColisage();
@@ -192,84 +191,6 @@ public class DonneesSauvegarder
 
 	// ── Helpers ───────────────────────────────────────────────────────────
 
-	private Lot parseLot(String obj)
-	{
-		Lot lot = new Lot(
-			getInt   (obj, "numCDE"),
-			getInt   (obj, "nbPieces"),
-			getDouble(obj, "cadence"),
-			getDouble(obj, "heures"),
-			getInt   (obj, "valeurVente"),
-			getString(obj, "statut"),
-			getString(obj, "statutEchant")
-		);
-		String savedId = getString(obj, "id");
-		if (savedId != null && !savedId.isEmpty()) lot.setId(savedId);
-
-		lot.setTypologie    (getString(obj, "typologie"));
-		lot.setAffaire      (getString(obj, "affaire"));
-		lot.setSemaine      (getString(obj, "semaine"));
-		lot.setPriorite     (getInt   (obj, "priorite"));
-		lot.setLotACharge   (getString(obj, "lotACharge"));
-		lot.setEstSousDouane(getBool  (obj, "estSousDouane"));
-		lot.setDateReception(getString(obj, "dateReception"));
-		lot.setDatePaiement (getString(obj, "datePaiement"));
-		lot.setCommentaire  (getString(obj, "commentaire"));
-		lot.setEmplacement  (getString(obj, "emplacement"));
-		lot.getSuivieProd().setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
-		lot.getSuivieProd().setNbPieceRepart        (getInt(obj, "sp_nbPieceRepart"));
-		lot.getSuivieProd().setNbHeureEtiqRestant   (getInt(obj, "sp_nbHeureEtiqRestant"));
-		lot.getSuivieProd().setNbHeureRepartRestant (getInt(obj, "sp_nbHeureRepartRestant"));
-		lot.setMethode      (getString(obj, "methode"));
-		lot.setDistribution (getString(obj, "distribution"));
-		lot.setFormatCarton (getString(obj, "formatCarton"));
-		lot.setHeuresAce    (getDouble(obj, "heuresAce"));
-		lot.setCollisage    (getInt   (obj, "collisage"));
-		lot.setEstMachine   (getBool  (obj, "estMachine"));
-
-		// ── Lignes de colisage multiples ──────────────────────────────────
-		String blocLignes = extraireBloc(obj, "\"lignesColisage\"");
-		if (blocLignes != null)
-		{
-			for (String ligneObj : extraireObjets(blocLignes))
-			{
-				LigneColisage lc = LigneColisage.fromJson(ligneObj);
-				lc.recalculer(lot.getNbPieces());
-				lot.getLignesColisage().add(lc);
-			}
-		}
-
-		// Phase
-		Phase phase = new Phase();
-		phase.setPreTri     (getBool(obj, "phase_preTri"));
-		phase.setSurPiste   (getBool(obj, "phase_surPiste"));
-		phase.setSortieEtiq (getBool(obj, "phase_sortieEtiq"));
-		phase.setTri        (getBool(obj, "phase_tri"));
-		phase.setFinit      (getBool(obj, "phase_finit"));
-		lot.setPhase(phase);
-
-		return lot;
-	}
-
-	private Lot trouverLot(ArrayList<Lot> lots, String id)
-	{
-		for (Lot l : lots) if (id.equals(l.getId())) return l;
-		return null;
-	}
-
-	private ArrayList<String> parseIdList(String tableau)
-	{
-		ArrayList<String> liste = new ArrayList<>();
-		String contenu = tableau.replace("[", "").replace("]", "").trim();
-		if (contenu.isEmpty()) return liste;
-		for (String s : contenu.split(","))
-		{
-			String id = s.trim().replace("\"", "");
-			if (!id.isEmpty()) liste.add(id);
-		}
-		return liste;
-	}
-
 	private static String esc(String s)
 	{
 		if (s == null) return "\"\"";
@@ -277,93 +198,5 @@ public class DonneesSauvegarder
 		               .replace("\"", "\\\"")
 		               .replace("\n", "\\n")
 		               .replace("\r", "") + "\"";
-	}
-
-	private static String lireFichier(String chemin) throws IOException
-	{
-		StringBuilder sb = new StringBuilder();
-		try (BufferedReader br = new BufferedReader(
-				new InputStreamReader(new FileInputStream(chemin), StandardCharsets.UTF_8)))
-		{ String l; while ((l = br.readLine()) != null) sb.append(l); }
-		return sb.toString();
-	}
-
-	private static String extraireBloc(String json, String cle)
-	{
-		int pos = json.indexOf(cle); if (pos < 0) return null;
-		int p = pos + cle.length();
-		while (p < json.length() && json.charAt(p) != '[' && json.charAt(p) != '{') p++;
-		if (p >= json.length()) return null;
-		char open = json.charAt(p), close = open == '[' ? ']' : '}';
-		int depth = 0, start = p;
-		for (int i = p; i < json.length(); i++)
-		{ char c = json.charAt(i); if (c==open) depth++; else if (c==close){depth--; if(depth==0) return json.substring(start,i+1);} }
-		return null;
-	}
-
-	private static String extraireTableauPrimitif(String obj, String cle)
-	{
-		String pattern = "\"" + cle + "\"";
-		int pos = obj.indexOf(pattern); if (pos < 0) return null;
-		pos = obj.indexOf('[', pos + pattern.length()); if (pos < 0) return null;
-		int end = obj.indexOf(']', pos); if (end < 0) return null;
-		return obj.substring(pos, end + 1);
-	}
-
-	private static ArrayList<String> extraireObjets(String tableau)
-	{
-		ArrayList<String> liste = new ArrayList<>();
-		int depth = 0, start = -1;
-		for (int i = 0; i < tableau.length(); i++)
-		{ char c = tableau.charAt(i); if(c=='{'){if(depth==0)start=i;depth++;} else if(c=='}'){depth--;if(depth==0&&start>=0){liste.add(tableau.substring(start,i+1));start=-1;}} }
-		return liste;
-	}
-
-	private static String getString(String obj, String cle)
-	{
-		String pattern = "\"" + cle + "\"";
-		int pos = obj.indexOf(pattern); if (pos < 0) return "";
-		pos = obj.indexOf('"', pos + pattern.length() + 1); if (pos < 0) return "";
-		StringBuilder sb = new StringBuilder(); pos++;
-		while (pos < obj.length())
-		{
-			char c = obj.charAt(pos);
-			if (c == '\\' && pos + 1 < obj.length())
-			{
-				char nx = obj.charAt(pos + 1);
-				if (nx == '"')  { sb.append('"');  pos += 2; continue; }
-				if (nx == 'n')  { sb.append('\n'); pos += 2; continue; }
-				if (nx == '\\') { sb.append('\\'); pos += 2; continue; }
-			}
-			if (c == '"') break;
-			sb.append(c); pos++;
-		}
-		return sb.toString();
-	}
-
-	private static int getInt(String obj, String cle)
-	{
-		String pattern = "\"" + cle + "\":";
-		int pos = obj.indexOf(pattern); if (pos < 0) return 0;
-		pos += pattern.length(); while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
-		int end = pos; while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-')) end++;
-		try { return Integer.parseInt(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0; }
-	}
-
-	private static double getDouble(String obj, String cle)
-	{
-		String pattern = "\"" + cle + "\":";
-		int pos = obj.indexOf(pattern); if (pos < 0) return 0.0;
-		pos += pattern.length(); while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
-		int end = pos; while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '.' || obj.charAt(end) == '-')) end++;
-		try { return Double.parseDouble(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0.0; }
-	}
-
-	private static boolean getBool(String obj, String cle)
-	{
-		String pattern = "\"" + cle + "\":";
-		int pos = obj.indexOf(pattern); if (pos < 0) return false;
-		pos += pattern.length(); while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
-		return obj.startsWith("true", pos);
 	}
 }

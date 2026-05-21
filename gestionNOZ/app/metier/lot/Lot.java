@@ -3,6 +3,10 @@ package app.metier.lot;
 import app.metier.PlanningGlobal;
 import app.metier.ficheroute.Phase;
 import app.metier.ficheroute.SuivieProd;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -19,6 +23,7 @@ public class Lot
 {
 	public static final String[] F_CARTON = new String[]{"","1/16","1/8","1/4","1/2","box"};
 	public static final String[] DISTRI   = new String[]{"","PI","PM","PREPA","MI","PREPA + MI","PREPA + PART"};
+	private final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
 	private static ArrayList<String> tabId;
 	// ── Identité ──────────────────────────────────────────────────────────
@@ -49,10 +54,11 @@ public class Lot
 	private Phase      phase;
 	private Methode    methode;
 	private int    nbPalettes, nbColisPrevue, nbColisRecup, collisage,pcsUtiliser;
-	private String  distribution, poucentrecupCartonFour;
+	private String  distribution;
 	private String formatCarton, dateDebut, dateFin, dateFinTheorique; // "dd/MM/yyyy HH:mm:ss"
 	private boolean estMachine;
 	private int     nbPers;
+	private int poucentrecupCartonFour;
 
 	// ── Lignes de colisage multiples (cas rares) ──────────────────────────
 	private ArrayList<LigneColisage> lignesColisage = new ArrayList<>();
@@ -110,13 +116,19 @@ public class Lot
 	// ── Recalcul ───────────────────────────────────────────────
 	public void recalculerHeures()
 	{
-		this.heures = (this.cadenceReel > 0) ? this.nbPieces / this.cadenceReel : 0.0;
+		this.heures = arrondi2((this.cadenceReel > 0) ? this.nbPieces / this.cadenceReel : this.nbPieces / this.cadence);
 	}
 
 	public void calculHeuresPiste(int eff)
 	{
-		this.heuresAce = (this.cadenceReel > 0) ? this.nbPieces / (this.cadenceReel * eff) : 0.0;
+		this.heuresAce = arrondi2((this.cadenceReel > 0) ? this.nbPieces / (this.cadenceReel * eff) : this.nbPieces / (this.cadence * eff));
 		calculDateFinThéorique();
+		this.suivieProd.miseAJJourAvancement();
+	}
+
+	public void calculColisRecup()
+	{
+		this.nbColisRecup = (int) Math.round(this.nbPieces * (this.poucentrecupCartonFour / 100.0));
 	}
 
 	public void calculDateFinThéorique()
@@ -126,11 +138,8 @@ public class Lot
 
 		try
 		{
-			java.time.format.DateTimeFormatter fmt =
-				java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-
 			java.time.LocalDateTime curseur =
-				java.time.LocalDateTime.parse(this.dateDebut, fmt);
+				java.time.LocalDateTime.parse(this.dateDebut, FORMATTER);
 
 			java.time.LocalTime DEBUT_JOURNEE = java.time.LocalTime.of(8, 15);
 
@@ -214,12 +223,107 @@ public class Lot
 				}
 			}
 
-			this.dateFinTheorique = curseur.format(fmt);
+			this.dateFinTheorique = curseur.format(FORMATTER);
 		}
 		catch (Exception e)
 		{
 			this.dateFinTheorique = "";
 		}
+	}
+
+	public double getHeuresTravaillees()
+	{
+		if (this.dateDebut == null || this.dateFin == null ||
+			this.dateDebut.isEmpty() || this.dateFin.isEmpty())
+		{
+			return 0;
+		}
+		try
+		{
+			LocalDateTime debut = LocalDateTime.parse(this.dateDebut, FORMATTER);
+			LocalDateTime fin   = LocalDateTime.parse(this.dateFin, FORMATTER);
+			LocalTime DEBUT_JOURNEE = LocalTime.of(8, 15);
+			LocalTime FIN_LUN_JEU;
+			if (PlanningGlobal.estHeureSup)
+				FIN_LUN_JEU = LocalTime.of(17, 15);
+			else
+				FIN_LUN_JEU = LocalTime.of(16, 15);
+
+			LocalTime FIN_VEN = LocalTime.of(14, 30);
+			double minutesTravaillees = 0;
+			LocalDateTime curseur = debut;
+			while (curseur.isBefore(fin))
+			{
+				DayOfWeek jour = curseur.getDayOfWeek();
+
+				// week-end
+				if (jour == DayOfWeek.SATURDAY ||
+					jour == DayOfWeek.SUNDAY)
+				{
+					curseur = curseur.plusMinutes(1);
+					continue;
+				}
+
+				boolean isFriday = jour == DayOfWeek.FRIDAY;
+
+				LocalTime finJour =
+					isFriday ? FIN_VEN : FIN_LUN_JEU;
+
+				LocalTime pauseDebut =
+					isFriday ? LocalTime.of(11, 0)
+							: LocalTime.of(12, 0);
+
+				LocalTime pauseFin =
+					isFriday ? LocalTime.of(11, 45)
+							: LocalTime.of(12, 45);
+
+				LocalTime heure = curseur.toLocalTime();
+
+				boolean dansHoraire =
+					!heure.isBefore(DEBUT_JOURNEE) &&
+					heure.isBefore(finJour);
+
+				boolean dansPause =
+					!heure.isBefore(pauseDebut) &&
+					heure.isBefore(pauseFin);
+
+				if (dansHoraire && !dansPause)
+				{
+					minutesTravaillees++;
+				}
+
+				curseur = curseur.plusMinutes(1);
+			}
+
+			return minutesTravaillees / 60.0;
+		}
+		catch (Exception e)
+		{
+			return 0;
+		}
+	}
+
+	public double calculCadenceMoyenne()
+	{
+		double heures = getHeuresTravaillees();
+
+		if (heures <= 0 || this.nbPers <= 0)
+			return 0;
+
+		double cadence =
+			this.nbPieces / (heures * this.nbPers);
+
+		return Math.round(cadence * 100.0) / 100.0;
+	}
+
+	public String calculDuree()
+	{
+		double heuresTotales = getHeuresTravaillees();
+
+		long heures = (long) heuresTotales;
+		long minutes = (long)((heuresTotales - heures) * 60);
+
+		return heures + "h " + minutes + "m";
 	}
 
 	private double calculerPU()
@@ -312,7 +416,7 @@ public class Lot
 	public int        getNbColisPrevue() { return nbColisPrevue;}
 	public int        getNbColisRecup () { return nbColisRecup; }
 	public int        getCollisage    () { return collisage;   }
-	public String     getPoucentrecupCartonFour() { return poucentrecupCartonFour; }
+	public int     getPoucentrecupCartonFour() { return poucentrecupCartonFour; }
 	public String     getDateDebut    () { return dateDebut;   }
 	public String     getdateFin      () { return dateFin;     }
 	public String     getdateFinT      () { return dateFinTheorique;}
@@ -331,7 +435,13 @@ public class Lot
 		recalculerLignesColisage();
 	}
 	public void setCadence(double v)       { this.cadence      = v; }
-	public void setCadenceReel(double v)   { this.cadenceReel  = v; this.calculHeuresPiste(this.nbPers);this.recalculerHeures();}
+	public void setCadenceReel(double v) 
+	{
+		if (v > 0) this.cadenceReel = v;
+		else       this.cadenceReel = this.cadence;
+		this.calculHeuresPiste(this.nbPers);
+		this.recalculerHeures();
+	}
 	public void setHeures(double v)        { this.heures       = v; }
 	public void setValeurVente(int v)      { this.valeurVente  = v; this.prixUnitaire = calculerPU(); }
 	public void setPrixUnitaire(double v)  { this.prixUnitaire = v; }
@@ -355,10 +465,16 @@ public class Lot
 	public void setNbColisPrevue(int v)     { this.nbColisPrevue = v;}
 	public void setNbColisRecup(int v)      { this.nbColisRecup = v; }
 	public void setCollisage(int v)         { this.collisage = v; recalculNbPalette(); }
-	public void setPoucentrecupCartonFour(String v) { this.poucentrecupCartonFour = v; }
+	public void setPoucentrecupCartonFour(int v) { this.poucentrecupCartonFour = v; calculColisRecup();System.err.println("bouboubou");}
 	public void setDateDebut(String v)      { this.dateDebut = v;    }
 	public void setdateFin(String v)        { this.dateFin = v;      }
 	public void setdateFinT(String v)       { this.dateFinTheorique = v; }
 	public void setEstMachine(boolean v)    { this.estMachine = v;   }
 	public void setNbPers(int v)            { this.nbPers = v; this.calculHeuresPiste(v); }
+
+
+	private double arrondi2(double val)
+	{
+		return Math.round(val * 100.0) / 100.0;
+	}
 }
