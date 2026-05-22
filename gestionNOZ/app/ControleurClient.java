@@ -63,6 +63,7 @@ public class ControleurClient implements IControleur
 					new app.ihm.login.FenetreConnexionClient();
 			});
 		}).start();
+		demarrerPolling();
 	}
 
 	/**
@@ -467,6 +468,55 @@ public class ControleurClient implements IControleur
 		System.err.println("[Client] " + m + " : " + (e != null ? e.getMessage() : "null"));
 		if (e != null) e.printStackTrace();
 	}
+
+	// ── Polling ───────────────────────────────────────────────────────────
+
+	private static final int POLLING_INTERVAL_MS = 3000; // 3 secondes
+
+	private void demarrerPolling()
+	{
+		Thread t = new Thread(() ->
+		{
+			while (true)
+			{
+				try
+				{
+					Thread.sleep(POLLING_INTERVAL_MS);
+					boolean modif = rafraichirSiModif();
+					if (modif && fenetre != null)
+						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
+				}
+				catch (InterruptedException e) { break; }
+				catch (Exception ignored) {}
+			}
+		});
+		t.setDaemon(true); // s'arrête avec l'appli
+		t.setName("polling-serveur");
+		t.start();
+	}
+
+	/**
+	 * Compare l'empreinte (hash ou taille) des données serveur vs cache local.
+	 * @return true si les données ont changé et le cache a été mis à jour
+	 */
+	private boolean rafraichirSiModif()
+	{
+		try
+		{
+			String rep = get("/version");
+			String v   = JsonSerialiser.extraireString(rep, "v");
+			if (v != null && !v.equals(versionLocale))
+			{
+				versionLocale = v;
+				chargerDepuisServeur();
+				return true;
+			}
+		}
+		catch (Exception ignored) {}
+		return false;
+	}
+
+	private volatile String versionLocale = "";
 
 	// ── Main ──────────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@
       { "nom": "FLORE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 9, "estMachine": false, "lotsACE": ["108acb43-d305-4121-84e1-4135763f0766","44aa66bd-bc67-49e7-b010-ea0ba413d498","dbb95ba8-cac9-4401-b4d4-d72591282ec4"] },
       { "nom": "SOPHIE F", "nbPers": 0, "totalHeures": 0, "effectifActuel": 9, "estMachine": false, "lotsACE": ["6cdbe3e8-519a-443e-b088-4c4dae1eaf4d","ebbeb3de-6191-486c-9618-c04c8d537202"] }
     ],
-    "lotsAffectes": ["538cf1c7-c48d-4cf0-a085-59209357dee4","eac91755-4376-4e4e-ab4e-88d89bce3fbd","108acb43-d305-4121-84e1-4135763f0766","44aa66bd-bc67-49e7-b010-ea0ba413d498","dbb95ba8-cac9-4401-b4d4-d72591282ec4","6cdbe3e8-519a-443e-b088-4c4dae1eaf4d","ebbeb3de-6191-486c-9618-c04c8d537202","3f2c3194-4457-451c-964b-63d7eb1d0b21"]
+    "lotsAffectes": ["538cf1c7-c48d-4cf0-a085-59209357dee4","eac91755-4376-4e4e-ab4e-88d89bce3fbd","3f2c3194-4457-451c-964b-63d7eb1d0b21","108acb43-d305-4121-84e1-4135763f0766","44aa66bd-bc67-49e7-b010-ea0ba413d498","dbb95ba8-cac9-4401-b4d4-d72591282ec4","6cdbe3e8-519a-443e-b088-4c4dae1eaf4d","ebbeb3de-6191-486c-9618-c04c8d537202"]
   },
   {
     "nom": "CFP",
@@ -33,11 +33,11 @@
   {
     "nom": "NP",
     "ce": "CHRISTELLE",
-    "totalHeuresCE": 114,
+    "totalHeuresCE": -20,
     "aces": [
-      { "nom": "CHRISTELLE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 4, "estMachine": false, "lotsACE": ["31605607-eea2-4f2f-86a9-616f0e69dbae","84e8f4c0-f7ca-43bf-864d-ae512cd056f8"] }
+      { "nom": "CHRISTELLE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 4, "estMachine": false, "lotsACE": ["31605607-eea2-4f2f-86a9-616f0e69dbae","84e8f4c0-f7ca-43bf-864d-ae512cd056f8","53603233-c4cd-40eb-98e8-df931cef309e"] }
     ],
-    "lotsAffectes": ["31605607-eea2-4f2f-86a9-616f0e69dbae","84e8f4c0-f7ca-43bf-864d-ae512cd056f8"]
+    "lotsAffectes": ["31605607-eea2-4f2f-86a9-616f0e69dbae","84e8f4c0-f7ca-43bf-864d-ae512cd056f8","53603233-c4cd-40eb-98e8-df931cef309e"]
   },
   {
     "nom": "Autre 3",
