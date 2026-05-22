@@ -13,12 +13,12 @@
   {
     "nom": "CFP",
     "ce": "LAETITIA",
-    "totalHeuresCE": 777,
+    "totalHeuresCE": 204,
     "aces": [
-      { "nom": "SOLENNE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 12, "estMachine": false, "lotsACE": ["6dfdf922-ed89-489f-b046-db052c4b46eb"] },
+      { "nom": "SOLENNE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 12, "estMachine": false, "lotsACE": ["6dfdf922-ed89-489f-b046-db052c4b46eb","fe093d6f-ef13-4df8-b96a-f8f3daefaf28"] },
       { "nom": "CAMILLE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 12, "estMachine": false, "lotsACE": ["45808d9d-60fc-47cd-9871-50396ed25a34"] }
     ],
-    "lotsAffectes": ["6dfdf922-ed89-489f-b046-db052c4b46eb","45808d9d-60fc-47cd-9871-50396ed25a34"]
+    "lotsAffectes": ["6dfdf922-ed89-489f-b046-db052c4b46eb","45808d9d-60fc-47cd-9871-50396ed25a34","fe093d6f-ef13-4df8-b96a-f8f3daefaf28"]
   },
   {
     "nom": "PA",

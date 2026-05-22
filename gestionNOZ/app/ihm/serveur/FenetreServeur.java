@@ -6,6 +6,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.io.File;
+import java.net.InetAddress;
 
 /**
  * ══════════════════════════════════════════════════════════════
@@ -163,25 +164,28 @@ public class FenetreServeur extends JFrame
 	private JPanel construirePanelInfo()
 	{
 		JPanel p = panelBordure("ℹ️  Informations");
+		try
+		{
+			lblNbClients = new JLabel("Clients connectés : —");
+			lblNbClients.setFont(new Font("SansSerif", Font.PLAIN, 12));
+			lblNbClients.setForeground(TEXTE);
+			lblNbClients.setAlignmentX(Component.LEFT_ALIGNMENT);
+			
+			InetAddress ip = InetAddress.getLocalHost();
+			JLabel lblPort = new JLabel("Port HTTP : "+ ip.getHostAddress() );
+			lblPort.setFont(new Font("SansSerif", Font.PLAIN, 12));
+			lblPort.setForeground(TEXTE_GRIS);
+			lblPort.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		lblNbClients = new JLabel("Clients connectés : —");
-		lblNbClients.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		lblNbClients.setForeground(TEXTE);
-		lblNbClients.setAlignmentX(Component.LEFT_ALIGNMENT);
+			JLabel lblInfo = infoLabel(
+				"Les clients ne peuvent pas changer de semaine ni charger de données eux-mêmes.");
 
-		JLabel lblPort = new JLabel("Port HTTP : 8080");
-		lblPort.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		lblPort.setForeground(TEXTE_GRIS);
-		lblPort.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		JLabel lblInfo = infoLabel(
-			"Les clients ne peuvent pas changer de semaine ni charger de données eux-mêmes.");
-
-		p.add(lblNbClients);
-		p.add(Box.createVerticalStrut(4));
-		p.add(lblPort);
-		p.add(Box.createVerticalStrut(4));
-		p.add(lblInfo);
+			p.add(lblNbClients);
+			p.add(Box.createVerticalStrut(4));
+			p.add(lblPort);
+			p.add(Box.createVerticalStrut(4));
+			p.add(lblInfo);
+		}catch(Exception e) {System.err.println("erreur LocalHost");}
 
 		return p;
 	}

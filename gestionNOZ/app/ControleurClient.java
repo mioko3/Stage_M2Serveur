@@ -546,15 +546,32 @@ public class ControleurClient implements IControleur
 		t.start();
 	}
 
-	private long derniereVersion = -1;
+	private volatile String versionLocale = "";
 
-	private boolean rafraichirSiModif() throws Exception
+	private boolean rafraichirSiModif()
 	{
-		String rep = get("/version");
-		long v = Long.parseLong(JsonSerialiser.extraireString(rep, "v"));
-		if (v == derniereVersion) return false;
-		derniereVersion = v;
-		chargerDepuisServeur();
-		return true;
+		try
+		{
+			String rep = get("/version");
+			String v   = JsonSerialiser.extraireString(rep, "v");
+			if (v != null && !v.equals(versionLocale))
+			{
+				versionLocale = v;
+				chargerDepuisServeur();
+				return true;
+			}
+		}
+		catch (Exception ignored) {}
+		return false;
+	}
+
+	// ── Main ──────────────────────────────────────────────────────────────
+
+	public static void main(String[] args)
+	{
+		if (args.length > 0)
+			SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
+		else
+			SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
 	}
 }
