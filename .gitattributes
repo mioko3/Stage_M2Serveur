@@ -6,3 +6,5 @@ output/ServeurHTTP/runtime/lib/modules filter=lfs diff=lfs merge=lfs -text
 output/ServeurHTTP/runtime/** filter=lfs diff=lfs merge=lfs -text
 output/ControleurClient/runtime/** filter=lfs diff=lfs merge=lfs -text
 output/** filter=lfs diff=lfs merge=lfs -text
+gestionNOZ/output/ControleurClient/runtime/lib/modules filter=lfs diff=lfs merge=lfs -text
+gestionNOZ/output/**/runtime/lib/modules filter=lfs diff=lfs merge=lfs -text
