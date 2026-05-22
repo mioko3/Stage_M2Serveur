@@ -122,6 +122,12 @@ public class PanelGantt extends JPanel
 			int startX = LEFT + toWeekMinutes(start);
 			int endX = LEFT + toWeekMinutes(end);
 
+			// 🔥 correction si dépassement semaine
+			if (endX < startX)
+			{
+				endX = LEFT + DAYS.length * DAY_WIDTH + 50;
+			}
+
 			int width = Math.max(10, endX - startX);
 
 			int y = TOP + i * ROW + 8;
@@ -155,9 +161,13 @@ public class PanelGantt extends JPanel
 	{
 		int day = t.getDayOfWeek().getValue() - 1;
 
+		// 🔥 on force à rester dans 0–4 (Lun–Ven)
+		if (day < 0) day = 0;
+		if (day > 4) day = 4;
+
 		int minutesDay = t.getHour() * 60 + t.getMinute();
 
-		int startDay = 8 * 60;
+		int startDay = 8 * 60 + 15;
 
 		int minutesSinceStart = minutesDay - startDay;
 
@@ -186,12 +196,14 @@ public class PanelGantt extends JPanel
 
 	private LocalDateTime safeEnd(Lot l)
 	{
-		try {
+		try
+		{
 			if (l.getdateFin() != null && !l.getdateFin().isEmpty())
 				return LocalDateTime.parse(l.getdateFin(), fmt);
 
 			if (l.getdateFinT() != null && !l.getdateFinT().isEmpty())
 				return LocalDateTime.parse(l.getdateFinT(), fmt);
+
 		} catch (Exception ignored) {}
 
 		return safeStart(l).plusHours(1);
