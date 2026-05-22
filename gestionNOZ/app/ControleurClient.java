@@ -15,20 +15,21 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * ControleurClient — mode réseau.
  *
  * Implémente IControleur → compatible avec FenetrePrincipale et tous les panels.
- * S'ouvre directement sur FenetrePrincipale, sans passer par FenetreLogin.
  *
- * Lancement :
- *   java -cp ... app.ControleurClient [IP_SERVEUR]
- *   java -cp ... app.ihm.login.FenetreConnexionClient   ← GUI pour choisir l'IP
+ * RESTRICTIONS v2 :
+ *  - chargerDonnees() → BLOQUÉ (réservé au serveur)
+ *  - nouveaux()       → BLOQUÉ (réservé au serveur)
+ *  - sauvegarderDonnees() → autorisé (sauvegarde côté serveur)
+ *
+ * Ces actions sont désactivées dans le menu de FenetrePrincipale
+ * lorsqu'on est en mode client (détecté par instanceof ControleurClient).
  */
 public class ControleurClient implements IControleur
 {
@@ -51,7 +52,6 @@ public class ControleurClient implements IControleur
 
 		System.out.println("[Client] Connexion → " + urlServeur);
 
-		// Chargement dans un thread séparé pour ne pas bloquer l'EDT
 		new Thread(() ->
 		{
 			boolean ok = chargerDepuisServeur();
@@ -66,9 +66,6 @@ public class ControleurClient implements IControleur
 		demarrerPolling();
 	}
 
-	/**
-	 * @return true si le chargement a réussi, false en cas d'erreur réseau
-	 */
 	private boolean chargerDepuisServeur()
 	{
 		try
@@ -77,7 +74,6 @@ public class ControleurClient implements IControleur
 			String jsonLots = get("/lots");
 			System.out.println("[Client] /lots reçu (" + jsonLots.length() + " chars)");
 
-			System.out.println("[Client] Début désérialisation lots...");
 			try {
 				this.lots = JsonSerialiser.deserialiserLots(jsonLots);
 			} catch (Exception ex) {
@@ -113,8 +109,8 @@ public class ControleurClient implements IControleur
 
 	// ── IControleur : Données ─────────────────────────────────────────────
 
-	@Override public ArrayList<Societe> getSocietes()          { return societes;          }
-	@Override public ArrayList<Lot>     getLots()              { return lots;              }
+	@Override public ArrayList<Societe> getSocietes() { return societes; }
+	@Override public ArrayList<Lot>     getLots()     { return lots;     }
 
 	// ── IControleur : Lots ────────────────────────────────────────────────
 
@@ -127,28 +123,35 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void ajouterLot(int numCDE, String typologie, String affaire,
-	                       int nbPieces, double cadence, int valeurVente,
-	                       String statut, String statutEchant,
-	                       String semaine, int priorite,
-	                       String lotACharge, String emplacement,
-	                       boolean sousDouane, String dateReception,
-	                       String datePaiement, String commentaire)
+						   int nbPieces, double cadence, int valeurVente,
+						   String statut, String statutEchant,
+						   String semaine, int priorite,
+						   String lotACharge, String emplacement,
+						   boolean sousDouane, String dateReception,
+						   String datePaiement, String commentaire)
 	{
 		try
 		{
-			String c = "{\"numCDE\":" + numCDE
-				+ ",\"typologie\":"    + e(typologie)    + ",\"affaire\":"       + e(affaire)
-				+ ",\"nbPieces\":"     + nbPieces         + ",\"cadence\":"       + cadence
-				+ ",\"valeurVente\":"  + valeurVente      + ",\"statut\":"        + e(statut)
-				+ ",\"statutEchant\":" + e(statutEchant)  + ",\"semaine\":"       + e(semaine)
-				+ ",\"priorite\":"     + priorite         + ",\"lotACharge\":"    + e(lotACharge)
-				+ ",\"emplacement\":"  + e(emplacement)   + ",\"estSousDouane\":" + sousDouane
-				+ ",\"dateReception\":" + e(dateReception) + ",\"datePaiement\":"  + e(datePaiement)
-				+ ",\"commentaire\":"  + e(commentaire)   + "}";
+			String c = "{\"numCDE\":"      + numCDE
+				+ ",\"typologie\":"    + e(typologie)
+				+ ",\"affaire\":"      + e(affaire)
+				+ ",\"nbPieces\":"     + nbPieces
+				+ ",\"cadence\":"      + cadence
+				+ ",\"valeurVente\":"  + valeurVente
+				+ ",\"statut\":"       + e(statut)
+				+ ",\"statutEchant\":" + e(statutEchant)
+				+ ",\"semaine\":"      + e(semaine)
+				+ ",\"priorite\":"     + priorite
+				+ ",\"lotACharge\":"   + e(lotACharge)
+				+ ",\"emplacement\":"  + e(emplacement)
+				+ ",\"estSousDouane\":" + sousDouane
+				+ ",\"dateReception\":" + e(dateReception)
+				+ ",\"datePaiement\":"  + e(datePaiement)
+				+ ",\"commentaire\":"   + e(commentaire) + "}";
 			this.lots = JsonSerialiser.deserialiserLots(post("/lots/ajouter", c));
 			autoSauvegarde();
 		}
-		catch (Exception e) { err("ajouterLot", e); }
+		catch (Exception e) { err("ajouterLot(params)", e); }
 	}
 
 	@Override
@@ -158,88 +161,77 @@ public class ControleurClient implements IControleur
 		catch (Exception e) { err("supprimerLot", e); }
 	}
 
-	public void sauvegarderLots() { autoSauvegarde(); }
-
 	@Override
 	public void exportNewLot()
 	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Fichier des nouveaux lots");
-		fc.setFileFilter(new FileNameExtensionFilter("Excel", "xlsx", "xlsm"));
-		if (fc.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) return;
-		try
-		{
-			ArrayList<Lot> nouveaux = app.metier.collecte.ExcelReader.lireLots(fc.getSelectedFile().getAbsolutePath());
-			int n = 0;
-			for (Lot l : nouveaux) {
-				boolean deja = lots.stream().anyMatch(x -> x.getNumCDE() == l.getNumCDE());
-				if (!deja) { ajouterLot(l); n++; }
-			}
-			JOptionPane.showMessageDialog(null, n + " lot(s) importé(s).", "Import", JOptionPane.INFORMATION_MESSAGE);
-			if (fenetre != null) fenetre.rafraichirTout();
-		}
-		catch (Exception ex) { JOptionPane.showMessageDialog(null, "Erreur : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE); }
+		try { post("/nouveaux", "{}"); chargerDepuisServeur(); if (fenetre != null) fenetre.rafraichirTout(); }
+		catch (Exception e) { err("exportNewLot", e); }
 	}
 
-	// ── Affectation ───────────────────────────────────────────────────────
-
-	@Override
-	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
-	{
-		try {
-			String c = "{\"numCDE\":" + lot.getNumCDE()
-				+ ",\"nomSociete\":" + e(societe.getNom())
-				+ ",\"nomAce\":"     + e(ace.getNom()) + "}";
-			majDual(post("/lots/affecter", c));
-			autoSauvegarde();
-			return true;
-		} catch (Exception e) { err("affecterLot", e); return false; }
-	}
-
-	@Override
-	public void desaffecterLot(Lot lot)
-	{
-		try { majDual(post("/lots/desaffecter", "{\"numCDE\":" + lot.getNumCDE() + "}")); autoSauvegarde(); }
-		catch (Exception e) { err("desaffecterLot", e); }
-	}
-
-	// ── Modification lots ─────────────────────────────────────────────────
+	// ── IControleur : Modification lots ──────────────────────────────────
 
 	@Override
 	public void modifierLot(Lot lot, String typologie, String affaire,
-	                        int nbPieces, double cadence, int valeurVente,
-	                        String statut, String statutEchant,
-	                        String semaine, int priorite,
-	                        String lotACharge, String emplacement,
-	                        boolean sousDouane, String dateReception,
-	                        String datePaiement, String commentaire)
+							int nbPieces, double cadence, int valeurVente,
+							String statut, String statutEchant,
+							String semaine, int priorite,
+							String lotACharge, String emplacement,
+							boolean sousDouane, String dateReception,
+							String datePaiement, String commentaire)
 	{
-		try {
-			String c = "{\"numCDE\":" + lot.getNumCDE()
-				+ ",\"typologie\":"    + e(typologie)    + ",\"affaire\":"       + e(affaire)
-				+ ",\"nbPieces\":"     + nbPieces         + ",\"cadence\":"       + cadence
-				+ ",\"valeurVente\":"  + valeurVente      + ",\"statut\":"        + e(statut)
-				+ ",\"statutEchant\":" + e(statutEchant)  + ",\"semaine\":"       + e(semaine)
-				+ ",\"priorite\":"     + priorite         + ",\"lotACharge\":"    + e(lotACharge)
-				+ ",\"emplacement\":"  + e(emplacement)   + ",\"estSousDouane\":" + sousDouane
-				+ ",\"dateReception\":" + e(dateReception) + ",\"datePaiement\":"  + e(datePaiement)
-				+ ",\"commentaire\":"  + e(commentaire)   + "}";
+		try
+		{
+			String c = "{\"numCDE\":"      + lot.getNumCDE()
+				+ ",\"typologie\":"    + e(typologie)
+				+ ",\"affaire\":"      + e(affaire)
+				+ ",\"nbPieces\":"     + nbPieces
+				+ ",\"cadence\":"      + cadence
+				+ ",\"valeurVente\":"  + valeurVente
+				+ ",\"statut\":"       + e(statut)
+				+ ",\"statutEchant\":" + e(statutEchant)
+				+ ",\"semaine\":"      + e(semaine)
+				+ ",\"priorite\":"     + priorite
+				+ ",\"lotACharge\":"   + e(lotACharge)
+				+ ",\"emplacement\":"  + e(emplacement)
+				+ ",\"estSousDouane\":" + sousDouane
+				+ ",\"dateReception\":" + e(dateReception)
+				+ ",\"datePaiement\":"  + e(datePaiement)
+				+ ",\"commentaire\":"   + e(commentaire) + "}";
 			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifier", c));
 			autoSauvegarde();
-		} catch (Exception e) { err("modifierLot", e); }
+		}
+		catch (Exception e) { err("modifierLot", e); }
+	}
+
+	public void modifierLotMethodeDistribution(Lot lot, String methode, String lotACharge)
+	{
+		try
+		{
+			String c = "{\"numCDE\":" + lot.getNumCDE()
+				+ ",\"methode\":"    + e(methode)
+				+ ",\"lotACharge\":" + e(lotACharge) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifier", c));
+			autoSauvegarde();
+		}
+		catch (Exception ex) { err("modifierLotMethodeDistribution", ex); }
 	}
 
 	@Override
-	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste, boolean sortieEtiq, boolean tri, boolean finit)
+	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
+							  boolean sortieEtiq, boolean tri, boolean finit)
 	{
-		try {
+		try
+		{
 			String c = "{\"numCDE\":" + lot.getNumCDE()
-				+ ",\"preTri\":"     + preTri    + ",\"surPiste\":"   + surPiste
-				+ ",\"sortieEtiq\":" + sortieEtiq + ",\"tri\":"        + tri
-				+ ",\"finit\":"      + finit      + "}";
+				+ ",\"preTri\":"     + preTri
+				+ ",\"surPiste\":"   + surPiste
+				+ ",\"sortieEtiq\":" + sortieEtiq
+				+ ",\"tri\":"        + tri
+				+ ",\"finit\":"      + finit + "}";
 			this.lots = JsonSerialiser.deserialiserLots(post("/lots/phase", c));
 			autoSauvegarde();
-		} catch (Exception e) { err("modifierPhase", e); }
+		}
+		catch (Exception e) { err("modifierPhase", e); }
 	}
 
 	@Override
@@ -263,75 +255,98 @@ public class ControleurClient implements IControleur
 		catch (Exception e) { err("annulerLot", e); }
 	}
 
-	// ── Sociétés / ACE ────────────────────────────────────────────────────
+	// ── IControleur : Affectation ─────────────────────────────────────────
+
+	@Override
+	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
+	{
+		try
+		{
+			String c = "{\"numCDE\":" + lot.getNumCDE()
+				+ ",\"societe\":" + e(societe.getNom())
+				+ ",\"ace\":"     + e(ace.getNom()) + "}";
+			majDual(post("/lots/affecter", c));
+			autoSauvegarde();
+			return true;
+		}
+		catch (Exception ex) { err("affecterLot", ex); return false; }
+	}
+
+	@Override
+	public void desaffecterLot(Lot lot)
+	{
+		try { majDual(post("/lots/desaffecter", "{\"numCDE\":" + lot.getNumCDE() + "}")); autoSauvegarde(); }
+		catch (Exception e) { err("desaffecterLot", e); }
+	}
+
+	// ── IControleur : Sociétés ────────────────────────────────────────────
 
 	@Override
 	public void modifierSociete(Societe soc, String nom, String ce, int totalHeuresCE, int effectif)
 	{
-		try {
-			String c = "{\"nomActuel\":" + e(soc.getNom()) + ",\"nom\":" + e(nom) + ",\"ce\":" + e(ce)
-				+ ",\"totalHeuresCE\":" + totalHeuresCE + ",\"effectif\":" + effectif + "}";
-			this.societes = JsonSerialiser.deserialiserSocietes(post("/societes/modifier", c), this.lots);
-			autoSauvegarde();
-		} catch (Exception e) { err("modifierSociete", e); }
-	}
-
-	public void modifierAce(Ace ace, String nom, int nbPers, int effectif)
-	{
-		Societe soc = getSocieteDeAce(ace);
-		if (soc == null) return;
-		try {
-			String c = "{\"societe\":" + e(soc.getNom()) + ",\"nomActuel\":" + e(ace.getNom())
-				+ ",\"nom\":" + e(nom) + ",\"nbPers\":" + nbPers + ",\"effectif\":" + effectif + "}";
-			this.societes = JsonSerialiser.deserialiserSocietes(post("/aces/modifier", c), this.lots);
-			autoSauvegarde();
-		} catch (Exception e) { err("modifierAce", e); }
+		try
+		{
+			String c = "{\"nom\":"           + e(soc.getNom())
+				+ ",\"nouveauNom\":"   + e(nom)
+				+ ",\"ce\":"           + e(ce)
+				+ ",\"totalHeuresCE\":" + totalHeuresCE
+				+ ",\"effectif\":"     + effectif + "}";
+			this.societes = JsonSerialiser.deserialiserSocietes(
+				post("/societes/modifier", c), this.lots);
+		}
+		catch (Exception e) { err("modifierSociete", e); }
 	}
 
 	@Override
-	public boolean mettreAJourAces(Societe soc, List<Ace> nouvelles)
+	public boolean mettreAJourAces(Societe soc, List<Ace> nouvellesAces)
 	{
-		try {
-			StringBuilder ab = new StringBuilder("[");
-			for (int i = 0; i < nouvelles.size(); i++) {
-				Ace a = nouvelles.get(i);
-				if (i > 0) ab.append(",");
-				ab.append("{\"nom\":").append(e(a.getNom()))
+		try
+		{
+			StringBuilder sb = new StringBuilder("{\"societe\":" + e(soc.getNom()) + ",\"aces\":[");
+			for (int i = 0; i < nouvellesAces.size(); i++)
+			{
+				Ace a = nouvellesAces.get(i);
+				if (i > 0) sb.append(",");
+				sb.append("{\"nom\":").append(e(a.getNom()))
 				  .append(",\"nbPers\":").append(a.getNbPers())
-				  .append(",\"effectif\":").append(a.getEffectifActuel()).append("}");
+				  .append(",\"effectifActuel\":").append(a.getEffectifActuel()).append("}");
 			}
-			ab.append("]");
-			String c = "{\"societe\":" + e(soc.getNom()) + ",\"aces\":" + ab + "}";
-			this.societes = JsonSerialiser.deserialiserSocietes(post("/aces/mettreajour", c), this.lots);
-			autoSauvegarde();
+			sb.append("]}");
+			this.societes = JsonSerialiser.deserialiserSocietes(
+				post("/aces/mettreajour", sb.toString()), this.lots);
 			return true;
-		} catch (Exception e) { err("mettreAJourAces", e); return false; }
+		}
+		catch (Exception e) { err("mettreAJourAces", e); return false; }
 	}
 
 	@Override
 	public void nouvelleHeurePourSociete(int semaine)
 	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Fichier des heures ACE");
-		fc.setFileFilter(new FileNameExtensionFilter("Excel", "xlsx", "xlsm"));
-		if (fc.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) return;
-		try {
-			java.util.Map<String, Integer> heures = app.metier.collecte.ExcelReader.lireHeuresSocietes(
-				fc.getSelectedFile().getAbsolutePath(), semaine);
+		// Le client sélectionne le fichier Excel localement et envoie les heures parsées au serveur
+		String xlsx = demanderFichierExcel("Sélectionner le fichier des heures ACE");
+		if (xlsx == null) { JOptionPane.showMessageDialog(null, "Aucun fichier.", "Nouvelle heure", JOptionPane.INFORMATION_MESSAGE); return; }
+		try
+		{
+			// Lire les heures localement puis envoyer au serveur
+			java.util.Map<String, Integer> heuresParSoc = app.metier.collecte.ExcelReader.lireHeuresSocietes(xlsx, semaine);
+			if (heuresParSoc == null || heuresParSoc.isEmpty()) { JOptionPane.showMessageDialog(null, "Aucune donnée dans le fichier.", "Nouvelle heure", JOptionPane.WARNING_MESSAGE); return; }
+
 			StringBuilder sb = new StringBuilder("{\"societes\":[");
 			boolean first = true;
-			for (java.util.Map.Entry<String, Integer> entry : heures.entrySet()) {
+			for (java.util.Map.Entry<String, Integer> entry : heuresParSoc.entrySet())
+			{
 				if (!first) sb.append(",");
-				sb.append("{\"nom\":").append(e(entry.getKey()))
-				  .append(",\"heures\":").append(entry.getValue()).append("}");
+				sb.append("{\"nom\":").append(e(entry.getKey())).append(",\"heures\":").append(entry.getValue()).append("}");
 				first = false;
 			}
 			sb.append("]}");
-			this.societes = JsonSerialiser.deserialiserSocietes(post("/nouvelleheure", sb.toString()), this.lots);
+			String rep = post("/nouvelleheure", sb.toString());
+			this.societes = JsonSerialiser.deserialiserSocietes(rep, this.lots);
 			autoSauvegarde();
 			JOptionPane.showMessageDialog(null, "Heures ajoutées !", "OK", JOptionPane.INFORMATION_MESSAGE);
 			if (fenetre != null) fenetre.rafraichirTout();
-		} catch (Exception e) { JOptionPane.showMessageDialog(null, "Erreur : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE); }
+		}
+		catch (Exception e) { JOptionPane.showMessageDialog(null, "Erreur :\n" + e.getMessage(), "Nouvelle heure", JOptionPane.ERROR_MESSAGE); }
 	}
 
 	@Override
@@ -391,6 +406,9 @@ public class ControleurClient implements IControleur
 
 	// ── Sauvegarde / Chargement ───────────────────────────────────────────
 
+	/**
+	 * Sauvegarde autorisée : le serveur l'exécute côté serveur.
+	 */
 	@Override
 	public void sauvegarderDonnees(String cheminDossier, String semaine)
 	{
@@ -398,18 +416,39 @@ public class ControleurClient implements IControleur
 		catch (Exception e) { err("sauvegarderDonnees", e); }
 	}
 
+	/**
+	 * ── BLOQUÉ CÔTÉ CLIENT ────────────────────────────────────────────────
+	 * Le chargement de semaine est réservé au serveur (FenetreServeur).
+	 * Cette méthode affiche un message d'erreur explicatif.
+	 */
 	@Override
 	public void chargerDonnees(String chemin) throws IOException
 	{
-		try { majDual(post("/charger", "{\"chemin\":" + e(chemin) + "}")); if (fenetre != null) fenetre.rafraichirTout(); }
-		catch (Exception e) { throw new IOException(e.getMessage()); }
+		SwingUtilities.invokeLater(() ->
+			JOptionPane.showMessageDialog(null,
+				"⛔  Action réservée au serveur.\n\n"
+					+ "Le chargement d'une semaine ne peut être fait que\n"
+					+ "depuis le panneau de contrôle du serveur.\n\n"
+					+ "Demandez au responsable serveur de changer la semaine active.",
+				"Action non autorisée", JOptionPane.WARNING_MESSAGE)
+		);
 	}
 
+	/**
+	 * ── BLOQUÉ CÔTÉ CLIENT ────────────────────────────────────────────────
+	 * La création d'une nouvelle semaine est réservée au serveur.
+	 */
 	@Override
 	public void nouveaux()
 	{
-		try { post("/nouveaux", "{}"); chargerDepuisServeur(); if (fenetre != null) fenetre.rafraichirTout(); }
-		catch (Exception e) { err("nouveaux", e); }
+		SwingUtilities.invokeLater(() ->
+			JOptionPane.showMessageDialog(null,
+				"⛔  Action réservée au serveur.\n\n"
+					+ "La création d'une nouvelle semaine ne peut être faite que\n"
+					+ "depuis le panneau de contrôle du serveur.\n\n"
+					+ "Demandez au responsable serveur de charger la nouvelle semaine.",
+				"Action non autorisée", JOptionPane.WARNING_MESSAGE)
+		);
 	}
 
 	@Override
@@ -435,6 +474,18 @@ public class ControleurClient implements IControleur
 			for (Ace a : s.getAces())
 				if (a.getNom().equals(ace.getNom())) return s;
 		return null;
+	}
+
+	private String demanderFichierExcel(String titre)
+	{
+		javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+		fc.setDialogTitle(titre);
+		fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+			"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+		java.io.File def = new java.io.File("app/data");
+		if (def.exists()) fc.setCurrentDirectory(def);
+		return fc.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION
+			? fc.getSelectedFile().getAbsolutePath() : null;
 	}
 
 	private String get(String route) throws Exception
@@ -471,7 +522,7 @@ public class ControleurClient implements IControleur
 
 	// ── Polling ───────────────────────────────────────────────────────────
 
-	private static final int POLLING_INTERVAL_MS = 3000; // 3 secondes
+	private static final int POLLING_INTERVAL_MS = 3000;
 
 	private void demarrerPolling()
 	{
@@ -490,42 +541,20 @@ public class ControleurClient implements IControleur
 				catch (Exception ignored) {}
 			}
 		});
-		t.setDaemon(true); // s'arrête avec l'appli
+		t.setDaemon(true);
 		t.setName("polling-serveur");
 		t.start();
 	}
 
-	/**
-	 * Compare l'empreinte (hash ou taille) des données serveur vs cache local.
-	 * @return true si les données ont changé et le cache a été mis à jour
-	 */
-	private boolean rafraichirSiModif()
+	private long derniereVersion = -1;
+
+	private boolean rafraichirSiModif() throws Exception
 	{
-		try
-		{
-			String rep = get("/version");
-			String v   = JsonSerialiser.extraireString(rep, "v");
-			if (v != null && !v.equals(versionLocale))
-			{
-				versionLocale = v;
-				chargerDepuisServeur();
-				return true;
-			}
-		}
-		catch (Exception ignored) {}
-		return false;
-	}
-
-	private volatile String versionLocale = "";
-
-	// ── Main ──────────────────────────────────────────────────────────────
-
-	public static void main(String[] args)
-	{
-		if (args.length > 0)
-			SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
-		else
-			// Sans argument → fenêtre de connexion pour entrer l'IP
-			SwingUtilities.invokeLater(app.ihm.login.FenetreConnexionClient::new);
+		String rep = get("/version");
+		long v = Long.parseLong(JsonSerialiser.extraireString(rep, "v"));
+		if (v == derniereVersion) return false;
+		derniereVersion = v;
+		chargerDepuisServeur();
+		return true;
 	}
 }

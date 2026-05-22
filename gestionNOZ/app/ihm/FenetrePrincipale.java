@@ -1,276 +1,266 @@
 package app.ihm;
 
 import app.IControleur;
-import app.ihm.diagrame.*;
+import app.ControleurClient;
+import app.ihm.diagrame.PanelGantt;
 import app.ihm.ficheroute.PanelFicheRoute;
 import app.ihm.gestionlot.PanelAffectation;
 import app.ihm.gestionlot.PanelLots;
 import app.ihm.gestionlot.PanelSocietes;
 import app.ihm.map.PanelMap;
-import app.metier.PlanningGlobal;
-import app.metier.lot.Lot;
-import java.awt.BorderLayout;
-import java.awt.Button;
-import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import javax.swing.BorderFactory;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
-import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
 
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.KeyEvent;
+
+/**
+ * Fenêtre principale de l'application.
+ *
+ * MODIFICATION v2 :
+ *   En mode CLIENT (ControleurClient), les items de menu
+ *   "Charger une sauvegarde" et "Nouveaux fichiers JSON"
+ *   sont désactivés (grisés) avec une info-bulle explicative.
+ *   Seule la sauvegarde reste accessible.
+ */
 public class FenetrePrincipale extends JFrame
 {
-	private final IControleur ctrl;
+    private final IControleur ctrl;
 
-	private PanelAffectation panelAffectation;
-	private PanelSocietes    panelSocietes;
-	private PanelLots        panelLots;
-	private PanelFicheRoute  panelFicheRoute;
-	private PanelMap         panelMap;
-	private PanelDiagrame    panelAuto;
-	private JLabel           lblInfo;
+    private PanelAffectation panelAffectation;
+    private PanelFicheRoute  panelFicheRoute;
+    private PanelLots        panelLots;
+    private PanelSocietes    panelSocietes;
+    private PanelMap         panelMap;
+    private PanelGantt       panelAuto;
 
-	public FenetrePrincipale(IControleur ctrl)
-	{
-		this.ctrl = ctrl;
-		setTitle("Planning Global Futura — PAM ");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(1480, 780);
-		setExtendedState(JFrame.MAXIMIZED_BOTH);
-		setLocationRelativeTo(null);
-		setLayout(new BorderLayout());
-		getContentPane().setBackground(IhmUtils.FOND);
+    // ── Constructeur ─────────────────────────────────────────────────────
 
-		setJMenuBar(creerMenuBar());
-		add(creerEntete(), BorderLayout.NORTH);
+    public FenetrePrincipale(IControleur ctrl)
+    {
+        this.ctrl = ctrl;
 
-		this.panelAffectation = new PanelAffectation(ctrl, this);
-		this.panelSocietes    = new PanelSocietes   (ctrl, this);
-		this.panelLots        = new PanelLots       (ctrl, this);
-		this.panelFicheRoute  = new PanelFicheRoute (ctrl, this);
-		this.panelMap         = new PanelMap        (ctrl, this);
-		this.panelAuto        = new PanelDiagrame   (ctrl, this);
+        setTitle("gestionNOZ — Planning Global Futura"
+            + (estModeClient() ? "  [MODE CLIENT]" : ""));
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter()
+        {
+            @Override public void windowClosing(java.awt.event.WindowEvent e)
+            {
+                int r = JOptionPane.showConfirmDialog(FenetrePrincipale.this,
+                    "Quitter l'application ?", "Confirmation",
+                    JOptionPane.YES_NO_OPTION);
+                if (r == JOptionPane.YES_OPTION) System.exit(0);
+            }
+        });
 
-		JTabbedPane onglets = new JTabbedPane();
-		onglets.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		onglets.addTab("⊕ Affectation",      panelAffectation);
-		onglets.addTab("📋 Fiches de Route",   panelFicheRoute);
-		onglets.addTab("☰ Liste des lots",    panelLots);
-		onglets.addTab("🕒 Sociétés & heures", panelSocietes);
-		onglets.addTab("🗺 Carte entrepôt",    panelMap);
-		onglets.addTab("⚙ DiagrameGantt",     panelAuto);
-		add(onglets, BorderLayout.CENTER);
+        setSize(1400, 900);
+        setMinimumSize(new Dimension(1024, 600));
+        setLocationRelativeTo(null);
+        setJMenuBar(creerMenuBar());
 
-		onglets.addChangeListener(e -> {
-			if (onglets.getSelectedComponent() == panelFicheRoute)
-				panelFicheRoute.rafraichir();
-			if (onglets.getSelectedComponent() == panelMap)
-				panelMap.rafraichir();
-		});
+        panelAffectation = new PanelAffectation(ctrl);
+        panelFicheRoute  = new PanelFicheRoute (ctrl);
+        panelLots        = new PanelLots       (ctrl);
+        panelSocietes    = new PanelSocietes   (ctrl, this);
+        panelMap         = new PanelMap        (ctrl);
+        panelAuto        = new PanelGantt      (ctrl, this);
 
-		panelAffectation.remplirComboSocietes();
-		rafraichirTout();
-		setVisible(true);
-	}
+        JTabbedPane onglets = new JTabbedPane();
+        onglets.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        onglets.addTab("⊕ Affectation",      panelAffectation);
+        onglets.addTab("📋 Fiches de Route",   panelFicheRoute);
+        onglets.addTab("☰ Liste des lots",    panelLots);
+        onglets.addTab("🕒 Sociétés & heures", panelSocietes);
+        onglets.addTab("🗺 Carte entrepôt",    panelMap);
+        onglets.addTab("⚙ DiagrameGantt",     panelAuto);
+        add(onglets, BorderLayout.CENTER);
 
-	// ── Menu Fichier ──────────────────────────────────────────────────────
+        onglets.addChangeListener(e -> {
+            if (onglets.getSelectedComponent() == panelFicheRoute)
+                panelFicheRoute.rafraichir();
+            if (onglets.getSelectedComponent() == panelMap)
+                panelMap.rafraichir();
+        });
 
-	private JMenuBar creerMenuBar()
-	{
-		JMenuBar bar = new JMenuBar();
+        // Bandeau d'information en mode client
+        if (estModeClient())
+            add(construireBandeauClient(), BorderLayout.NORTH);
 
-		JMenu menuFichier = new JMenu("Fichier");
-		menuFichier.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        panelAffectation.remplirComboSocietes();
+        rafraichirTout();
+        setVisible(true);
+    }
 
-		JMenuItem itemOuvrir      = new JMenuItem("📂  Charger une sauvegarde…");
-		JMenuItem itemSauvegarder = new JMenuItem("💾  Sauvegarder      Ctrl+S");
-		JMenuItem itemNouveaux    = new JMenuItem("🆕  Nouveaux fichiers JSON…");
+    // ── Bandeau client ────────────────────────────────────────────────────
 
-		itemOuvrir     .addActionListener(e -> ouvrirSauvegarde());
-		itemSauvegarder.addActionListener(e -> sauvegarder());
-		itemNouveaux   .addActionListener(e -> nouveaux());
+    private JPanel construireBandeauClient()
+    {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        p.setBackground(new Color(40, 80, 140));
 
-		itemOuvrir     .setAccelerator(KeyStroke.getKeyStroke("ctrl O"));
-		itemSauvegarder.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
-		itemNouveaux   .setAccelerator(KeyStroke.getKeyStroke("ctrl N"));
+        JLabel ico = new JLabel("🔒");
+        ico.setFont(new Font("SansSerif", Font.PLAIN, 13));
 
-		menuFichier.add(itemOuvrir);
-		menuFichier.addSeparator();
-		menuFichier.add(itemSauvegarder);
-		menuFichier.addSeparator();
-		menuFichier.add(itemNouveaux);
+        JLabel txt = new JLabel(
+            "Mode CLIENT — Le chargement et la création de semaines sont réservés au serveur.");
+        txt.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        txt.setForeground(new Color(200, 220, 255));
 
-		bar.add(menuFichier);
-		return bar;
-	}
+        p.add(ico);
+        p.add(txt);
+        return p;
+    }
 
-	private void ouvrirSauvegarde()
-	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Ouvrir une sauvegarde JSON");
-		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+    // ── Menu Fichier ──────────────────────────────────────────────────────
 
-		String dossier = fc.getSelectedFile().getAbsolutePath();
-		try
-		{
-			ctrl.chargerDonnees(dossier);
-			this.panelAffectation.remplirComboSocietes();
-			this.panelFicheRoute.remplirComboSocietes();
-			JOptionPane.showMessageDialog(this,
-				"Sauvegarde chargée : " + fc.getSelectedFile().getName(),
-				"Chargement OK", JOptionPane.INFORMATION_MESSAGE);
-		}
-		catch (Exception ex)
-		{
-			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
-		}
-	}
+    private JMenuBar creerMenuBar()
+    {
+        JMenuBar bar = new JMenuBar();
 
-	private void sauvegarder()
-	{
-		sauvegarderSous();
-	}
+        JMenu menuFichier = new JMenu("Fichier");
+        menuFichier.setFont(new Font("SansSerif", Font.PLAIN, 13));
 
-	private void sauvegarderSous()
-	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Copier les fichiers JSON vers…");
-		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		fc.setAcceptAllFileFilterUsed(false);
+        JMenuItem itemOuvrir      = new JMenuItem("📂  Charger une sauvegarde…");
+        JMenuItem itemSauvegarder = new JMenuItem("💾  Sauvegarder      Ctrl+S");
+        JMenuItem itemNouveaux    = new JMenuItem("🆕  Nouveaux fichiers JSON…");
 
-		if (fc.showDialog(this, "Copier") != JFileChooser.APPROVE_OPTION) return;
+        itemOuvrir     .addActionListener(e -> ouvrirSauvegarde());
+        itemSauvegarder.addActionListener(e -> sauvegarder());
+        itemNouveaux   .addActionListener(e -> nouveaux());
 
-		String dossier = fc.getSelectedFile().getAbsolutePath();
-		String numSemaine = JOptionPane.showInputDialog(
-			this, "Numéro de semaine :", "Sauvegarde — semaine", JOptionPane.PLAIN_MESSAGE);
+        itemOuvrir     .setAccelerator(KeyStroke.getKeyStroke("ctrl O"));
+        itemSauvegarder.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
+        itemNouveaux   .setAccelerator(KeyStroke.getKeyStroke("ctrl N"));
 
-		if (numSemaine == null || numSemaine.isBlank()) return;
-		numSemaine = numSemaine.trim();
+        // ── En mode client : désactiver charger et nouveaux ───────────────
+        if (estModeClient())
+        {
+            String tooltip = "Réservé au serveur — demandez au responsable de changer la semaine";
+            itemOuvrir .setEnabled(false);
+            itemOuvrir .setToolTipText(tooltip);
+            itemNouveaux.setEnabled(false);
+            itemNouveaux.setToolTipText(tooltip);
+        }
 
-		try
-		{
-			ctrl.sauvegarderDonnees(dossier, numSemaine);
-			JOptionPane.showMessageDialog(this,
-				"Fichiers copiés vers : " + fc.getSelectedFile().getName(),
-				"Sauvegarde OK", JOptionPane.INFORMATION_MESSAGE);
-		}
-		catch (Exception ex)
-		{
-			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
-		}
-	}
+        menuFichier.add(itemOuvrir);
+        menuFichier.addSeparator();
+        menuFichier.add(itemSauvegarder);
+        menuFichier.addSeparator();
+        menuFichier.add(itemNouveaux);
 
-	public void nouveaux()
-	{
-		int res = JOptionPane.showConfirmDialog(this,
-			"Voulez-vous vraiment réinitialiser les données ?",
-			"Nouvelle session", JOptionPane.YES_NO_OPTION);
-		if (res == JOptionPane.YES_OPTION)
-		{
-			ctrl.nouveaux();
-			this.panelAffectation.remplirComboSocietes();
-			this.panelFicheRoute.remplirComboSocietes();
-			this.rafraichirTout();
-		}
-	}
+        bar.add(menuFichier);
+        return bar;
+    }
 
-	// ── En-tête ───────────────────────────────────────────────────────────
+    // ── Actions menu ──────────────────────────────────────────────────────
 
-	private JPanel creerEntete()
-	{
-		JPanel p = new JPanel(new BorderLayout());
-		p.setBackground(IhmUtils.HEADER);
-		p.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+    private void ouvrirSauvegarde()
+    {
+        // En mode client, cette méthode ne devrait pas être accessible
+        // (item désactivé), mais on garde la protection au cas où.
+        if (estModeClient())
+        {
+            JOptionPane.showMessageDialog(this,
+                "⛔  Action réservée au serveur.\nDemandez au responsable de changer la semaine active.",
+                "Action non autorisée", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-		JLabel titre = new JLabel("Planning Global Futura — Gestion des lots");
-		titre.setForeground(Color.WHITE);
-		titre.setFont(new Font("SansSerif", Font.BOLD, 17));
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Ouvrir une sauvegarde JSON");
+        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
 
-		Button btnRafraichir = new Button("⟳");
-		btnRafraichir.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		btnRafraichir.setBackground(IhmUtils.HEADER);
-		btnRafraichir.setForeground(new Color(255, 255, 180));
-		btnRafraichir.addActionListener(e -> this.rafraichirTout());
+        String dossier = fc.getSelectedFile().getAbsolutePath();
+        try
+        {
+            ctrl.chargerDonnees(dossier);
+            this.panelAffectation.remplirComboSocietes();
+            this.panelFicheRoute.remplirComboSocietes();
+            JOptionPane.showMessageDialog(this,
+                "Sauvegarde chargée : " + fc.getSelectedFile().getName(),
+                "Chargement OK", JOptionPane.INFORMATION_MESSAGE);
+        }
+        catch (Exception ex)
+        {
+            JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
+                "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-		Button btnSup = new Button("Heures Sup ");
-		btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		btnSup.setBackground(IhmUtils.HEADER);
-		btnSup.setForeground(new Color(255, 255, 180));
-		btnSup.addActionListener(e -> this.SemaineSup());
+    private void sauvegarder()
+    {
+        sauvegarderSous();
+    }
 
-		lblInfo = new JLabel(buildInfo());
-		lblInfo.setForeground(new Color(180, 180, 180));
-		lblInfo.setFont(new Font("SansSerif", Font.PLAIN, 12));
+    private void sauvegarderSous()
+    {
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Copier les fichiers JSON vers…");
+        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setAcceptAllFileFilterUsed(false);
 
-		JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		panelBtn.setBackground(IhmUtils.HEADER);
-		panelBtn.add(btnSup);
-		panelBtn.add(btnRafraichir);
+        if (fc.showDialog(this, "Copier") != JFileChooser.APPROVE_OPTION) return;
 
-		p.add(titre,    BorderLayout.WEST);
-		p.add(lblInfo,  BorderLayout.EAST);
-		p.add(panelBtn, BorderLayout.SOUTH);
+        String dossier = fc.getSelectedFile().getAbsolutePath();
+        String numSemaine = JOptionPane.showInputDialog(
+            this, "Numéro de semaine :", "Sauvegarde — semaine", JOptionPane.PLAIN_MESSAGE);
 
-		return p;
-	}
+        if (numSemaine == null || numSemaine.isBlank()) return;
+        numSemaine = numSemaine.trim();
 
-	private String buildInfo()
-	{
-		long nbAff = ctrl.getSocietes().stream().mapToLong(s -> s.getLots().size()).sum();
-		int  nbH   = ctrl.getSocietes().stream().mapToInt(s -> s.getTotalHeuresCE()).sum();
-		String heureSup = PlanningGlobal.estHeureSup ? "oui" : "non";
-		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot" + getHeureLotTotal()
-			+ ctrl.getSocietes().size() + " sociétés  |  "
-			+ nbAff + " affectés  |  "
-			+ nbH + "h disponibles  |  " + "Heures Sup : " + heureSup;
-	}
+        try
+        {
+            ctrl.sauvegarderDonnees(dossier, numSemaine);
+            JOptionPane.showMessageDialog(this,
+                "Fichiers copiés vers : " + fc.getSelectedFile().getName(),
+                "Sauvegarde OK", JOptionPane.INFORMATION_MESSAGE);
+        }
+        catch (Exception ex)
+        {
+            JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
+                "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-	public String getHeureLotTotal()
-	{
-		int total = 0;
-		for (Lot lot : ctrl.getLots())
-		{
-			if (!lot.getStatut().contains("bloqué") && !lot.isEstSousDouane())
-			{
-				if (ctrl.getSocieteDuLot(lot) == null)
-					total += lot.getHeures();
-			}
-		}
-		return total > 0 ? " (" + total + "h)  |  " : "  |  ";
-	}
+    public void nouveaux()
+    {
+        // En mode client, cette méthode ne devrait pas être accessible
+        if (estModeClient())
+        {
+            JOptionPane.showMessageDialog(this,
+                "⛔  Action réservée au serveur.\nDemandez au responsable de charger la nouvelle semaine.",
+                "Action non autorisée", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-	// ── Rafraîchissement global ───────────────────────────────────────────
+        int res = JOptionPane.showConfirmDialog(this,
+            "Voulez-vous vraiment réinitialiser les données ?",
+            "Nouveaux fichiers", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (res != JOptionPane.YES_OPTION) return;
 
-	public void rafraichirTout()
-	{
-		SwingUtilities.invokeLater(() -> {
-			this.panelAffectation.rafraichir();
-			this.panelSocietes   .rafraichir();
-			this.panelLots       .rafraichir();
-			this.panelFicheRoute .rafraichir();
-			this.panelMap        .rafraichir();
-			if (lblInfo != null) lblInfo.setText(buildInfo());
-		});
-		this.ctrl.autoSauvegarde();
-	}
+        ctrl.nouveaux();
+        rafraichirTout();
+    }
 
-	public void SemaineSup()
-	{
-		ctrl.semaineSup();
-		rafraichirTout();
-	}
+    // ── Rafraîchissement ──────────────────────────────────────────────────
 
-	public PanelAffectation getPanelAffectation() { return panelAffectation; }
+    public void rafraichirTout()
+    {
+        if (panelAffectation != null) { panelAffectation.remplirComboSocietes(); panelAffectation.rafraichir(); }
+        if (panelFicheRoute  != null) panelFicheRoute .rafraichir();
+        if (panelLots        != null) panelLots       .rafraichir();
+        if (panelSocietes    != null) panelSocietes   .rafraichir();
+        if (panelMap         != null) panelMap        .rafraichir();
+        if (panelAuto        != null) panelAuto       .rafraichir();
+    }
+
+    // ── Utilitaire ────────────────────────────────────────────────────────
+
+    /** Retourne true si on tourne en mode client réseau. */
+    private boolean estModeClient()
+    {
+        return ctrl instanceof ControleurClient;
+    }
 }
