@@ -810,5 +810,13 @@ public class ServeurHTTP
 		try (OutputStream os = ex.getResponseBody()) { os.write(bytes); }
 	}
 
-	public static void main(String[] args) throws Exception { new ServeurHTTP(); }
+	public static void main(String[] args)
+	{
+		System.out.println("SERVER START OK");
+		try {
+			new ServeurHTTP();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }
