@@ -66,13 +66,13 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		carte.add(Box.createRigidArea(new Dimension(0, 22)));
 
 		// Identifiant
-		carte.add(champLabel("Identifiant (PAM ou nom de société) :"));
+		carte.add(champLabel("Identifiant (Nom de société) :"));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
 		txtIdentifiant = champTexte("");
 		txtIdentifiant.addActionListener(this);
 		carte.add(txtIdentifiant);
 		carte.add(Box.createRigidArea(new Dimension(0, 18)));
-		
+
 		// IP
 		carte.add(champLabel("IP du serveur (ex: 192.168.1.10) :"));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
