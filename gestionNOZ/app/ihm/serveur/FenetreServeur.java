@@ -56,7 +56,7 @@ public class FenetreServeur extends JFrame
 			}
 		});
 
-		setSize(540, 460);
+		setSize(650, 540);
 		setLocationRelativeTo(null);
 		setResizable(false);
 		getContentPane().setBackground(FOND);
