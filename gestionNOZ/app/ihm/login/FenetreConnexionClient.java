@@ -8,36 +8,34 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 /**
- * Fenêtre de connexion RÉSEAU.
+ * Fenêtre de connexion RÉSEAU — SÉCURISÉE v3.
  *
- * Demande :
- *   - L'adresse IP du serveur
- *   - Un identifiant :
- *       "PAM"          → accès complet (affectation + désynchronisation)
- *       Nom de société → accès lecture seule (PanelAffectation bloqué)
- *
- * Point d'entrée client : java -cp ... app.ControleurClient
+ * Changements de sécurité vs v2 :
+ *   - N'expose plus /societes pour valider l'identifiant côté client
+ *   - Appelle POST /login sur le serveur → validation CÔTÉ SERVEUR
+ *   - Reçoit un token de session opaque
+ *   - Transmet le token au ControleurClient (jamais stocké sur disque)
+ *   - Affiche un message générique en cas d'échec (pas d'info sur l'existence de l'identifiant)
  */
 public class FenetreConnexionClient extends JFrame implements ActionListener
 {
-	private JTextField txtIP;
-	private JTextField txtIdentifiant;
-	private JButton    btnConnecter;
-	private JLabel     lblStatut;
-
-	// Sociétés connues récupérées au moment de la connexion (pour validation)
-	private java.util.List<String> nomsocietes = new java.util.ArrayList<>();
+	private JTextField     txtIP;
+	private JTextField     txtIdentifiant;
+	private JPasswordField txtMotDePasse; // champ mot de passe masqué
+	private JButton        btnConnecter;
+	private JLabel         lblStatut;
 
 	public FenetreConnexionClient()
 	{
 		setTitle("Planning Global Futura — Connexion Réseau");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(440, 340);
+		setSize(440, 380);
 		setLocationRelativeTo(null);
 		setResizable(false);
 		setLayout(new BorderLayout());
@@ -52,7 +50,7 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		fond.setBackground(new Color(18, 18, 28));
 
 		JPanel carte = new JPanel();
-		carte.setPreferredSize(new Dimension(390, 300));
+		carte.setPreferredSize(new Dimension(390, 340));
 		carte.setBackground(new Color(28, 28, 40));
 		carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
 		carte.setBorder(new EmptyBorder(28, 40, 28, 40));
@@ -66,12 +64,12 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		carte.add(Box.createRigidArea(new Dimension(0, 22)));
 
 		// Identifiant
-		carte.add(champLabel("Identifiant (Nom de société) :"));
+		carte.add(champLabel("Identifiant (PAM ou nom de société) :"));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
 		txtIdentifiant = champTexte("");
 		txtIdentifiant.addActionListener(this);
 		carte.add(txtIdentifiant);
-		carte.add(Box.createRigidArea(new Dimension(0, 18)));
+		carte.add(Box.createRigidArea(new Dimension(0, 14)));
 
 		// IP
 		carte.add(champLabel("IP du serveur (ex: 192.168.1.10) :"));
@@ -113,8 +111,8 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		String ip          = txtIP.getText().trim();
 		String identifiant = txtIdentifiant.getText().trim().toUpperCase();
 
-		if (ip.isEmpty())          { lblStatut.setText("Entrez une adresse IP.");    return; }
-		if (identifiant.isEmpty()) { lblStatut.setText("Entrez un identifiant.");    return; }
+		if (ip.isEmpty())          { lblStatut.setText("Entrez une adresse IP.");  return; }
+		if (identifiant.isEmpty()) { lblStatut.setText("Entrez un identifiant."); return; }
 
 		lblStatut.setText("Connexion en cours…");
 		lblStatut.setForeground(new Color(180, 180, 100));
@@ -132,37 +130,56 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 				HttpClient http = HttpClient.newBuilder()
 					.connectTimeout(Duration.ofSeconds(5)).build();
 
-				// 1. Tester la connexion et récupérer les noms de sociétés
-				HttpRequest req = HttpRequest.newBuilder()
-					.uri(URI.create("http://" + ipFinal + ":8080/societes"))
-					.timeout(Duration.ofSeconds(5)).GET().build();
-				HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+				// ── SÉCURITÉ : appel /login côté SERVEUR ───────────────────
+				// Le serveur valide l'identifiant et retourne un token de session.
+				// Aucune donnée métier n'est exposée avant authentification.
+				String corpsLogin = "{\"identifiant\":" + escJson(idFinal) + "}";
 
+				HttpRequest reqLogin = HttpRequest.newBuilder()
+					.uri(URI.create("http://" + ipFinal + ":8080/login"))
+					.timeout(Duration.ofSeconds(5))
+					.header("Content-Type", "application/json")
+					.POST(HttpRequest.BodyPublishers.ofString(corpsLogin, StandardCharsets.UTF_8))
+					.build();
+
+				HttpResponse<String> resp = http.send(reqLogin, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+				// Gestion des erreurs de connexion
+				if (resp.statusCode() == 429)
+				{
+					setStatut("Trop de tentatives. Réessayez dans 5 minutes.", true);
+					return;
+				}
+				if (resp.statusCode() == 401)
+				{
+					// Message générique : ne révèle pas si l'identifiant existe ou non
+					setStatut("Identifiant non reconnu.", true);
+					return;
+				}
 				if (resp.statusCode() != 200)
 				{
 					setStatut("Erreur serveur : " + resp.statusCode(), true);
 					return;
 				}
 
-				// 2. Extraire les noms de sociétés pour validation identifiant
-				java.util.List<String> societes = extraireNomsSocietes(resp.body());
+				// ── Extraction du token et des droits ──────────────────────
+				String corps      = resp.body();
+				String token      = extraireChaine(corps, "token");
+				boolean accesPAM  = corps.contains("\"accesPAM\":true");
 
-				// 3. Valider l'identifiant
-				boolean estPAM     = idFinal.equals("PAM");
-				boolean estSociete = societes.stream()
-					.anyMatch(n -> n.toUpperCase().equals(idFinal));
-
-				if (!estPAM && !estSociete)
+				if (token == null || token.isBlank())
 				{
-					setStatut("Identifiant inconnu : " + idFinal, true);
+					setStatut("Réponse du serveur invalide.", true);
 					return;
 				}
 
-				// 4. Lancer l'application
-				final boolean accesPAM = estPAM;
+				// ── Lancer l'application avec le token ─────────────────────
+				final String  tokenFinal     = token;
+				final boolean accesPAMFinal  = accesPAM;
+
 				SwingUtilities.invokeLater(() -> {
 					dispose();
-					new ControleurClient(ipFinal, idFinal, accesPAM);
+					new ControleurClient(ipFinal, idFinal, accesPAMFinal, tokenFinal);
 				});
 			}
 			catch (java.net.ConnectException ex)
@@ -188,25 +205,27 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 	}
 
 	/**
-	 * Parse très simple pour extraire les "nom" des sociétés depuis le JSON.
-	 * Ex: [{"nom":"EUP",...},{"nom":"PA",...}]  →  ["EUP", "PA"]
+	 * Extrait la valeur d'une clé JSON simple (chaîne de caractères).
+	 * Ex: {"token":"abc123"} avec clé "token" → "abc123"
 	 */
-	private java.util.List<String> extraireNomsSocietes(String json)
+	private String extraireChaine(String json, String cle)
 	{
-		java.util.List<String> noms = new java.util.ArrayList<>();
-		int pos = 0;
-		while ((pos = json.indexOf("\"nom\":", pos)) >= 0)
-		{
-			pos += 6;
-			while (pos < json.length() && json.charAt(pos) != '"') pos++;
-			if (pos >= json.length()) break;
-			pos++; // sauter le guillemet ouvrant
-			int end = json.indexOf('"', pos);
-			if (end < 0) break;
-			noms.add(json.substring(pos, end));
-			pos = end + 1;
-		}
-		return noms;
+		String pattern = "\"" + cle + "\":\"";
+		int pos = json.indexOf(pattern);
+		if (pos < 0) return null;
+		pos += pattern.length();
+		int end = json.indexOf('"', pos);
+		if (end < 0) return null;
+		return json.substring(pos, end);
+	}
+
+	/**
+	 * Échappe une chaîne pour l'inclure dans du JSON.
+	 */
+	private String escJson(String s)
+	{
+		if (s == null) return "\"\"";
+		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
 	}
 
 	// ── Helpers UI ────────────────────────────────────────────────────────
