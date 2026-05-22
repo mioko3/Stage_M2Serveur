@@ -10,16 +10,7 @@ import java.util.ArrayList;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  SÉRIALISEUR JSON — version corrigée
- *
- *  Corrections par rapport à la version précédente :
- *   1. serialiserLotSeul : lot.getMethode() peut être null → esc(null) au lieu de NPE
- *   2. serialiserLotSeul : champs manquants ajoutés :
- *        dateDebut, dateFin, dateFinTheorique, cadenceReel,
- *        collisage, nbPers, poucentrecupCartonFour
- *   3. deserialiserLot   : restaure ces champs depuis le JSON
- *   4. Ajout deserialiserAces() pour ServeurHTTP/MettreAJourAcesHandler
- *   5. Ajout deserialiserFicheRoute() pour ControleurClient
+ *  SÉRIALISEUR JSON
  * ══════════════════════════════════════════════════════════════
  */
 public class JsonSerialiser
@@ -38,13 +29,10 @@ public class JsonSerialiser
 		return sb.append("]").toString();
 	}
 
-	/** Convertit un seul lot en objet JSON — TOUS les champs. */
 	public static String serialiserLotSeul(Lot lot)
 	{
 		SuivieProd sp = lot.getSuivieProd();
 		Phase      ph = lot.getPhase();
-
-		// ── FIX : methode peut être null ──────────────────────────────────
 		String nomMethode = (lot.getMethode() != null) ? lot.getMethode().getNom() : "";
 
 		return "{"
@@ -52,11 +40,11 @@ public class JsonSerialiser
 			+ "\"typologie\":"               + esc(lot.getTypologie())                      + ","
 			+ "\"affaire\":"                 + esc(lot.getAffaire())                        + ","
 			+ "\"nbPieces\":"                + lot.getNbPieces()                            + ","
-			+ "\"cadence\":"                 + d2(lot.getCadence())                             + ","
-			+ "\"heures\":"                  + d2(lot.getHeures())                              + ","
-			+ "\"heuresAce\":"               + d2(lot.getHeuresAce())                           + ","
+			+ "\"cadence\":"                 + d2(lot.getCadence())                         + ","
+			+ "\"heures\":"                  + d2(lot.getHeures())                          + ","
+			+ "\"heuresAce\":"               + d2(lot.getHeuresAce())                       + ","
 			+ "\"valeurVente\":"             + lot.getValeurVente()                         + ","
-			+ "\"prixUnitaire\":"            + d2(lot.getPrixUnitaire())                        + ","
+			+ "\"prixUnitaire\":"            + d2(lot.getPrixUnitaire())                    + ","
 			+ "\"statut\":"                  + esc(lot.getStatut())                         + ","
 			+ "\"statutEchant\":"            + esc(lot.getStatutEchant())                   + ","
 			+ "\"semaine\":"                 + esc(lot.getSemaine())                        + ","
@@ -70,20 +58,17 @@ public class JsonSerialiser
 			+ "\"methode\":"                 + esc(nomMethode)                              + ","
 			+ "\"distribution\":"            + esc(lot.getDistribution())                   + ","
 			+ "\"formatCarton\":"            + esc(lot.getFormatCarton())                   + ","
-			// ── Champs manquants dans l'ancienne version ──────────────────
 			+ "\"dateDebut\":"               + esc(lot.getDateDebut())                      + ","
 			+ "\"dateFin\":"                 + esc(lot.getdateFin())                        + ","
 			+ "\"dateFinTheorique\":"        + esc(lot.getdateFinT())                       + ","
-			+ "\"cadenceReel\":"             + d2(lot.getCadenceReel())                         + ","
+			+ "\"cadenceReel\":"             + d2(lot.getCadenceReel())                     + ","
 			+ "\"collisage\":"               + lot.getCollisage()                           + ","
 			+ "\"nbPers\":"                  + lot.getNbPers()                              + ","
 			+ "\"poucentrecup\":"            + lot.getPoucentrecupCartonFour()              + ","
-			// ── Suivi production ──────────────────────────────────────────
 			+ "\"sp_nbPieceEtiq\":"          + (sp != null ? sp.getNbPieceEtiq()          : 0) + ","
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
 			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
 			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? sp.getNbHeureRepartRestant() : 0) + ","
-			// ── Phases ────────────────────────────────────────────────────
 			+ "\"ph_preTri\":"               + (ph != null && ph.isPreTri())               + ","
 			+ "\"ph_surPiste\":"             + (ph != null && ph.isSurPiste())             + ","
 			+ "\"ph_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())           + ","
@@ -138,11 +123,11 @@ public class JsonSerialiser
 		lotsIds.append("]");
 
 		return "{"
-			+ "\"nom\":"        + esc(ace.getNom())       + ","
-			+ "\"nbPers\":"     + ace.getNbPers()         + ","
-			+ "\"totalHeures\":" + ace.getTotalHeures()   + ","
-			+ "\"effectif\":"   + ace.getEffectifActuel() + ","
-			+ "\"lotsIds\":"    + lotsIds
+			+ "\"nom\":"         + esc(ace.getNom())       + ","
+			+ "\"nbPers\":"      + ace.getNbPers()         + ","
+			+ "\"totalHeures\":" + ace.getTotalHeures()    + ","
+			+ "\"effectif\":"    + ace.getEffectifActuel() + ","
+			+ "\"lotsIds\":"     + lotsIds
 			+ "}";
 	}
 
@@ -167,25 +152,19 @@ public class JsonSerialiser
 		ArrayList<Lot> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
 		ArrayList<String> objets = extraireObjets(json);
-		System.out.println("[Json] " + objets.size() + " objets extraits du JSON");
 		for (int idx = 0; idx < objets.size(); idx++) {
-			String obj = objets.get(idx);
 			try {
-				liste.add(deserialiserLot(obj));
+				liste.add(deserialiserLot(objets.get(idx)));
 			}
 			catch (Throwable e) {
-				System.out.println("[Json] Lot #" + idx + " ERREUR : " + e.getClass().getName() + " : " + e.getMessage());
-				e.printStackTrace(System.out);
-				System.out.println("[Json] JSON lot #" + idx + " debut : " + obj.substring(0, Math.min(300, obj.length())));
+				System.err.println("[Json] Lot #" + idx + " ignoré : " + e.getMessage());
 			}
 		}
-		System.out.println("[Json] " + liste.size() + " lots désérialisés avec succès");
 		return liste;
 	}
 
 	public static Lot deserialiserLot(String obj)
 	{
-		System.out.println("[Json] deserialiserLot entree, numCDE=" + getInt(obj,"numCDE"));
 		Lot lot = new Lot(
 			getInt   (obj, "numCDE"),
 			getInt   (obj, "nbPieces"),
@@ -195,7 +174,6 @@ public class JsonSerialiser
 			getString(obj, "statut"),
 			getString(obj, "statutEchant")
 		);
-		System.out.println("[Json] new Lot() OK pour numCDE=" + lot.getNumCDE());
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
@@ -210,27 +188,20 @@ public class JsonSerialiser
 		lot.setDatePaiement (getString(obj, "datePaiement"));
 		lot.setCommentaire  (getString(obj, "commentaire"));
 		lot.setMethode      (getString(obj, "methode"));
-		System.out.println("[Json] apres setMethode");
 		lot.setDistribution (getString(obj, "distribution"));
 		lot.setFormatCarton (getString(obj, "formatCarton"));
-		System.out.println("[Json] apres setFormatCarton");
 		lot.setDateDebut    (getString(obj, "dateDebut"));
 		lot.setdateFin      (getString(obj, "dateFin"));
 		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
-		System.out.println("[Json] apres setCadenceReel");
 		lot.setCollisage    (getInt   (obj, "collisage"));
-		System.out.println("[Json] apres setCollisage");
 		lot.setNbPers       (getInt   (obj, "nbPers"));
-		System.out.println("[Json] apres setNbPers");
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
-		System.out.println("[Json] apres setPoucentrecup");
 
 		SuivieProd sp = new SuivieProd();
 		sp.setLot(lot);
 		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
 		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
-		// Ces valeurs peuvent être Long.MAX_VALUE si pas encore calculées → 0
 		sp.setNbHeureEtiqRestant  (Math.min(getInt(obj, "sp_nbHeureEtiqRestant"),   999999));
 		sp.setNbHeureRepartRestant(Math.min(getInt(obj, "sp_nbHeureRepartRestant"), 999999));
 		lot.setSuivieProd(sp);
@@ -252,7 +223,7 @@ public class JsonSerialiser
 		if (json == null || json.isBlank()) return liste;
 		for (String obj : extraireObjets(json)) {
 			try {
-				// 1. Construire les ACE
+				// 1. ACE
 				ArrayList<Ace> aces = new ArrayList<>();
 				String blocsAces = extraireBloc(obj, "\"aces\"");
 				if (blocsAces != null) {
@@ -273,7 +244,7 @@ public class JsonSerialiser
 					}
 				}
 
-				// 2. Créer la Société
+				// 2. Société
 				Societe soc = new Societe(
 					getString(obj, "nom"),
 					getString(obj, "ce"),
@@ -282,7 +253,7 @@ public class JsonSerialiser
 				);
 				soc.setEffectifTotal(getInt(obj, "effectifTotal"));
 
-				// 3. Relier les lots à la société (par numCDE, pas par référence)
+				// 3. Lots affectés
 				String lotsIdsStr = extraireTableauPrimitif(obj, "lotsIds");
 				if (lotsIdsStr != null)
 					for (int id : parseIntArray(lotsIdsStr)) {
@@ -298,7 +269,6 @@ public class JsonSerialiser
 		return liste;
 	}
 
-	/** Désérialise une liste d'ACE sans lotsIds (pour mettreAJourAces). */
 	public static ArrayList<Ace> deserialiserAces(String json)
 	{
 		ArrayList<Ace> liste = new ArrayList<>();
@@ -315,7 +285,6 @@ public class JsonSerialiser
 		return liste;
 	}
 
-	/** Désérialise une FicheRoute (reconstruction locale côté client). */
 	public static FicheRoute deserialiserFicheRoute(String json, Societe societe)
 	{
 		return new FicheRoute(societe);
@@ -356,15 +325,12 @@ public class JsonSerialiser
 		pos += p.length();
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
-		// Lire tous les caractères numériques (incl. point et E pour notation scientifique)
 		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-'
 			|| obj.charAt(end) == '.' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
 		String val = obj.substring(pos, end);
 		try {
-			// Si notation scientifique ou décimal, convertir via double
 			if (val.contains(".") || val.contains("E") || val.contains("e")) {
 				double d = Double.parseDouble(val);
-				// Valeur absurde (Long.MAX_VALUE / 60 ≈ 9.2E16) → retourner 0
 				if (d > Integer.MAX_VALUE || d < Integer.MIN_VALUE) return 0;
 				return (int) d;
 			}
@@ -384,9 +350,7 @@ public class JsonSerialiser
 			|| obj.charAt(end) == '-' || obj.charAt(end) == '+' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
 		try {
 			double d = Double.parseDouble(obj.substring(pos, end));
-			// Valeur absurde → retourner 0
 			if (Double.isInfinite(d) || Double.isNaN(d)) return 0.0;
-			// Arrondir à 2 décimales
 			return Math.round(d * 100.0) / 100.0;
 		} catch (NumberFormatException e) { return 0.0; }
 	}
@@ -399,13 +363,6 @@ public class JsonSerialiser
 		pos += p.length();
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		return obj.startsWith("true", pos);
-	}
-
-	/** Arrondit un double à 2 décimales pour la sérialisation JSON. */
-	private static double d2(double v)
-	{
-		if (Double.isInfinite(v) || Double.isNaN(v) || v > 1_000_000_000) return 0.0;
-		return Math.round(v * 100.0) / 100.0;
 	}
 
 	// ── Alias pour ServeurHTTP et ControleurClient ────────────────────────
@@ -477,5 +434,11 @@ public class JsonSerialiser
 	{
 		if (s == null) return "\"\"";
 		return "\"" + s.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n") + "\"";
+	}
+
+	private static double d2(double v)
+	{
+		if (Double.isInfinite(v) || Double.isNaN(v) || v > 1_000_000_000) return 0.0;
+		return Math.round(v * 100.0) / 100.0;
 	}
 }

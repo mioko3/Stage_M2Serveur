@@ -237,6 +237,20 @@ public class ServeurHTTP
 	/** Retourne la semaine active (affichée dans FenetreServeur). */
 	public String getSemaineActive() { return semaineActive; }
 
+	/**
+	 * Toggle heures supplémentaires côté serveur.
+	 * Appelé depuis FenetreServeur uniquement.
+	 */
+	public void toggleHeuresSup()
+	{
+		synchronized (verrou)
+		{
+			metier.setestHeureSup();
+			save();
+		}
+		System.out.println("[Serveur] Heures sup : " + PlanningGlobal.estHeureSup);
+	}
+
 	/** Retourne le nombre de clients ayant pollé dans les 10 dernières secondes. */
 	public int getNbClientsConnectes()
 	{
@@ -766,7 +780,7 @@ public class ServeurHTTP
 		public void handle(HttpExchange ex) throws IOException
 		{
 			enregistrerClient(ex);
-			rep(ex, 200, "{\"v\":\"" + versionDonnees + "\"}");
+			rep(ex, 200, "{\"v\":\"" + versionDonnees + "\",\"heureSup\":" + PlanningGlobal.estHeureSup + "}");
 		}
 	}
 
