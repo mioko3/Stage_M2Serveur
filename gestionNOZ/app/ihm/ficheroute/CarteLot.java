@@ -66,7 +66,7 @@ public class CarteLot extends JPanel implements ActionListener
 		this.ctrl = ctrl;
 		this.m    = m;
 
-		estcommencer = !lot.getDateDebut().equals("");
+		this.estcommencer = !lot.getDateDebut().equals("");
 
 		Color bg     = bgPourLot(lot);
 		Color accent = color != null ? color : IhmUtils.BLEU;
@@ -243,7 +243,7 @@ public class CarteLot extends JPanel implements ActionListener
 	{
 		JPanel lDate = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 2));
 		lDate.setBackground(bg);
-		if (!estcommencer)
+		if (!this.estcommencer)
 		{
 			this.btncommencer = new JButton("Commencer");
 			this.btncommencer.addActionListener(e -> commencer());
@@ -265,9 +265,9 @@ public class CarteLot extends JPanel implements ActionListener
 
 	// CarteLot.java — méthode commencer()
 	private void commencer() {
-		estcommencer = true;
-		ctrl.commencerLot(lot);
-		
+		this.estcommencer = true;
+		this.ctrl.commencerLot(lot);
+
 		Lot lotMaj = ctrl.getLots().stream()
 			.filter(l -> l.getId().equals(lot.getId()))
 			.findFirst().orElse(lot);
@@ -277,7 +277,7 @@ public class CarteLot extends JPanel implements ActionListener
 
 	private void annuler()
 	{
-		estcommencer = false;
+		this.estcommencer = false;
 		this.ctrl.annulerLot(lot);
 		lot.setdateFinT("");
 		this.m.rafraichir();
@@ -317,7 +317,7 @@ public class CarteLot extends JPanel implements ActionListener
 		l4.setBackground(bg);
 
 		this.textPcsEtiq = new JTextField(String.valueOf(lot.getSuivieProd().getNbPieceEtiq()), 6);
-		this.textPcsEtiq.setEnabled(estcommencer);
+		this.textPcsEtiq.setEnabled(this.estcommencer);
 		l4.add(champEditable("Pces Étiq.", this.textPcsEtiq, bg, "PCS_ETIQ", this));
 		info(l4, "Av. Étiq %",   lot.getSuivieProd().getAvancementEtiqPct(), bg);
 		info(l4, "H Étiq rest.", lot.getSuivieProd().getNbHeureEtiqRestant() + " h", bg);
@@ -742,12 +742,12 @@ public class CarteLot extends JPanel implements ActionListener
 
 	// ── Utilitaires ───────────────────────────────────────────────────
 
-	static Color bgPourLot(Lot lot)
+	private Color bgPourLot(Lot lot)
 	{
 		if (lot.getPhase().isFinit())             return BG_FINI;
 		if (lot.isEstSousDouane())                return BG_DOUANE;
 		if (lot.getPriorite() >= 8)               return BG_URGENCE;
-		if (estcommencer)                         return BG_COMMENCER;
+		if (this.estcommencer)                    return BG_COMMENCER;
 		if (lot.getStatutEchant().contains("BL")) return BG_BLOQUE;
 		return BG_NORMAL;
 	}
