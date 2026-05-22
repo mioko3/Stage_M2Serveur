@@ -20,6 +20,5 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
-echo Connexion au serveur %IP%:8080 ...
 java -cp "bin;%POI_CP%" app.ControleurClient
 pause
