@@ -812,11 +812,7 @@ public class ServeurHTTP
 
 	public static void main(String[] args)
 	{
-		System.out.println("SERVER START OK");
-		try {
-			new ServeurHTTP();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		try                 { new ServeurHTTP();   }
+		catch (Exception e) { e.printStackTrace(); }
 	}
 }
