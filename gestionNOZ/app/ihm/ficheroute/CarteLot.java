@@ -29,7 +29,7 @@ public class CarteLot extends JPanel implements ActionListener
 
 	private static final String PRESERVE_BG = "preserve_bg";
 
-	private static boolean estcommencer;
+	private boolean estcommencer;
 
 	private final Lot         lot;
 	private final IControleur ctrl;
@@ -263,11 +263,15 @@ public class CarteLot extends JPanel implements ActionListener
 		return lDate;
 	}
 
-	private void commencer()
-	{
+	// CarteLot.java — méthode commencer()
+	private void commencer() {
 		estcommencer = true;
-		this.ctrl.commencerLot(lot);
-		lot.calculDateFinThéorique();
+		ctrl.commencerLot(lot);
+		
+		Lot lotMaj = ctrl.getLots().stream()
+			.filter(l -> l.getId().equals(lot.getId()))
+			.findFirst().orElse(lot);
+		lotMaj.calculDateFinThéorique();
 		this.m.rafraichir();
 	}
 

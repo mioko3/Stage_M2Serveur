@@ -484,20 +484,27 @@ public class ServeurHTTP
 		}
 	}
 
-	class CommencerLotHandler implements HttpHandler {
-		public void handle(HttpExchange ex) throws IOException {
+	class CommencerLotHandler implements HttpHandler
+	{
+		public void handle(HttpExchange ex) throws IOException
+		{
 			if (!exigerToken(ex)) return;
-			synchronized (verrou) {
-				try {
+			synchronized (verrou)
+			{
+				try
+				{
 					Lot lot = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
 					if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 					metier.commencerLot(lot);
+					lot.calculDateFinThéorique();  // ← AJOUTER
+					save();                         // ← AJOUTER si pas déjà là
 					versionDonnees = System.currentTimeMillis();
 					rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			}
 		}
 	}
+
 
 	class AnnulerLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {

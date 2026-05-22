@@ -400,16 +400,38 @@ public class ControleurClient implements IControleur
 
 	// ── Polling ───────────────────────────────────────────────────────────
 
-	private void demarrerPolling() {
+	private void demarrerPolling()
+	{
 		Thread t = new Thread(() -> {
+			int echecsConsecutifs = 0;
+			boolean avertissementAffiche = false;
+
 			while (true) {
 				try {
 					Thread.sleep(POLLING_MS);
 					if (desynchronise) continue;
 					boolean modif = rafraichirSiModif();
+					echecsConsecutifs = 0; // reset si succès
+					avertissementAffiche = false;
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
-				} catch (InterruptedException ex) { break; } catch (Exception ignored) {}
+
+				} catch (InterruptedException ex) {
+					break;
+				} catch (Exception ex) {
+					echecsConsecutifs++;
+					if (echecsConsecutifs >= 3 && !avertissementAffiche) {
+						avertissementAffiche = true;
+						SwingUtilities.invokeLater(() -> {
+							JOptionPane.showMessageDialog(fenetre,
+								"⚠️ Connexion au serveur perdue.\n" +
+								"Le serveur est peut-être arrêté.\n" +
+								"Les modifications ne seront pas synchronisées.",
+								"Serveur inaccessible",
+								JOptionPane.WARNING_MESSAGE);
+						});
+					}
+				}
 			}
 		});
 		t.setDaemon(true); t.setName("polling-serveur"); t.start();

@@ -204,12 +204,12 @@ public class PlanningGlobal
 	{
 		l.setDateDebut("");
 		l.setdateFin("");
-		l.getPhase().setPreTri     (false);
-		l.getPhase().setSurPiste   (false);
-		l.getPhase().setSortieEtiq (false);
-		l.getPhase().setTri        (false);
-		l.getPhase().setFinit      (false);
-
+		l.setdateFinT("");  // ← AJOUTER cette ligne si absente
+		l.getPhase().setPreTri(false);
+		l.getPhase().setSurPiste(false);
+		l.getPhase().setSortieEtiq(false);
+		l.getPhase().setTri(false);
+		l.getPhase().setFinit(false);
 	}
 
 	// ── Recherche ─────────────────────────────────────────────────────────
