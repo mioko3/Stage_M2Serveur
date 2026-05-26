@@ -53,7 +53,7 @@ public class Lot
 	private SuivieProd suivieProd;
 	private Phase      phase;
 	private Methode    methode;
-	private int    nbPalettes, nbColisPrevue, nbColisRecup, collisage,pcsUtiliser;
+	private int    nbPalettes, nbColisPrevue, nbColisRecup, collisage, pcsUtiliser;
 	private String  distribution;
 	private String formatCarton, dateDebut, dateFin, dateFinTheorique; // "dd/MM/yyyy HH:mm:ss"
 	private boolean estMachine;
@@ -132,6 +132,46 @@ public class Lot
 		this.nbColisRecup = (int) Math.round(this.nbPieces * (this.poucentrecupCartonFour / 100.0));
 	}
 
+	// ── Jours fériés français ──────────────────────────────────────────────
+	/**
+	 * Retourne true si la date est un jour férié légal français.
+	 * Couvre les 11 jours fériés : 8 fixes + 3 mobiles (Pâques, Ascension, Pentecôte).
+	 * Calcul de Pâques via l'algorithme de Gauss (Gregorian Anonymous).
+	 */
+	private static boolean estJourFerie(java.time.LocalDate date)
+	{
+		int y = date.getYear();
+
+		// ── Jours fériés fixes ─────────────────────────────────────────
+		java.time.MonthDay md = java.time.MonthDay.from(date);
+		if (md.equals(java.time.MonthDay.of( 1,  1))) return true; // Jour de l'an
+		if (md.equals(java.time.MonthDay.of( 5,  1))) return true; // Fête du Travail
+		if (md.equals(java.time.MonthDay.of( 5,  8))) return true; // Victoire 1945
+		if (md.equals(java.time.MonthDay.of( 7, 14))) return true; // Fête Nationale
+		if (md.equals(java.time.MonthDay.of( 8, 15))) return true; // Assomption
+		if (md.equals(java.time.MonthDay.of(11,  1))) return true; // Toussaint
+		if (md.equals(java.time.MonthDay.of(11, 11))) return true; // Armistice
+		if (md.equals(java.time.MonthDay.of(12, 25))) return true; // Noël
+
+		// ── Pâques (algorithme de Gauss) ──────────────────────────────
+		int a = y % 19, b = y / 100, c = y % 100;
+		int d = b / 4,  e = b % 4,   f = (b + 8) / 25;
+		int g = (b - f + 1) / 3;
+		int h = (19 * a + b - d - g + 15) % 30;
+		int i = c / 4,  k = c % 4;
+		int l = (32 + 2 * e + 2 * i - h - k) % 7;
+		int m = (a + 11 * h + 22 * l) / 451;
+		int month = (h + l - 7 * m + 114) / 31;
+		int day   = ((h + l - 7 * m + 114) % 31) + 1;
+		java.time.LocalDate paques = java.time.LocalDate.of(y, month, day);
+
+		return date.equals(paques)               // Dimanche de Pâques
+			|| date.equals(paques.plusDays(1))   // Lundi de Pâques
+			|| date.equals(paques.plusDays(39))  // Ascension
+			|| date.equals(paques.plusDays(49))  // Dimanche de Pentecôte
+			|| date.equals(paques.plusDays(50)); // Lundi de Pentecôte
+	}
+
 	public void calculDateFinThéorique()
 	{
 		if (this.dateDebut == null || this.dateDebut.isEmpty()) return;
@@ -147,9 +187,9 @@ public class Lot
 			java.time.LocalTime FIN_LUN_JEU;
 			if (PlanningGlobal.estHeureSup)
 				FIN_LUN_JEU = java.time.LocalTime.of(17, 15);
-			else 
+			else
 				FIN_LUN_JEU = java.time.LocalTime.of(16, 15);
-			java.time.LocalTime FIN_VEN     = java.time.LocalTime.of(14, 30);
+			java.time.LocalTime FIN_VEN = java.time.LocalTime.of(14, 30);
 
 			double heuresRestantes = this.heuresAce;
 
@@ -175,6 +215,13 @@ public class Lot
 					continue;
 				}
 
+				// jour férié français
+				if (estJourFerie(curseur.toLocalDate()))
+				{
+					curseur = curseur.plusDays(1).with(DEBUT_JOURNEE);
+					continue;
+				}
+
 				boolean isFriday = (jour == java.time.DayOfWeek.FRIDAY);
 
 				java.time.LocalTime finJour =
@@ -183,20 +230,15 @@ public class Lot
 				// pause selon jour
 				java.time.LocalTime pauseDebut =
 					isFriday ? java.time.LocalTime.of(11, 0)
-							: java.time.LocalTime.of(12, 0);
+							 : java.time.LocalTime.of(12, 0);
 
 				java.time.LocalTime pauseFin =
 					isFriday ? java.time.LocalTime.of(11, 45)
-							: java.time.LocalTime.of(12, 45);
+							 : java.time.LocalTime.of(12, 45);
 
-				java.time.LocalDateTime finJourDT =
-					curseur.with(finJour);
-
-				java.time.LocalDateTime pauseDebutDT =
-					curseur.with(pauseDebut);
-
-				java.time.LocalDateTime pauseFinDT =
-					curseur.with(pauseFin);
+				java.time.LocalDateTime finJourDT   = curseur.with(finJour);
+				java.time.LocalDateTime pauseDebutDT = curseur.with(pauseDebut);
+				java.time.LocalDateTime pauseFinDT   = curseur.with(pauseFin);
 
 				if (!curseur.isBefore(finJourDT))
 				{
@@ -265,6 +307,13 @@ public class Lot
 					continue;
 				}
 
+				// jour férié français
+				if (estJourFerie(curseur.toLocalDate()))
+				{
+					curseur = curseur.plusMinutes(1);
+					continue;
+				}
+
 				boolean isFriday = jour == DayOfWeek.FRIDAY;
 
 				LocalTime finJour =
@@ -272,11 +321,11 @@ public class Lot
 
 				LocalTime pauseDebut =
 					isFriday ? LocalTime.of(11, 0)
-							: LocalTime.of(12, 0);
+							 : LocalTime.of(12, 0);
 
 				LocalTime pauseFin =
 					isFriday ? LocalTime.of(11, 45)
-							: LocalTime.of(12, 45);
+							 : LocalTime.of(12, 45);
 
 				LocalTime heure = curseur.toLocalTime();
 
@@ -321,7 +370,7 @@ public class Lot
 	{
 		double heuresTotales = getHeuresTravaillees();
 
-		long heures = (long) heuresTotales;
+		long heures  = (long) heuresTotales;
 		long minutes = (long)((heuresTotales - heures) * 60);
 
 		return heures + "h " + minutes + "m";
@@ -332,7 +381,7 @@ public class Lot
 		double pu = 0.0;
 		if (this.nbPieces > 0)
 		{
-			pu = Math.round(((double) this.valeurVente / this.nbPieces)*100.0) / 100.0;
+			pu = Math.round(((double) this.valeurVente / this.nbPieces) * 100.0) / 100.0;
 		}
 		return pu;
 	}
@@ -354,7 +403,7 @@ public class Lot
 			case "1/4":  this.nbPalettes = (int) Math.ceil(nbcarton / 16); break;
 			case "1/2":  this.nbPalettes = (int) Math.ceil(nbcarton / 8);  break;
 			case "box":  this.nbPalettes = (int) Math.ceil(nbcarton);      break;
-			default:     this.nbPalettes = 0; break;  // ← plus de AssertionError
+			default:     this.nbPalettes = 0; break;
 		}
 	}
 
@@ -407,20 +456,20 @@ public class Lot
 	public String  getDatePaiement()   { return datePaiement;  }
 	public String  getCommentaire()    { return commentaire;   }
 	public String  getEmplacement()    { return emplacement;   }
-	public SuivieProd getSuivieProd   () { return suivieProd; }
-	public Phase      getPhase        () { return phase;      }
-	public Methode    getMethode      () { return methode;    }
+	public SuivieProd getSuivieProd()  { return suivieProd;    }
+	public Phase      getPhase        () { return phase;       }
+	public Methode    getMethode      () { return methode;     }
 	public String     getDistribution () { return distribution;}
 	public String     getFormatCarton () { return formatCarton;}
-	public double     getHeuresAce    () { return heuresAce;  }
+	public double     getHeuresAce    () { return heuresAce;   }
 	public int        getNbPalettes   () { return nbPalettes;  }
 	public int        getNbColisPrevue() { return nbColisPrevue;}
 	public int        getNbColisRecup () { return nbColisRecup; }
-	public int        getCollisage    () { return collisage;   }
-	public int     getPoucentrecupCartonFour() { return poucentrecupCartonFour; }
+	public int        getCollisage    () { return collisage;    }
+	public int        getPoucentrecupCartonFour() { return poucentrecupCartonFour; }
 	public String     getDateDebut    () { return dateDebut;   }
 	public String     getdateFin      () { return dateFin;     }
-	public String     getdateFinT      () { return dateFinTheorique;}
+	public String     getdateFinT     () { return dateFinTheorique; }
 	public boolean    estMachine      () { return estMachine;  }
 	public int        getNbPers       () { return nbPers;      }
 
@@ -436,7 +485,7 @@ public class Lot
 		recalculerLignesColisage();
 	}
 	public void setCadence(double v)       { this.cadence      = v; }
-	public void setCadenceReel(double v) 
+	public void setCadenceReel(double v)
 	{
 		if (v > 0) this.cadenceReel = v;
 		else       this.cadenceReel = this.cadence;

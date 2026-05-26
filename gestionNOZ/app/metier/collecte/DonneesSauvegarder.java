@@ -78,86 +78,24 @@ public class DonneesSauvegarder
 		String cheminLots     = cheminDossier + "/" + FICHIER_LOTS;
 		String cheminSocietes = cheminDossier + "/" + FICHIER_SOCIETES;
 
-		// Si le chiffrement est actif, on déchiffre le contenu AVANT de le
-		// passer à ExcelReader. ExcelReader lit lui-même les fichiers via
-		// lireFichier() — on ne peut pas lui injecter le contenu directement.
-		// Solution : si le fichier est chiffré, on écrit un fichier .tmp
-		// déchiffré à côté, ExcelReader le lit, puis on supprime le .tmp.
-		// Si le fichier est déjà en JSON brut (migration), on le passe directement.
-		String cheminLotsEffectif     = preparerFichierPourLecture(cheminLots);
-		String cheminSocietesEffectif = preparerFichierPourLecture(cheminSocietes);
-		try
-		{
-			// ExcelReader reconstruit correctement les Lot (UUID, lignesColisage,
-			// phases, etc.) et les Societe (ACEs, affectations par ID).
-			metier.getLots()    .clear();
-			metier.getSocietes().clear();
-			ArrayList<Lot> lots = ExcelReader.lireLots(cheminLotsEffectif);
-			metier.getLots()    .addAll(lots);
-			metier.getSocietes().addAll(ExcelReader.lireSocietes(cheminSocietesEffectif, lots));
-			System.out.println("[Chargement] " + metier.getLots().size()
-				+ " lots, " + metier.getSocietes().size() + " sociétés depuis " + cheminDossier);
-		}
-		finally
-		{
-			// Supprimer les fichiers temporaires déchiffrés dans tous les cas
-			if (!cheminLotsEffectif.equals(cheminLots))
-				new java.io.File(cheminLotsEffectif).delete();
-			if (!cheminSocietesEffectif.equals(cheminSocietes))
-				new java.io.File(cheminSocietesEffectif).delete();
-		}
-	}
+		if (!new java.io.File(cheminLots).exists())
+			throw new IOException("Fichier introuvable : " + cheminLots);
+		if (!new java.io.File(cheminSocietes).exists())
+			throw new IOException("Fichier introuvable : " + cheminSocietes);
 
-	/**
-	 * Si le chiffrement est actif et que le fichier est chiffré (Base64),
-	 * écrit un fichier temporaire .tmp contenant le JSON déchiffré et
-	 * retourne son chemin. ExcelReader lira ce fichier temporaire.
-	 *
-	 * Si le fichier est déjà en JSON brut (migration ou pas de chiffrement),
-	 * retourne le chemin original sans créer de temporaire.
-	 * Dans ce cas, migre aussi le fichier vers le format chiffré.
-	 */
-	private String preparerFichierPourLecture(String chemin) throws IOException
-	{
-		if (!new java.io.File(chemin).exists())
-			throw new IOException("Fichier introuvable : " + chemin);
+		// Lire et déchiffrer directement en mémoire — plus de fichier _tmp
+		String jsonLots     = lire(cheminLots);
+		String jsonSocietes = lire(cheminSocietes);
 
-		if (aes == null)
-			return chemin; // pas de chiffrement → chemin original
+		metier.getLots()    .clear();
+		metier.getSocietes().clear();
 
-		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
+		ArrayList<Lot> lots = JsonSerialiser.deserialiserLots(jsonLots);
+		metier.getLots().addAll(lots);
+		metier.getSocietes().addAll(JsonSerialiser.deserialiserSocietes(jsonSocietes, lots));
 
-		boolean estJsonBrut = contenu.startsWith("[") || contenu.startsWith("{");
-
-		if (estJsonBrut)
-		{
-			// Fichier hérité non chiffré : migrer sur le disque
-			System.out.println("[AES] Migration : chiffrement de " + chemin);
-			try {
-				Files.writeString(Paths.get(chemin), aes.chiffrer(contenu));
-				System.out.println("[AES] Migration réussie : " + chemin);
-			} catch (Exception e) {
-				System.err.println("[AES] Migration échouée : " + e.getMessage());
-			}
-			// ExcelReader détecte le format via l'extension du fichier.
-			// Le temporaire DOIT garder l'extension .json, sinon ExcelReader
-			// l'ouvre comme Excel et plante avec "unsupported file type".
-			// On insère "_tmp" avant l'extension : lots.json → lots_tmp.json
-			String tmp = cheminSansExtension(chemin) + "_tmp.json";
-			Files.writeString(Paths.get(tmp), contenu);
-			return tmp;
-		}
-
-		// Fichier chiffré : déchiffrer dans un temporaire .json
-		try {
-			String jsonBrut = aes.dechiffrer(contenu);
-			String tmp = cheminSansExtension(chemin) + "_tmp.json";
-			Files.writeString(Paths.get(tmp), jsonBrut);
-			return tmp;
-		} catch (Exception e) {
-			throw new IOException("Erreur de déchiffrement de " + chemin
-				+ " (clé incorrecte ou fichier corrompu) : " + e.getMessage(), e);
-		}
+		System.out.println("[Chargement] " + metier.getLots().size()
+			+ " lots, " + metier.getSocietes().size() + " sociétés depuis " + cheminDossier);
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -211,41 +149,30 @@ public class DonneesSauvegarder
 	 */
 	private String lire(String chemin) throws IOException
 	{
-		if (!new java.io.File(chemin).exists())
-			throw new IOException("Fichier introuvable : " + chemin);
-
 		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
 
-		if (aes != null)
+		if (aes == null) return contenu;
+
+		// JSON brut non chiffré (migration)
+		if (contenu.startsWith("[") || contenu.startsWith("{"))
 		{
-			// Détecter si le fichier est déjà chiffré (Base64) ou encore en JSON brut
-			boolean estJsonBrut = contenu.startsWith("[") || contenu.startsWith("{");
-
-			if (estJsonBrut)
-			{
-				// Fichier hérité non chiffré : on le lit et on le migre sur le disque
-				System.out.println("[AES] Migration : chiffrement de " + chemin);
-				try {
-					String chiffré = aes.chiffrer(contenu);
-					Files.writeString(Paths.get(chemin), chiffré);
-					System.out.println("[AES] Migration réussie : " + chemin);
-				} catch (Exception e) {
-					System.err.println("[AES] Migration échouée pour " + chemin + " : " + e.getMessage());
-					// On continue avec le JSON brut même si la migration a échoué
-				}
-				return contenu;
-			}
-
-			// Fichier déjà chiffré : déchiffrer normalement
+			System.out.println("[AES] Migration : chiffrement de " + chemin);
 			try {
-				return aes.dechiffrer(contenu);
+				Files.writeString(Paths.get(chemin), aes.chiffrer(contenu));
+				System.out.println("[AES] Migration réussie : " + chemin);
 			} catch (Exception e) {
-				throw new IOException("Erreur de déchiffrement de " + chemin
-					+ ". Le fichier est peut-être corrompu ou la clé a changé : " + e.getMessage(), e);
+				System.err.println("[AES] Migration échouée : " + e.getMessage());
 			}
+			return contenu;
 		}
 
-		return contenu;
+		// Fichier chiffré : déchiffrer
+		try {
+			return aes.dechiffrer(contenu);
+		} catch (Exception e) {
+			throw new IOException("Erreur déchiffrement de " + chemin
+				+ " (clé incorrecte ou fichier corrompu) : " + e.getMessage(), e);
+		}
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
