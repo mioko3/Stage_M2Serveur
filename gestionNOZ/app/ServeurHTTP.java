@@ -797,7 +797,7 @@ public class ServeurHTTP
 	/**
 	 * GET /version — retourne le numéro de version des données, l'état
 	 * des heures sup et la semaine active.
-	 * Les clients appellent cette route toutes les 3s (polling) pour détecter
+	 * Les clients appellent cette route toutes les 1s (polling) pour détecter
 	 * les changements et déclencher un rechargement complet si nécessaire.
 	 */
 	class VersionHandler implements HttpHandler {

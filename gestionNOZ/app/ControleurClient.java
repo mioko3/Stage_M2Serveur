@@ -103,7 +103,7 @@ public class ControleurClient implements IControleur
 	// Si /version retourne un numéro différent, on recharge tout.
 	private volatile String  versionLocale = "";
 	private volatile boolean heureSup      = false;
-	private static final int POLLING_MS    = 3000; // 3 secondes entre chaque sondage
+	private static final int POLLING_MS    = 1000; // 1 secondes entre chaque sondage
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  CONSTRUCTEURS
