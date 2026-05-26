@@ -499,6 +499,7 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void modifierSociete(Societe soc, String nom, String ce, int totalHeuresCE, int effectif) {
+		String ancienNom = soc.getNom();
 		// 1. Modifier localement IMMÉDIATEMENT
 		soc.setNom(nom);
 		soc.setCe(ce);
@@ -507,7 +508,7 @@ public class ControleurClient implements IControleur
 		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
 		if (fenetre != null) fenetre.rafraichirTout();
 		// 3. Synchroniser avec le serveur en arrière-plan
-		String c = "{\"nom\":"           + e(soc.getNom())
+		String c = "{\"nom\":"           + e(ancienNom)
 			+ ",\"nouveauNom\":"   + e(nom)
 			+ ",\"ce\":"           + e(ce)
 			+ ",\"totalHeuresCE\":" + totalHeuresCE
@@ -530,7 +531,7 @@ public class ControleurClient implements IControleur
 			if (i > 0) sb.append(",");
 			sb.append("{\"nom\":").append(e(a.getNom()))
 			  .append(",\"nbPers\":").append(a.getNbPers())
-			  .append(",\"effectifActuel\":").append(a.getEffectifActuel()).append("}");
+			  .append(",\"effectif\":").append(a.getEffectifActuel()).append("}");
 		}
 		sb.append("]}");
 		async("mettreAJourAces", () -> {

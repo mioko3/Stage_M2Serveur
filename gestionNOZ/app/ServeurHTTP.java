@@ -957,7 +957,7 @@ public class ServeurHTTP
 				boolean ok = metier.affecterLot(lot, societe, ace);
 				save(); versionDonnees = System.currentTimeMillis();
 				rep(ex, ok ? 200 : 400,
-					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					"{\"lotsACE\":"     + JsonSerialiser.serialiserLots(metier.getLots())
 					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }

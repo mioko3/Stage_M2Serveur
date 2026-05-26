@@ -94,8 +94,8 @@ public class DonneesSauvegarder
 			metier.getLots()    .clear();
 			metier.getSocietes().clear();
 			ArrayList<Lot> lots = ExcelReader.lireLots(cheminLotsEffectif);
-			ArrayList<Societe> societes = ExcelReader.lireSocietes(cheminSocietesEffectif, lots);
 			metier.getLots()    .addAll(lots);
+			ArrayList<Societe> societes = ExcelReader.lireSocietes(cheminSocietesEffectif, lots);
 			metier.getSocietes().addAll(societes);
 
 			System.out.println("[Chargement] " + metier.getLots().size()

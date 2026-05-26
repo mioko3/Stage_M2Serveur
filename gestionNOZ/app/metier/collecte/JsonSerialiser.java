@@ -3,6 +3,7 @@ package app.metier.collecte;
 import app.metier.ficheroute.FicheRoute;
 import app.metier.ficheroute.Phase;
 import app.metier.ficheroute.SuivieProd;
+import app.metier.lot.LigneColisage;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
@@ -61,6 +62,7 @@ public class JsonSerialiser
 			+ "\"collisage\":"               + lot.getCollisage()                           + ","
 			+ "\"nbPers\":"                  + lot.getNbPers()                              + ","
 			+ "\"poucentrecup\":"            + lot.getPoucentrecupCartonFour()              + ","
+			+ "\"lignesColisage\":"          + serialiserLignesColisage(lot.getLignesColisage()) + ","
 			+ "\"sp_nbPieceEtiq\":"          + (sp != null ? sp.getNbPieceEtiq()          : 0) + ","
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
 			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
@@ -129,6 +131,16 @@ public class JsonSerialiser
 			+ "}";
 	}
 
+	private static String serialiserLignesColisage(ArrayList<LigneColisage> lignes)
+	{
+		StringBuilder sb = new StringBuilder("[");
+		for (int i = 0; i < lignes.size(); i++) {
+			if (i > 0) sb.append(",");
+			sb.append(lignes.get(i).toJson());
+		}
+		return sb.append("]").toString();
+	}
+
 	public static String serialiserFicheRoute(FicheRoute fdr)
 	{
 		String nomSoc = fdr.getSociete() != null ? fdr.getSociete().getNom() : "";
@@ -195,6 +207,13 @@ public class JsonSerialiser
 		lot.setCollisage    (getInt   (obj, "collisage"));
 		lot.setNbPers       (getInt   (obj, "nbPers"));
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
+		String lignesColisageStr = extraireBloc(obj, "lignesColisage");
+		if (lignesColisageStr != null) {
+			for (String ligneJson : extraireObjets(lignesColisageStr)) {
+				LigneColisage ligne = LigneColisage.fromJson(ligneJson);
+				lot.ajouterLigneColisage(ligne, ligne.getPcs());
+			}
+		}
 
 		SuivieProd sp = new SuivieProd();
 		sp.setLot(lot);

@@ -273,33 +273,37 @@ public class ExcelReader
 					ace.setEstMachine(getBool(a, "estMachine"));
 					aces.add(ace);
 					String blocLotsAce = extraireBloc(a, "\"lotsACE\"");
+					if (blocLotsAce == null)
+						blocLotsAce = extraireBloc(a, "\"lotsIds\"");
 					if (blocLotsAce != null)
 					{
 						for (String id : parseIdList(blocLotsAce))
 						{
-							Lot lot = trouverLotParId(id, lots);
+							Lot lot = trouverLot(id, lots);
 							if (lot != null && !ace.getLots().contains(lot))
 							{
 								soc.ajouterLotSansHeures(lot, ace);
 							}
 							else if (lot == null)
 							{
-								System.err.println("[ERREUR] Lot non trouvé (ID: " + id + ") pour l'ACE " + ace.getNom() + " de " + soc.getNom());
+								System.err.println("[ERREUR] Lot non trouvé (ID/numCDE: " + id + ") pour l'ACE " + ace.getNom() + " de " + soc.getNom());
 							}
 						}
 					}
 				}
 			}
 			String lotsAffectes = extraireBloc(obj, "\"lotsAffectes\"");
+			if (lotsAffectes == null)
+				lotsAffectes = extraireBloc(obj, "\"lotsIds\"");
 			if (lotsAffectes != null)
 			{
 				for (String id : parseIdList(lotsAffectes))
 				{
-					Lot lot = trouverLotParId(id, lots);
+					Lot lot = trouverLot(id, lots);
 					if (lot != null && !soc.getLots().contains(lot))
 						soc.ajouterLot(lot, null);
 					else if (lot == null)
-						System.err.println("[ERREUR] Lot non trouvé (ID: " + id + ") pour la société " + soc.getNom());
+						System.err.println("[ERREUR] Lot non trouvé (ID/numCDE: " + id + ") pour la société " + soc.getNom());
 				}
 			}
 			liste.add(soc);
@@ -309,9 +313,29 @@ public class ExcelReader
 
 	private static Lot trouverLotParId(String id, ArrayList<Lot> lots)
 	{
+		if (id == null) return null;
 		for (Lot l : lots)
 			if (l.getId().equals(id)) return l;
 		return null;
+	}
+
+	private static Lot trouverLotParNumCDE(int numCDE, ArrayList<Lot> lots)
+	{
+		for (Lot l : lots)
+			if (l.getNumCDE() == numCDE) return l;
+		return null;
+	}
+
+	private static Lot trouverLot(String idOrNum, ArrayList<Lot> lots)
+	{
+		if (idOrNum == null || idOrNum.isEmpty()) return null;
+		String trimmed = idOrNum.trim();
+		if (trimmed.matches("\\d+"))
+		{
+			try { return trouverLotParNumCDE(Integer.parseInt(trimmed), lots); }
+			catch (NumberFormatException ignored) {}
+		}
+		return trouverLotParId(trimmed, lots);
 	}
 
 	private static ArrayList<Lot> lireLotsJson(String cheminJson) throws IOException

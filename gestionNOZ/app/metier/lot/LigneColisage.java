@@ -44,15 +44,19 @@ public class LigneColisage
 	public String toJson()
 	{
 		return String.format(
-			"{\"format\":\"%s\",\"collisage\":%d,\"nbColis\":%d,\"nbPalettes\":%d}",
-			formatCarton, collisage, nbColis, nbPalettes);
+			"{\"format\":\"%s\",\"collisage\":%d,\"pcs\":%d,\"nbColis\":%d,\"nbPalettes\":%d}",
+			formatCarton, collisage, pcs, nbColis, nbPalettes);
 	}
 
 	public static LigneColisage fromJson(String obj)
 	{
 		String fmt = getString(obj, "format");
 		int    col = getInt(obj, "collisage");
-		return new LigneColisage(fmt, col);
+		int    pcs = getInt(obj, "pcs");
+		if (pcs <= 0) pcs = getInt(obj, "nbColis") * col;
+		LigneColisage ligne = new LigneColisage(fmt, col);
+		ligne.recalculer(pcs);
+		return ligne;
 	}
 
 	private static String getString(String obj, String cle)
