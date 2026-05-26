@@ -353,6 +353,7 @@ public class ControleurClient implements IControleur
 			+ ",\"distribution\":"            + e(distribution)
 			+ ",\"cadenceReel\":"             + cadenceReel
 			+ ",\"poucentrecupCartonFour\":"  + poucentrecupCartonFour
+			+ ",\"lignesColisage\":"         + JsonSerialiser.serialiserLignesColisage(lot.getLignesColisage())
 			+ ",\"methode\":"                 + e(methode) + "}";
 		new Thread(() -> {
 			try { majDual(post("/lots/modifier", c)); }

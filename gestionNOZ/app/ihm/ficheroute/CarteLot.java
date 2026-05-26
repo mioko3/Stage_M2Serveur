@@ -410,6 +410,14 @@ public class CarteLot extends JPanel implements ActionListener
 		btnSuppr.setToolTipText("Supprimer cette ligne");
 		btnSuppr.addActionListener(e -> {
 			lot.supprimerLigneColisage(index);
+			ctrl.modifierLotComplet(lot,
+				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
+				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
+				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
+				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
+				lot.getMethode() != null ? lot.getMethode().getNom() : "");
 			m.rafraichir();
 		});
 
@@ -476,6 +484,14 @@ public class CarteLot extends JPanel implements ActionListener
 			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces())
 				throw new NumberFormatException();
 			lot.ajouterLigneColisage(new LigneColisage((String) comboFmt.getSelectedItem(), col), pcs);
+			ctrl.modifierLotComplet(lot,
+				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
+				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
+				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
+				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
+				lot.getMethode() != null ? lot.getMethode().getNom() : "");
 			m.rafraichir();
 		}
 		catch (NumberFormatException ex)

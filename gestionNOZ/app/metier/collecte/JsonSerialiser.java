@@ -131,7 +131,7 @@ public class JsonSerialiser
 			+ "}";
 	}
 
-	private static String serialiserLignesColisage(ArrayList<LigneColisage> lignes)
+	public static String serialiserLignesColisage(ArrayList<LigneColisage> lignes)
 	{
 		StringBuilder sb = new StringBuilder("[");
 		for (int i = 0; i < lignes.size(); i++) {
