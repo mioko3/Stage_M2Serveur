@@ -55,3 +55,6 @@ app/ControleurClient.java
 # ── Interfaces et point d'entrée ──────────────────────────────
 app/IControleur.java
 app/ServeurHTTP.java
+
+# ── Sécurité / Chiffrement ────────────────────────────────────
+app/securite/ChiffrementAES.java

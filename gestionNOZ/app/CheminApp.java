@@ -4,104 +4,84 @@ import java.io.File;
 import java.nio.file.Paths;
 
 /**
- * ══════════════════════════════════════════════════════════════
- *  CheminApp — Résolution des chemins relatifs (CORRECTIF #1)
- * ══════════════════════════════════════════════════════════════
+ * CheminApp — ancrage des chemins sur la racine du projet
  *
- *  PROBLÈME RÉSOLU :
- *  ─────────────────
- *  Dans ServeurHTTP, les chemins comme "app/data/courutilisation/lots.json"
- *  sont relatifs au "répertoire courant" (working directory) du processus Java.
+ * LOGIQUE SIMPLE :
+ * On cherche le dossier "app/data" en remontant depuis la classe compilée.
+ * C'est plus fiable que de déduire depuis le JAR car le projet est lancé
+ * soit depuis bin/ (développement), soit depuis un JAR (production).
  *
- *  Sur un PC normal lancé avec run_SERVEUR.bat depuis le bon dossier → ça marche.
- *  Sur un serveur Linux lancé comme service systemd, ou si on double-clique
- *  l'EXE depuis l'Explorateur → le working directory est souvent C:\Windows\System32
- *  ou /root, et le programme ne trouve plus ses JSON. Il démarre "à vide" sans planter,
- *  ce qui est difficile à debugger.
+ * Stratégie :
+ *  1. Partir du working directory (là où on a tapé la commande java)
+ *  2. Vérifier si app/data/ existe à cet endroit → c'est la racine
+ *  3. Sinon, chercher depuis le dossier du JAR/classes
+ *  4. Sinon, fallback sur le working directory (comportement original)
  *
- *  SOLUTION :
- *  ──────────
- *  On ancre tous les chemins sur le dossier où se trouve le JAR/EXE,
- *  pas sur le dossier depuis lequel on a lancé la commande.
- *
- *  Comment ça marche :
- *  - getBaseDir() retrouve le dossier du JAR en cours d'exécution
- *  - resoudre("app/data/...") combine ce dossier de base + le chemin relatif
- *  - Si on est en développement (lancé depuis l'IDE sans JAR), on retombe
- *    sur le working directory classique pour ne pas casser le dev
- *
- *  COMMENT L'UTILISER dans ServeurHTTP :
- *  ──────────────────────────────────────
- *  Remplacer :
- *      this.cheminLotsJson = "app/data/courutilisation/lots.json";
- *  Par :
- *      this.cheminLotsJson = CheminApp.resoudre("app/data/courutilisation/lots.json");
- *
- *  C'est tout. Le reste du code ne change pas.
+ * Ainsi, si on lance depuis la racine du projet (ce que font run.bat et
+ * run_SERVEUR.bat grâce à "cd /d %~dp0"), ça marche directement.
+ * Et si on lance depuis ailleurs, on tente quand même de trouver app/data/.
  */
 public class CheminApp
 {
-	/** Dossier de base calculé une seule fois au démarrage. */
 	private static final String BASE_DIR = calculerBaseDir();
 
-	/**
-	 * Retourne le chemin absolu correspondant au chemin relatif donné,
-	 * ancré sur le dossier du JAR (et non sur le working directory).
-	 *
-	 * @param cheminRelatif  ex: "app/data/courutilisation/lots.json"
-	 * @return               chemin absolu prêt à l'emploi
-	 */
 	public static String resoudre(String cheminRelatif)
 	{
 		return Paths.get(BASE_DIR, cheminRelatif).toString();
 	}
 
-	/**
-	 * Retourne le dossier de base (là où est le JAR).
-	 * Utile pour les JFileChooser qui veulent s'ouvrir au bon endroit.
-	 */
 	public static String getBaseDir()
 	{
 		return BASE_DIR;
 	}
 
-	// ── Calcul interne ────────────────────────────────────────────────────
-
 	private static String calculerBaseDir()
 	{
+		// Stratégie 1 : le working directory contient déjà app/data/ ?
+		// C'est le cas normal quand run_SERVEUR.bat fait "cd /d %~dp0"
+		String wd = System.getProperty("user.dir");
+		if (new File(wd, "app/data").exists())
+		{
+			System.out.println("[CheminApp] Racine trouvée via working directory : " + wd);
+			return wd;
+		}
+
+		// Stratégie 2 : chercher depuis le dossier du JAR ou du dossier bin/
 		try
 		{
-			// Récupère le chemin du JAR qui contient cette classe
-			String jarPath = CheminApp.class
+			String codePath = CheminApp.class
 				.getProtectionDomain()
 				.getCodeSource()
 				.getLocation()
 				.toURI()
 				.getPath();
 
-			File jarFile = new File(jarPath);
+			File f = new File(codePath);
 
-			// Si c'est un fichier JAR → son dossier parent est la base
-			if (jarFile.isFile())
+			// On remonte jusqu'à trouver un dossier qui contient app/data/
+			// Maximum 4 niveaux pour ne pas partir trop loin
+			for (int i = 0; i < 4; i++)
 			{
-				String base = jarFile.getParent();
-				System.out.println("[CheminApp] Base ancrée sur le dossier du JAR : " + base);
-				return base;
+				if (f == null) break;
+				if (new File(f, "app/data").exists())
+				{
+					System.out.println("[CheminApp] Racine trouvée en remontant depuis le code : " + f.getAbsolutePath());
+					return f.getAbsolutePath();
+				}
+				f = f.getParentFile();
 			}
-
-			// Si c'est un dossier (ex: bin/ dans l'IDE) → remonter d'un niveau
-			// pour retomber sur la racine du projet
-			String base = jarFile.getParentFile().getParent();
-			if (base == null) base = jarFile.getParent();
-			System.out.println("[CheminApp] Mode développement, base : " + base);
-			return base;
 		}
 		catch (Exception e)
 		{
-			// Dernier recours : working directory classique
-			String fallback = System.getProperty("user.dir");
-			System.err.println("[CheminApp] Impossible de détecter le JAR, fallback sur : " + fallback);
-			return fallback;
+			System.err.println("[CheminApp] Recherche depuis le code échouée : " + e.getMessage());
 		}
+
+		// Stratégie 3 : fallback — on retourne le working directory et on
+		// affiche un avertissement clair pour aider au diagnostic
+		System.err.println("[CheminApp] ATTENTION : dossier app/data/ introuvable !");
+		System.err.println("[CheminApp] Working directory : " + wd);
+		System.err.println("[CheminApp] Vérifiez que vous lancez le serveur depuis la racine du projet.");
+		System.err.println("[CheminApp] Exemple : cd C:\\monprojet && java -cp bin app.ServeurHTTP");
+		return wd;
 	}
 }

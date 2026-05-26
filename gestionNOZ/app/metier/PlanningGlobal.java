@@ -322,6 +322,9 @@ public class PlanningGlobal
 				tout.add(a);
 		return tout;
 	}
+
+	public void setSocietes(ArrayList<Societe> societes) { this.societes = societes; }
+	public void setLots    (ArrayList<Lot>     lots)     { this.lots	 = lots;     }
 	public void setestHeureSup()
 	{
 		estHeureSup = !estHeureSup;

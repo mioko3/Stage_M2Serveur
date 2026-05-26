@@ -9,6 +9,7 @@ import app.metier.ficheroute.FicheRoute;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
+import app.securite.ChiffrementAES;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -43,6 +44,7 @@ public class ControleurClient implements IControleur
 	// ── Token de session ──────────────────────────────────────────────────
 	/** Token opaque reçu du serveur via /login. Jamais stocké sur disque. */
 	private final String tokenSession;
+	private volatile ChiffrementAES aes = null;  // null jusqu'à réception de la clé du serveur
 
 	// ── Données ───────────────────────────────────────────────────────────
 	private ArrayList<Lot>     lots     = new ArrayList<>();
@@ -74,6 +76,8 @@ public class ControleurClient implements IControleur
 
 		new Thread(() -> {
 			boolean ok = chargerDepuisServeur();
+			// Récupérer la clé AES après le chargement initial
+			if (ok) recupererCle();
 			SwingUtilities.invokeLater(() -> {
 				if (ok) this.fenetre = new FenetrePrincipale(this);
 				else    new app.ihm.login.FenetreConnexionClient();
@@ -481,30 +485,64 @@ public class ControleurClient implements IControleur
 	}
 
 	/** GET avec X-Auth-Token. */
-	private String get(String route) throws Exception {
+	private String get(String route) throws Exception
+	{
 		HttpRequest.Builder b = HttpRequest.newBuilder()
 			.uri(URI.create(urlServeur + route))
 			.timeout(Duration.ofSeconds(15))
 			.GET();
-		if (tokenSession != null && !tokenSession.isBlank()) b.header("X-Auth-Token", tokenSession);
-		HttpResponse<String> resp = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+ 
+		if (tokenSession != null && !tokenSession.isBlank())
+			b.header("X-Auth-Token", tokenSession);
+ 
+		HttpResponse<String> resp = http.send(
+			b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+ 
 		if (resp.statusCode() == 401) { gererDeconnexion(); throw new Exception("Session expirée"); }
 		if (resp.statusCode() >= 400) throw new Exception("HTTP " + resp.statusCode() + ": " + resp.body());
-		return resp.body();
+ 
+		// Déchiffrer la réponse si AES est actif et que la réponse n'est pas
+		// une erreur (les erreurs ne sont pas chiffrées, voir PATCH ServeurHTTP)
+		String body = resp.body();
+		if (aes != null && body != null && !body.isBlank() && !body.startsWith("{")) {
+			// Si ça ne commence pas par '{', c'est probablement du Base64 chiffré
+			try { body = aes.dechiffrer(body); } catch (Exception ignored) {}
+		}
+		return body;
 	}
 
 	/** POST avec X-Auth-Token. */
-	private String post(String route, String json) throws Exception {
+	private String post(String route, String json) throws Exception
+	{
+		// Chiffrer le body avant envoi si AES est disponible
+		String bodyEnvoi = json;
+		if (aes != null && json != null && !json.isBlank()) {
+			try { bodyEnvoi = aes.chiffrer(json); }
+			catch (Exception e) {
+				System.err.println("[Client] Échec chiffrement, envoi brut : " + e.getMessage());
+			}
+		}
+ 
 		HttpRequest.Builder b = HttpRequest.newBuilder()
 			.uri(URI.create(urlServeur + route))
 			.timeout(Duration.ofSeconds(15))
-			.header("Content-Type", "application/json");
-		if (tokenSession != null && !tokenSession.isBlank()) b.header("X-Auth-Token", tokenSession);
-		b.POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8));
-		HttpResponse<String> resp = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+			.POST(HttpRequest.BodyPublishers.ofString(bodyEnvoi, StandardCharsets.UTF_8));
+ 
+		if (tokenSession != null && !tokenSession.isBlank())
+			b.header("X-Auth-Token", tokenSession);
+ 
+		HttpResponse<String> resp = http.send(
+			b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+ 
 		if (resp.statusCode() == 401) { gererDeconnexion(); throw new Exception("Session expirée"); }
 		if (resp.statusCode() >= 400) throw new Exception("HTTP " + resp.statusCode() + ": " + resp.body());
-		return resp.body();
+ 
+		// Déchiffrer la réponse
+		String body = resp.body();
+		if (aes != null && body != null && !body.isBlank() && !body.startsWith("{")) {
+			try { body = aes.dechiffrer(body); } catch (Exception ignored) {}
+		}
+		return body;
 	}
 
 	private void gererDeconnexion() {
@@ -521,6 +559,22 @@ public class ControleurClient implements IControleur
 	private void err(String m, Exception ex) {
 		System.err.println("[Client] " + m + " : " + (ex != null ? ex.getMessage() : "null"));
 	}
+
+	private void recupererCle()
+	{
+		try {
+			String rep = get("/cle");
+			String cleBase64 = JsonSerialiser.extraireString(rep, "cle");
+			if (cleBase64 != null && !cleBase64.isBlank()) {
+				this.aes = ChiffrementAES.depuisBase64(cleBase64);
+				System.out.println("[Client] Chiffrement AES activé.");
+			}
+		} catch (Exception e) {
+			System.err.println("[Client] Impossible de récupérer la clé AES : " + e.getMessage());
+			System.err.println("[Client] Les échanges continueront sans chiffrement.");
+		}
+	}
+
 
 	public static void main(String[] args) {
 		if (args.length > 0) SwingUtilities.invokeLater(() -> new ControleurClient(args[0]));
