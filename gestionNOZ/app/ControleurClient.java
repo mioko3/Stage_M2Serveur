@@ -219,12 +219,12 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void ajouterLot(int numCDE, String typo, String affaire,
-	                       int nbPieces, double cadence, int valeurVente,
-	                       String statut, String statutEchant,
-	                       String semaine, int priorite,
-	                       String lotACharge, String emplacement,
-	                       boolean sousDouane, String dateReception,
-	                       String datePaiement, String commentaire)
+						   int nbPieces, double cadence, int valeurVente,
+						   String statut, String statutEchant,
+						   String semaine, int priorite,
+						   String lotACharge, String emplacement,
+						   boolean sousDouane, String dateReception,
+						   String datePaiement, String commentaire)
 	{
 		String c = "{\"numCDE\":"       + numCDE
 			+ ",\"typologie\":"     + e(typo)
@@ -282,197 +282,89 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void modifierLot(Lot lot, String typo, String affaire,
-	                        int nbPieces, double cadence, int valeurVente,
-	                        String statut, String statutEchant,
-	                        String semaine, int priorite,
-	                        String lotACharge, String emplacement,
-	                        boolean sousDouane, String dateReception,
-	                        String datePaiement, String commentaire)
+						int nbPieces, double cadence, int valeurVente,
+						String statut, String statutEchant, String semaine, int priorite,
+						String lotACharge, String emplacement, boolean sousDouane,
+						String dateReception, String datePaiement, String commentaire)
 	{
-		String c = "{\"numCDE\":"       + lot.getNumCDE()
-			+ ",\"typologie\":"     + e(typo)
-			+ ",\"affaire\":"       + e(affaire)
-			+ ",\"nbPieces\":"      + nbPieces
-			+ ",\"cadence\":"       + cadence
-			+ ",\"valeurVente\":"   + valeurVente
-			+ ",\"statut\":"        + e(statut)
-			+ ",\"statutEchant\":"  + e(statutEchant)
-			+ ",\"semaine\":"       + e(semaine)
-			+ ",\"priorite\":"      + priorite
-			+ ",\"lotACharge\":"    + e(lotACharge)
-			+ ",\"emplacement\":"   + e(emplacement)
-			+ ",\"estSousDouane\":" + sousDouane
-			+ ",\"dateReception\":" + e(dateReception)
-			+ ",\"datePaiement\":"  + e(datePaiement)
-			+ ",\"commentaire\":"   + e(commentaire) + "}";
-		async("modifierLot", () -> {
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifier", c));
-		});
+		modifierLotComplet(lot,
+			typo, affaire, semaine, emplacement, dateReception, datePaiement,
+			nbPieces, lot.getPrixUnitaire(), valeurVente, cadence, lot.getHeures(),
+			lotACharge, statut, statutEchant, sousDouane, commentaire,
+			lot.getFormatCarton() != null ? lot.getFormatCarton() : "",
+			lot.getCollisage(), lot.getNbPers(),
+			lot.getDistribution() != null ? lot.getDistribution() : "",
+			lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
+			lot.getMethode() != null ? lot.getMethode().getNom() : "");
 	}
 
+	/** Signature COMPLÈTE — CarteLot. Champs administratifs + logistiques. */
 	@Override
-	public void modifierTypoLot(Lot lot , String typo)
+	public void modifierLotComplet(Lot lot,
+							String typologie, String affaire,
+							String semaine, String emplacement,
+							String dateReception, String datePaiement,
+							int nbPieces, double prixUnitaire, int valeurVente,
+							double cadence, double heures,
+							String lotACharge,
+							String statut, String statutEchant,
+							boolean sousDouane,
+							String commentaire,
+							String formatCarton, int collisage, int nbPers,
+							String distribution, double cadenceReel,
+							int poucentrecupCartonFour, String methode)
 	{
-		async("modifierTypoLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"typologie\":" + e(typo) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiertypo", c));
-		});
+		// 1. Mise à jour locale IMMÉDIATE
+		lot.setTypologie(typologie);          lot.setAffaire(affaire);
+		lot.setSemaine(semaine);              lot.setEmplacement(emplacement);
+		lot.setDateReception(dateReception);  lot.setDatePaiement(datePaiement);
+		lot.setNbPieces(nbPieces);            lot.setValeurVente(valeurVente);
+		lot.setCadence(cadence);              lot.setLotACharge(lotACharge);
+		lot.setStatut(statut);                lot.setStatutEchant(statutEchant);
+		lot.setEstSousDouane(sousDouane);     lot.setCommentaire(commentaire);
+		lot.setFormatCarton(formatCarton);    lot.setCollisage(collisage);
+		lot.setNbPers(nbPers);                lot.setDistribution(distribution);
+		lot.setCadenceReel(cadenceReel);
+		lot.setPoucentrecupCartonFour(poucentrecupCartonFour);
+		lot.setMethode(methode);
+		if (fenetre != null) fenetre.rafraichirTout();
+
+		// 2. Synchronisation serveur
+		String c = "{\"numCDE\":"                   + lot.getNumCDE()
+			+ ",\"typologie\":"               + e(typologie)
+			+ ",\"affaire\":"                 + e(affaire)
+			+ ",\"semaine\":"                 + e(semaine)
+			+ ",\"emplacement\":"             + e(emplacement)
+			+ ",\"dateReception\":"           + e(dateReception)
+			+ ",\"datePaiement\":"            + e(datePaiement)
+			+ ",\"nbPieces\":"                + nbPieces
+			+ ",\"prixUnitaire\":"            + prixUnitaire
+			+ ",\"valeurVente\":"             + valeurVente
+			+ ",\"cadence\":"                 + cadence
+			+ ",\"heures\":"                  + heures
+			+ ",\"lotACharge\":"              + e(lotACharge)
+			+ ",\"statut\":"                  + e(statut)
+			+ ",\"statutEchant\":"            + e(statutEchant)
+			+ ",\"sousDouane\":"              + sousDouane
+			+ ",\"commentaire\":"             + e(commentaire)
+			+ ",\"formatCarton\":"            + e(formatCarton)
+			+ ",\"collisage\":"               + collisage
+			+ ",\"nbPers\":"                  + nbPers
+			+ ",\"distribution\":"            + e(distribution)
+			+ ",\"cadenceReel\":"             + cadenceReel
+			+ ",\"poucentrecupCartonFour\":"  + poucentrecupCartonFour
+			+ ",\"methode\":"                 + e(methode) + "}";
+		new Thread(() -> {
+			try { majDual(post("/lots/modifier", c)); }
+			catch (Exception ex) { err("modifierLotComplet", ex); }
+		}).start();
 	}
-	@Override
-	public void modifierAffaireLot(Lot lot , String affaire)
-	{
-		async("modifierAffaireLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"affaire\":" + e(affaire) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifieraffaire", c));
-		});
-	}
-	@Override
-	public void modifierNbPiecesLot(Lot lot , int nbPieces)
-	{
-		async("modifierNbPiecesLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"nbPieces\":" + nbPieces + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiernbpieces", c));
-		});
-	}
-	@Override
-	public void modifierCadenceLot(Lot lot , double cadence)
-	{
-		async("modifierCadenceLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"cadence\":" + cadence + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercadence", c));
-		});
-	}
-	@Override
-	public void modifierValeurVenteLot(Lot lot , int valeurVente)
-	{
-		async("modifierValeurVenteLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"valeurVente\":" + valeurVente + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiervaleurvente", c));
-		});
-	}
-	@Override
-	public void modifierSemaineLot(Lot lot , String semaine)
-	{
-		async("modifierSemaineLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"semaine\":" + e(semaine) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiersemaine", c));
-		});
-	}
-	@Override
-	public void modifierPrioriteLot(Lot lot , int priorite)
-	{
-		async("modifierPrioriteLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"priorite\":" + priorite + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierpriorite", c));
-		});
-	}
-	@Override
-	public void modifierLotAChargeLot(Lot lot , String lotACharge)
-	{
-		async("modifierLotAChargeLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"lotACharge\":" + e(lotACharge) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierlotacharge", c));
-		});
-	}
-	@Override
-	public void modifierEmplacementLot(Lot lot , String emplacement)
-	{
-		async("modifierEmplacementLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"emplacement\":" + e(emplacement) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifieremplacement", c));
-		});
-	}
-	@Override
-	public void modifierSousDouaneLot(Lot lot , boolean sousDouane)
-	{
-		async("modifierSousDouaneLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"estSousDouane\":" + sousDouane + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdouane", c));
-		});
-	}
-	@Override
-	public void modifierDateReceptionLot(Lot lot , String dateReception)
-	{
-		async("modifierDateReceptionLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"dateReception\":" + e(dateReception) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdatereception", c));
-		});
-	}
-	@Override
-	public void modifierDatePaiementLot(Lot lot , String datePaiement)
-	{
-		async("modifierDatePaiementLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"datePaiement\":" + e(datePaiement) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdatepaiement", c));
-		});
-	}
-	@Override
-	public void modifierCommentaireLot(Lot lot , String commentaire)
-	{
-		async("modifierCommentaireLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"commentaire\":" + e(commentaire) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercommentaire", c));
-		});
-	}
-	@Override
-	public void modifierStatutLot(Lot lot , String statut)
-	{
-		async("modifierStatutLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"statut\":" + e(statut) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierstatut", c));
-		});
-	}
-	@Override
-	public void modifierStatutEchantLot(Lot lot , String statutEchant)
-	{
-		async("modifierStatutEchantLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"statutEchant\":" + e(statutEchant) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierstatutechant", c));
-		});
-	}
-	@Override
-	public void modifierNbPersLot(Lot lot , int nbPers)
-	{
-		async("modifierNbPersLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"nbPers\":" + nbPers + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiernbpers", c));
-		});
-	}
-	@Override
-	public void modifierCollisageLot(Lot lot , int collisage)
-	{
-		async("modifierCollisageLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"collisage\":" + collisage + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercollisage", c));
-		});
-	}
-	@Override
-	public void modifierDistributionLot(Lot lot , String distribution)
-	{
-		async("modifierDistributionLot", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"distribution\":" + e(distribution) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdistribution", c));
-		});
-	}
-	@Override
-	public void setFormatCarton(String formatCarton) {
-		async("setFormatCarton", () -> {
-			String c = "{\"formatCarton\":" + e(formatCarton) + "}";
-			post("/lots/setformatcarton", c);
-		});
-	}
-	@Override
-	public void modifierPoucentrecupCartonFour(Lot lot , int poucentrecupCartonFour)
-	{
-		async("modifierPoucentrecupCartonFour", () -> {
-			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"poucentrecupCartonFour\":" + poucentrecupCartonFour + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierpoucentrecupcartonfour", c));
-		});
-	}
+
+
 
 	@Override
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
-	                          boolean sortieEtiq, boolean tri, boolean finit)
+							  boolean sortieEtiq, boolean tri, boolean finit)
 	{
 		// 1. Modifier localement IMMÉDIATEMENT
 		lot.getPhase().setPreTri(preTri);

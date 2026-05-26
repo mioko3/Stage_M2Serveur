@@ -272,7 +272,9 @@ public class ServeurHTTP
 		// Routes sociétés / ACE
 		server.createContext("/societes",          ex -> new GetSocietesHandler()     .handle(ex));
 		server.createContext("/societes/modifier", ex -> new ModifierSocieteHandler() .handle(ex));
-		server.createContext("/societes/aces",     ex -> new ModifierAcesHandler()    .handle(ex));
+		server.createContext("/societes/aces",    ex -> new ModifierAcesHandler().handle(ex));
+		server.createContext("/aces/mettreajour", ex -> new ModifierAcesHandler().handle(ex));
+
 
 		// Routes système
 		server.createContext("/ficheroute/",       ex -> new FicheRouteHandler()      .handle(ex));
@@ -871,24 +873,35 @@ public class ServeurHTTP
 				String c   = lire(ex);
 				Lot    lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
 				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
-				metier.modifierLot(lot,
+				metier.modifierLotComplet(lot,
 					JsonSerialiser.extraireString(c, "typologie"),
 					JsonSerialiser.extraireString(c, "affaire"),
-					JsonSerialiser.extraireInt   (c, "nbPieces"),
-					JsonSerialiser.extraireDouble (c, "cadence"),
-					JsonSerialiser.extraireInt   (c, "valeurVente"),
-					JsonSerialiser.extraireString(c, "statut"),
-					JsonSerialiser.extraireString(c, "statutEchant"),
 					JsonSerialiser.extraireString(c, "semaine"),
-					JsonSerialiser.extraireInt   (c, "priorite"),
-					JsonSerialiser.extraireString(c, "lotACharge"),
 					JsonSerialiser.extraireString(c, "emplacement"),
-					JsonSerialiser.extraireBool  (c, "sousDouane"),
 					JsonSerialiser.extraireString(c, "dateReception"),
 					JsonSerialiser.extraireString(c, "datePaiement"),
-					JsonSerialiser.extraireString(c, "commentaire"));
+					JsonSerialiser.extraireInt   (c, "nbPieces"),
+					JsonSerialiser.extraireDouble(c, "prixUnitaire"),
+					JsonSerialiser.extraireInt   (c, "valeurVente"),
+					JsonSerialiser.extraireDouble(c, "cadence"),
+					JsonSerialiser.extraireDouble(c, "heures"),
+					JsonSerialiser.extraireString(c, "lotACharge"),
+					JsonSerialiser.extraireString(c, "statut"),
+					JsonSerialiser.extraireString(c, "statutEchant"),
+					JsonSerialiser.extraireBool  (c, "sousDouane"),
+					JsonSerialiser.extraireString(c, "commentaire"),
+					JsonSerialiser.extraireString(c, "formatCarton"),
+					JsonSerialiser.extraireInt   (c, "collisage"),
+					JsonSerialiser.extraireInt   (c, "nbPers"),
+					JsonSerialiser.extraireString(c, "distribution"),
+					JsonSerialiser.extraireDouble(c, "cadenceReel"),
+					JsonSerialiser.extraireInt   (c, "poucentrecupCartonFour"),
+					JsonSerialiser.extraireString(c, "methode"));
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				// Dual response pour resynchroniser le client
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -914,7 +927,9 @@ public class ServeurHTTP
 					JsonSerialiser.extraireBool(c, "tri"),
 					JsonSerialiser.extraireBool(c, "finit"));
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -992,7 +1007,9 @@ public class ServeurHTTP
 				if (etiq   <= lot.getNbPieces()) lot.getSuivieProd().setNbPieceEtiq(etiq);
 				if (repart <= lot.getNbPieces()) lot.getSuivieProd().setNbPieceRepart(repart);
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1008,7 +1025,9 @@ public class ServeurHTTP
 				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.commencerLot(lot);
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1024,7 +1043,9 @@ public class ServeurHTTP
 				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.annulerLot(lot);
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1040,7 +1061,9 @@ public class ServeurHTTP
 				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.marquerLotTermine(lot);
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1058,10 +1081,13 @@ public class ServeurHTTP
 			rwLock.writeLock().lock();
 			try {
 				String  c   = lire(ex);
-				Societe soc = findSociete(JsonSerialiser.extraireString(c, "nom"));
-				if (soc == null) { rep(ex, 404, "{\"err\":\"société introuvable\"}"); return; }
+				String  ancienNom  = JsonSerialiser.extraireString(c, "nom");
+				Societe soc        = findSociete(ancienNom);
+				if (soc == null) { rep(ex, 404, "{\"err\":\"société introuvable : " + ancienNom + "\"}"); return; }
+				String  nouveauNom = JsonSerialiser.extraireString(c, "nouveauNom");
+				if (nouveauNom == null || nouveauNom.isBlank()) nouveauNom = ancienNom;
 				metier.modifierSociete(soc,
-					JsonSerialiser.extraireString(c, "nom"),
+					nouveauNom,                                // ← CORRECT : utilise "nouveauNom"
 					JsonSerialiser.extraireString(c, "ce"),
 					JsonSerialiser.extraireInt   (c, "totalHeuresCE"),
 					JsonSerialiser.extraireInt   (c, "effectif"));

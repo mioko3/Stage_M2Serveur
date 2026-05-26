@@ -587,25 +587,25 @@ public class CarteLot extends JPanel implements ActionListener
 					break;
 				}
 				case "DISTRI":
-					this.ctrl.modifierDistributionLot(this.lot, (String) combDistri.getSelectedItem());
+					lot.setDistribution((String) combDistri.getSelectedItem());
 					break;
 				case "LOT_CHARGE":
-					this.ctrl.modifierLotAChargeLot(this.lot, textLotCharge.getText().trim());
+					lot.setLotACharge(textLotCharge.getText().trim());
 					break;
 				case "FORM_CART":
-					this.ctrl.setFormatCarton((String) combFormCart.getSelectedItem());
+					lot.setFormatCarton((String) combFormCart.getSelectedItem());
 					break;
 				case "COLLISAGES":
 				{
 					int v = Integer.parseInt(textCollisage.getText().trim());
 					if (v < 0) throw new NumberFormatException();
-					this.ctrl.modifierCollisageLot(this.lot, v);
+					lot.setCollisage(v);
 					break;
 				}
 				case "COLISRECUP":
 				{
 					int v = Integer.parseInt(textColisRecup.getText().trim());
-					if (v >= 0 && v <= 100) this.ctrl.modifierPoucentrecupCartonFour(this.lot, v);
+					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour(v);
 					break;
 				}
 				case "METHODE":
@@ -614,16 +614,25 @@ public class CarteLot extends JPanel implements ActionListener
 				case "CADENCE":
 				{
 					double v = Double.parseDouble(textCadenceReel.getText().trim());
-					if (v > 0) this.ctrl.modifierCadenceLot(this.lot, v);
+					if (v > 0) lot.setCadenceReel(v);
 					break;
 				}
 				case "NBPERS":
 				{
 					int v = Integer.parseInt(textNbPers.getText().trim());
-					if (v > 0) this.ctrl.modifierNbPersLot(this.lot, v);
+					if (v > 0) lot.setNbPers(v);
 					break;
 				}
 			}
+			this.ctrl.modifierLotComplet(ancienLot,
+				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
+				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
+				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
+				lot.getDistribution(), lot.getCadenceReel(),
+				lot.getPoucentrecupCartonFour(),
+				lot.getMethode() != null ? lot.getMethode().getNom() : "");
 			
 			this.m.rafraichir();
 		}

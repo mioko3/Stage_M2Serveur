@@ -11,14 +11,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
-/**
- * Couche métier pure — aucune dépendance Swing.
- *
- * Toute interaction avec l'utilisateur (JFileChooser, JOptionPane, System.exit)
- * a été retirée. PlanningGlobal reçoit des chemins de fichiers en paramètre,
- * lance des exceptions en cas d'erreur, et laisse le Contrôleur décider
- * comment réagir (afficher un dialogue, logger, quitter…).
- */
 public class PlanningGlobal
 {
 	public static boolean estHeureSup;
@@ -27,13 +19,6 @@ public class PlanningGlobal
 	private ArrayList<Lot>        lots;
 	private ArrayList<FicheRoute> ficheRoute;
 
-	// ── Constructeur ──────────────────────────────────────────────────────
-
-	/**
-	 * Constructeur vide : le planning est initialisé à vide.
-	 * C'est le Contrôleur qui appellera chargerDepuisExcel() ou chargerDepuisJson()
-	 * selon le choix de l'utilisateur.
-	 */
 	public PlanningGlobal()
 	{
 		this.societes   = new ArrayList<>();
@@ -41,17 +26,8 @@ public class PlanningGlobal
 		this.ficheRoute = new ArrayList<>();
 	}
 
-	// ── Chargement des données ────────────────────────────────────────────
+	// ── Chargement ───────────────────────────────────────────────────────
 
-	/**
-	 * Charge les lots depuis un fichier Excel (XLSX/XLSM).
-	 * Lance une IOException si le fichier est illisible.
-	 *
-	 * @param cheminXlsx chemin absolu vers le fichier Excel
-	 * @param cheminSocietes chemin vers le JSON des sociétés
-	 * @param semaine numéro de semaine (pour les heures ACE)
-	 * @param cheminXlsxHeures chemin vers le fichier Excel des heures (peut être le même)
-	 */
 	public void chargerDepuisExcel(String cheminXlsx, String cheminSocietes,
 	                               int semaine, String cheminXlsxHeures) throws IOException
 	{
@@ -60,24 +36,12 @@ public class PlanningGlobal
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsxHeures, this.societes, semaine);
 	}
 
-	/**
-	 * Charge les lots et sociétés depuis les fichiers JSON de secours.
-	 *
-	 * @param cheminLotsJson    chemin vers lots.json
-	 * @param cheminSocietesJson chemin vers societes.json
-	 */
 	public void chargerDepuisJson(String cheminLotsJson, String cheminSocietesJson) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminLotsJson);
 		this.societes = ExcelReader.lireSocietes(cheminSocietesJson, this);
 	}
 
-	/**
-	 * Importe de nouveaux lots depuis un fichier Excel et les ajoute
-	 * à la liste existante (sans effacer les lots déjà présents).
-	 *
-	 * @param cheminXlsx chemin absolu vers le fichier Excel
-	 */
 	public void importerNouveauxLots(String cheminXlsx) throws IOException
 	{
 		ArrayList<Lot> nouveaux = ExcelReader.lireLots(cheminXlsx);
@@ -86,12 +50,6 @@ public class PlanningGlobal
 				if (!l.equals(ln)) this.lots.add(ln);
 	}
 
-	/**
-	 * Met à jour les heures disponibles des sociétés depuis un fichier Excel.
-	 *
-	 * @param cheminXlsx chemin absolu vers le fichier Excel
-	 * @param semaine    numéro de semaine à lire
-	 */
 	public void mettreAJourHeuresSocietes(String cheminXlsx, int semaine) throws IOException
 	{
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsx, this.societes, semaine);
@@ -99,13 +57,19 @@ public class PlanningGlobal
 
 	public void nouveau()
 	{
-		this.lots = new ArrayList<Lot>();
+		this.lots      = new ArrayList<>();
 		this.ficheRoute = new ArrayList<>();
 	}
 
-	// ── Méthodes IHM (inchangées, pas de Swing) ───────────────────────────
+	// ── Modification lots — champs de BASE (DialogEditLot) ───────────────
 
-	public void modifierLot(Lot lot, String typologie, String affaire,
+	/**
+	 * Modifie les champs administratifs d'un lot.
+	 * Appelé depuis Controleur.modifierLot() (DialogEditLot).
+	 * Ne touche PAS aux champs logistiques (formatCarton, collisage, etc.)
+	 */
+	public void modifierLot(Lot lot,
+	                        String typologie, String affaire,
 	                        int nbPieces, double cadence, int valeurVente,
 	                        String statut, String statutEchant,
 	                        String semaine, int priorite,
@@ -115,57 +79,119 @@ public class PlanningGlobal
 	{
 		int heuresAvant = (int) Math.ceil(lot.getHeures());
 
-		lot.setTypologie    (typologie);
-		lot.setAffaire      (affaire);
+		lot.setTypologie    (typologie    != null ? typologie    : "");
+		lot.setAffaire      (affaire      != null ? affaire      : "");
 		lot.setNbPieces     (nbPieces);
 		lot.setCadence      (cadence);
 		lot.recalculerHeures();
 		lot.setValeurVente  (valeurVente);
-		lot.setStatut       (statut);
-		lot.setStatutEchant (statutEchant);
-		lot.setSemaine      (semaine);
+		lot.setStatut       (statut       != null ? statut       : "");
+		lot.setStatutEchant (statutEchant != null ? statutEchant : "");
+		lot.setSemaine      (semaine      != null ? semaine      : "");
 		lot.setPriorite     (priorite);
-		lot.setLotACharge   (lotACharge);
-		lot.setEmplacement  (emplacement);
+		lot.setLotACharge   (lotACharge   != null ? lotACharge   : "");
+		lot.setEmplacement  (emplacement  != null ? emplacement  : "");
 		lot.setEstSousDouane(sousDouane);
-		lot.setDateReception(dateReception);
-		lot.setDatePaiement (datePaiement);
-		lot.setCommentaire  (commentaire);
+		lot.setDateReception(dateReception != null ? dateReception : "");
+		lot.setDatePaiement (datePaiement  != null ? datePaiement  : "");
+		lot.setCommentaire  (commentaire   != null ? commentaire   : "");
 
 		int heuresApres = (int) Math.ceil(lot.getHeures());
 		int delta = heuresAvant - heuresApres;
 		if (delta != 0)
 		{
 			Societe soc = getSocieteDuLot(lot);
-			if (soc != null)
-				soc.setTotalHeuresCE(soc.getTotalHeuresCE() + delta);
+			if (soc != null) soc.setTotalHeuresCE(soc.getTotalHeuresCE() + delta);
 		}
 	}
 
-	public void modifierLotMethodeDistribution(Lot lot, String typologie, String lotACharge)
+	// ── Modification lots — champs COMPLETS (CarteLot) ───────────────────
+
+	/**
+	 * Modifie TOUS les champs d'un lot : administratifs + logistiques.
+	 * Appelé depuis Controleur.modifierLotComplet() (CarteLot).
+	 *
+	 * Champs logistiques : formatCarton, collisage, nbPers, distribution,
+	 *                      cadenceReel, poucentrecupCartonFour, methode
+	 */
+	public void modifierLotComplet(Lot lot,
+	                               String typologie, String affaire,
+	                               String semaine, String emplacement,
+	                               String dateReception, String datePaiement,
+	                               int nbPieces, double prixUnitaire, int valeurVente,
+	                               double cadence, double heures,
+	                               String lotACharge,
+	                               String statut, String statutEchant,
+	                               boolean sousDouane,
+	                               String commentaire,
+	                               String formatCarton, int collisage, int nbPers,
+	                               String distribution, double cadenceReel,
+	                               int poucentrecupCartonFour, String methode)
 	{
-		lot.setMethode(typologie  != null ? typologie  : "");
-		lot.setLotACharge(lotACharge != null ? lotACharge : "");
+		int heuresAvant = (int) Math.ceil(lot.getHeures());
+
+		// Champs de base
+		lot.setTypologie    (typologie    != null ? typologie    : "");
+		lot.setAffaire      (affaire      != null ? affaire      : "");
+		lot.setSemaine      (semaine      != null ? semaine      : "");
+		lot.setEmplacement  (emplacement  != null ? emplacement  : "");
+		lot.setDateReception(dateReception != null ? dateReception : "");
+		lot.setDatePaiement (datePaiement  != null ? datePaiement  : "");
+		lot.setNbPieces     (nbPieces);
+		lot.setValeurVente  (valeurVente);
+		lot.setCadence      (cadence);
+		lot.recalculerHeures();
+		lot.setLotACharge   (lotACharge   != null ? lotACharge   : "");
+		lot.setStatut       (statut       != null ? statut       : "");
+		lot.setStatutEchant (statutEchant != null ? statutEchant : "");
+		lot.setEstSousDouane(sousDouane);
+		lot.setCommentaire  (commentaire   != null ? commentaire  : "");
+
+		// Champs logistiques
+		lot.setFormatCarton(formatCarton != null ? formatCarton : "");
+		lot.setCollisage   (collisage);
+		lot.setNbPers      (nbPers);
+		lot.setDistribution(distribution != null ? distribution : "");
+		if (cadenceReel > 0) lot.setCadenceReel(cadenceReel);
+		if (poucentrecupCartonFour >= 0 && poucentrecupCartonFour <= 100)
+			lot.setPoucentrecupCartonFour(poucentrecupCartonFour);
+		lot.setMethode(methode != null ? methode : "");
+		lot.recalculNbPalette();
+
+		// Répercussion delta heures sur la société
+		int heuresApres = (int) Math.ceil(lot.getHeures());
+		int delta = heuresAvant - heuresApres;
+		if (delta != 0)
+		{
+			Societe soc = getSocieteDuLot(lot);
+			if (soc != null) soc.setTotalHeuresCE(soc.getTotalHeuresCE() + delta);
+		}
 	}
+
+	// ─────────────────────────────────────────────────────────────────────
+	// (reste inchangé : modifierPhase, marquerLotTermine, modifierSociete,
+	//  modifierAce, commencerLot, annulerLot, getSocieteDuLot, getAceDuLot,
+	//  affecterLot, desaffecterLot, ajouterLot×2, supprimerLot,
+	//  genererFicheRoute, getSocietes, getLots, setSocietes, setLots,
+	//  setestHeureSup, getTouteAces, modifierLotMethodeDistribution)
+	// ─────────────────────────────────────────────────────────────────────
 
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{
 		Phase phase = lot.getPhase();
-		phase.setPreTri      (preTri);
-		phase.setSurPiste    (surPiste);
-		phase.setSortieEtiq  (sortieEtiq);
-		phase.setTri         (tri);
-		phase.setFinit       (finit);
+		phase.setPreTri    (preTri);
+		phase.setSurPiste  (surPiste);
+		phase.setSortieEtiq(sortieEtiq);
+		phase.setTri       (tri);
+		phase.setFinit     (finit);
 		if (finit)
 		{
-			LocalDateTime now = LocalDateTime.now();
-			DateTimeFormatter formatter =
-				DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-			String formatted = now.format(formatter);
+			String formatted = LocalDateTime.now()
+				.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
 			lot.setdateFin(formatted);
 		}
-		else { lot.setdateFin("");}
+		else { lot.setdateFin(""); }
 	}
 
 	public void marquerLotTermine(Lot lot)
@@ -178,10 +204,10 @@ public class PlanningGlobal
 	public void modifierSociete(Societe soc, String nom, String ce,
 	                            int totalHeuresCE, int effectif)
 	{
-		soc.setNom           (nom);
-		soc.setCe            (ce);
-		soc.setTotalHeuresCE (totalHeuresCE);
-		soc.setEffectifTotal (effectif);
+		soc.setNom          (nom);
+		soc.setCe           (ce);
+		soc.setTotalHeuresCE(totalHeuresCE);
+		soc.setEffectifTotal(effectif);
 	}
 
 	public void modifierAce(Ace ace, String nom, int nbPers, int effectif)
@@ -193,25 +219,22 @@ public class PlanningGlobal
 
 	public void commencerLot(Lot l)
 	{
-		LocalDateTime now = LocalDateTime.now();
-		DateTimeFormatter formatter =
-			DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-		String formatted = now.format(formatter);
+		String formatted = LocalDateTime.now()
+			.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
 		l.setDateDebut(formatted);
 	}
+
 	public void annulerLot(Lot l)
 	{
 		l.setDateDebut("");
 		l.setdateFin("");
-		l.setdateFinT("");  // ← AJOUTER cette ligne si absente
+		l.setdateFinT("");
 		l.getPhase().setPreTri(false);
 		l.getPhase().setSurPiste(false);
 		l.getPhase().setSortieEtiq(false);
 		l.getPhase().setTri(false);
 		l.getPhase().setFinit(false);
 	}
-
-	// ── Recherche ─────────────────────────────────────────────────────────
 
 	public Societe getSocieteDuLot(Lot lot)
 	{
@@ -230,28 +253,17 @@ public class PlanningGlobal
 		return null;
 	}
 
-	// ── Affectation ───────────────────────────────────────────────────────
-
-	/**
-	 * @return true si succès, false si la société n'a pas assez d'heures
-	 * ou que la société et l'ACE sont déjà affectés au lot. Dans ce cas,
-	 * aucune modification n'est appliquée.
-	 */
 	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
 	{
 		Societe ancSociete = getSocieteDuLot(lot);
 		Ace     ancAce     = getAceDuLot(lot);
-
 		if (ancSociete == societe && ancAce == ace) return true;
-
 		if (ancSociete != null)
 		{
 			if (ancAce != null) ancSociete.enleverLotACE(ancAce, lot);
 			ancSociete.enleverLot(lot);
 		}
-
 		societe.ajouterLot(lot, ace);
-
 		return true;
 	}
 
@@ -290,14 +302,9 @@ public class PlanningGlobal
 		lots.add(lot);
 	}
 
-	public void ajouterLot(Lot l)
-	{
-		this.lots.add(l);
-	}
+	public void ajouterLot(Lot l) { this.lots.add(l); }
 
 	public void supprimerLot(Lot lot) { lots.remove(lot); }
-
-	// ── Fiche de route ────────────────────────────────────────────────────
 
 	public FicheRoute genererFicheRoute(Societe societe)
 	{
@@ -308,28 +315,25 @@ public class PlanningGlobal
 		return fr2;
 	}
 
-	// ── Getters / Setters ─────────────────────────────────────────────────
+	public void modifierLotMethodeDistribution(Lot lot, String methode, String lotACharge)
+	{
+		lot.setMethode   (methode    != null ? methode    : "");
+		lot.setLotACharge(lotACharge != null ? lotACharge : "");
+	}
 
-	
-	public ArrayList<Societe> getSocietes()       { return societes; }
-	public ArrayList<Lot>     getLots()           { return lots;     }
+	public ArrayList<Societe> getSocietes()    { return societes; }
+	public ArrayList<Lot>     getLots()        { return lots;     }
 	public ArrayList<Ace>     getTouteAces()
 	{
 		ArrayList<Ace> tout = new ArrayList<>();
-		for (Societe s : societes)
-			for (Ace a : s.getAces())
-				tout.add(a);
+		for (Societe s : societes) for (Ace a : s.getAces()) tout.add(a);
 		return tout;
 	}
-
 	public void setSocietes(ArrayList<Societe> societes) { this.societes = societes; }
-	public void setLots    (ArrayList<Lot>     lots)     { this.lots	 = lots;     }
+	public void setLots    (ArrayList<Lot>     lots)     { this.lots     = lots;     }
 	public void setestHeureSup()
 	{
 		estHeureSup = !estHeureSup;
-		for (Lot l : this.lots)
-		{
-			l.calculDateFinThéorique();
-		}
+		for (Lot l : this.lots) l.calculDateFinThéorique();
 	}
 }

@@ -8,6 +8,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Interface du contrôleur — implémentée par Controleur (solo) et ControleurClient (réseau).
+ *
+ * STRATÉGIE pour les champs logistiques de CarteLot :
+ * ────────────────────────────────────────────────────
+ * On ajoute UNE NOUVELLE MÉTHODE modifierLotComplet() distincte.
+ * L'ancienne modifierLot() n'est PAS modifiée → DialogEditLot, PanelAffectation,
+ * DialogAjoutLot et tout autre code IHM existant continuent de compiler sans
+ * aucun changement.
+ *
+ * CarteLot appelle modifierLotComplet() avec tous les champs logistiques.
+ * DialogEditLot continue d'appeler modifierLot() avec les champs de base.
+ */
 public interface IControleur
 {
 	// ── Données ───────────────────────────────────────────────────────────
@@ -26,40 +39,51 @@ public interface IControleur
 	void    supprimerLot(Lot lot);
 	void    exportNewLot();
 
-	// ── Modification lots ─────────────────────────────────────────────────
-	void    modifierLot(Lot lot, String typologie, String affaire,
+	// ── Modification lots — signature DE BASE (DialogEditLot, inchangée) ──
+	/**
+	 * Modifie les champs administratifs d'un lot.
+	 * Appelé par DialogEditLot. Ne touche PAS aux champs logistiques.
+	 */
+	void    modifierLot(Lot lot,
+	                    String typologie, String affaire,
 	                    int nbPieces, double cadence, int valeurVente,
 	                    String statut, String statutEchant,
 	                    String semaine, int priorite,
 	                    String lotACharge, String emplacement,
 	                    boolean sousDouane, String dateReception,
 	                    String datePaiement, String commentaire);
+
+	// ── Modification lots — signature COMPLÈTE (CarteLot) ─────────────────
+	/**
+	 * Modifie TOUS les champs d'un lot : administratifs + logistiques.
+	 * Appelé exclusivement par CarteLot.actionPerformed().
+	 *
+	 * Champs logistiques ajoutés :
+	 *   formatCarton, collisage, nbPers, distribution,
+	 *   cadenceReel, poucentrecupCartonFour, methode (nom)
+	 *
+	 * L'ordre des paramètres correspond exactement à l'appel existant
+	 * dans CarteLot.actionPerformed().
+	 */
+	void    modifierLotComplet(Lot lot,
+	                           String typologie, String affaire,
+	                           String semaine, String emplacement,
+	                           String dateReception, String datePaiement,
+	                           int nbPieces, double prixUnitaire, int valeurVente,
+	                           double cadence, double heures,
+	                           String lotACharge,
+	                           String statut, String statutEchant,
+	                           boolean sousDouane,
+	                           String commentaire,
+	                           String formatCarton, int collisage, int nbPers,
+	                           String distribution, double cadenceReel,
+	                           int poucentrecupCartonFour, String methode);
+
 	void    modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                      boolean sortieEtiq, boolean tri, boolean finit);
 	void    marquerLotTermine(Lot lot);
 	void    commencerLot(Lot lot);
 	void    annulerLot(Lot lot);
-
-	void modifierTypoLot(Lot lot , String typo);
-	void modifierAffaireLot(Lot lot , String affaire);
-	void modifierNbPiecesLot(Lot lot , int nbPieces);
-	void modifierCadenceLot(Lot lot , double cadence);
-	void modifierValeurVenteLot(Lot lot , int valeurVente);
-	void modifierStatutLot(Lot lot , String statut);
-	void modifierStatutEchantLot(Lot lot , String statutEchant);
-	void modifierSemaineLot(Lot lot , String semaine);
-	void modifierPrioriteLot(Lot lot , int priorite);
-	void modifierLotAChargeLot(Lot lot , String lotACharge);
-	void modifierEmplacementLot(Lot lot , String emplacement);
-	void modifierSousDouaneLot(Lot lot , boolean sousDouane);
-	void modifierDateReceptionLot(Lot lot , String dateReception);
-	void modifierDatePaiementLot(Lot lot , String datePaiement);
-	void modifierCommentaireLot(Lot lot , String commentaire);
-	void modifierNbPersLot(Lot lot , int nbPers);
-	void modifierCollisageLot(Lot lot , int collisage);
-	void modifierPoucentrecupCartonFour(Lot lot , int poucentrecupCartonFour);
-	void modifierDistributionLot(Lot lot , String distribution);
-	void setFormatCarton(String formatCarton);
 
 	// ── Affectation ───────────────────────────────────────────────────────
 	boolean affecterLot(Lot lot, Societe societe, Ace ace);
