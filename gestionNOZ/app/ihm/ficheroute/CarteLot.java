@@ -414,7 +414,7 @@ public class CarteLot extends JPanel implements ActionListener
 				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
 				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
 				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
 				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
 				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
 				lot.getMethode() != null ? lot.getMethode().getNom() : "");
@@ -488,7 +488,7 @@ public class CarteLot extends JPanel implements ActionListener
 				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
 				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
 				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
 				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
 				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
 				lot.getMethode() != null ? lot.getMethode().getNom() : "");
@@ -644,7 +644,7 @@ public class CarteLot extends JPanel implements ActionListener
 				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
 				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
 				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.getCommentaire(),
+				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
 				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
 				lot.getDistribution(), lot.getCadenceReel(),
 				lot.getPoucentrecupCartonFour(),
