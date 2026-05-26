@@ -121,7 +121,18 @@ public class Lot
 
 	public void calculHeuresPiste(int eff)
 	{
-		this.heuresAce = arrondi2((this.cadenceReel > 0) ? this.nbPieces / (this.cadenceReel * eff) : this.nbPieces / (this.cadence * eff));
+		// Protect against invalid input (zero workers or zero cadence)
+		if (eff <= 0 || (this.cadenceReel <= 0 && this.cadence <= 0))
+		{
+			this.heuresAce = 0;
+			this.dateFinTheorique = "";
+			if (this.suivieProd != null)
+				this.suivieProd.miseAJJourAvancement();
+			return;
+		}
+
+		double rythme = (this.cadenceReel > 0) ? this.cadenceReel : this.cadence;
+		this.heuresAce = arrondi2(this.nbPieces / (rythme * eff));
 		calculDateFinThéorique();
 		if (this.suivieProd != null)
 			this.suivieProd.miseAJJourAvancement();
