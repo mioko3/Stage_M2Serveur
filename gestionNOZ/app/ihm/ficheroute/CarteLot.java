@@ -624,9 +624,7 @@ public class CarteLot extends JPanel implements ActionListener
 					break;
 				}
 			}
-			this.ctrl.modifierLot(ancienLot, lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
-								lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
-								lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getHeuresAce());
+			
 			this.m.rafraichir();
 		}
 		catch (NumberFormatException ex)

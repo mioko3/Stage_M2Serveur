@@ -311,6 +311,12 @@ public class ControleurClient implements IControleur
 	}
 
 	@Override
+	public void modifierCarteLot(Lot lotancien, Lot lotmodifie)
+	{
+		
+	}
+
+	@Override
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{
