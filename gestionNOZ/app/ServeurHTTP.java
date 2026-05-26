@@ -593,9 +593,6 @@ public class ServeurHTTP
 		catch (Exception e)
 		{
 			// Le body n'est pas chiffré (ancien client ou test manuel avec curl)
-			log("[AES] Body non chiffré reçu depuis "
-				+ ex.getRemoteAddress().getAddress().getHostAddress()
-				+ " — traité comme JSON brut.");
 			return brut;
 		}
 	}
@@ -957,7 +954,7 @@ public class ServeurHTTP
 				boolean ok = metier.affecterLot(lot, societe, ace);
 				save(); versionDonnees = System.currentTimeMillis();
 				rep(ex, ok ? 200 : 400,
-					"{\"lotsACE\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
 					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
@@ -1092,7 +1089,9 @@ public class ServeurHTTP
 					JsonSerialiser.extraireInt   (c, "totalHeuresCE"),
 					JsonSerialiser.extraireInt   (c, "effectif"));
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1125,7 +1124,9 @@ public class ServeurHTTP
 					aces.add(new Ace(n.getNom(), n.getNbPers(), n.getEffectifActuel()));
 				}
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1210,7 +1211,9 @@ public class ServeurHTTP
 					}
 				}
 				save(); versionDonnees = System.currentTimeMillis();
-				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -1222,7 +1225,9 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			rwLock.writeLock().lock();
 			try { metier.setestHeureSup(); save();
-				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots())); }
+				rep(ex, 200,
+					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
 	}

@@ -86,7 +86,6 @@ public class DonneesSauvegarder
 		// Si le fichier est déjà en JSON brut (migration), on le passe directement.
 		String cheminLotsEffectif     = preparerFichierPourLecture(cheminLots);
 		String cheminSocietesEffectif = preparerFichierPourLecture(cheminSocietes);
-
 		try
 		{
 			// ExcelReader reconstruit correctement les Lot (UUID, lignesColisage,
@@ -95,9 +94,7 @@ public class DonneesSauvegarder
 			metier.getSocietes().clear();
 			ArrayList<Lot> lots = ExcelReader.lireLots(cheminLotsEffectif);
 			metier.getLots()    .addAll(lots);
-			ArrayList<Societe> societes = ExcelReader.lireSocietes(cheminSocietesEffectif, lots);
-			metier.getSocietes().addAll(societes);
-
+			metier.getSocietes().addAll(ExcelReader.lireSocietes(cheminSocietesEffectif, lots));
 			System.out.println("[Chargement] " + metier.getLots().size()
 				+ " lots, " + metier.getSocietes().size() + " sociétés depuis " + cheminDossier);
 		}
