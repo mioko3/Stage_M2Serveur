@@ -34,7 +34,8 @@ public interface IControleur
 	                   String statut, String statutEchant,
 	                   String semaine, int priorite,
 	                   String lotACharge, String emplacement,
-	                   boolean sousDouane, String dateReception,
+	                   boolean sousDouane, boolean machine,
+	                   String dateReception,
 	                   String datePaiement, String commentaire);
 	void    supprimerLot(Lot lot);
 	void    exportNewLot();
@@ -50,7 +51,7 @@ public interface IControleur
 	                    String statut, String statutEchant,
 	                    String semaine, int priorite,
 	                    String lotACharge, String emplacement,
-	                    boolean sousDouane, String dateReception,
+	                    boolean sousDouane, boolean machine, String dateReception,
 	                    String datePaiement, String commentaire);
 
 	// ── Modification lots — signature COMPLÈTE (CarteLot) ─────────────────
@@ -73,7 +74,7 @@ public interface IControleur
 	                           double cadence, double heures,
 	                           String lotACharge,
 	                           String statut, String statutEchant,
-	                           boolean sousDouane,
+	                           boolean sousDouane, boolean machine,
 	                           String commentaire,
 	                           String formatCarton, int collisage, int nbPers,
 	                           String distribution, double cadenceReel,

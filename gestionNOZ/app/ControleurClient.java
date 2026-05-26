@@ -223,7 +223,7 @@ public class ControleurClient implements IControleur
 						   String statut, String statutEchant,
 						   String semaine, int priorite,
 						   String lotACharge, String emplacement,
-						   boolean sousDouane, String dateReception,
+						   boolean sousDouane, boolean machine, String dateReception,
 						   String datePaiement, String commentaire)
 	{
 		String c = "{\"numCDE\":"       + numCDE
@@ -239,6 +239,7 @@ public class ControleurClient implements IControleur
 			+ ",\"lotACharge\":"    + e(lotACharge)
 			+ ",\"emplacement\":"   + e(emplacement)
 			+ ",\"estSousDouane\":" + sousDouane
+			+ ",\"estMachine\":"    + machine
 			+ ",\"dateReception\":" + e(dateReception)
 			+ ",\"datePaiement\":"  + e(datePaiement)
 			+ ",\"commentaire\":"   + e(commentaire) + "}";
@@ -284,13 +285,13 @@ public class ControleurClient implements IControleur
 	public void modifierLot(Lot lot, String typo, String affaire,
 						int nbPieces, double cadence, int valeurVente,
 						String statut, String statutEchant, String semaine, int priorite,
-						String lotACharge, String emplacement, boolean sousDouane,
+						String lotACharge, String emplacement, boolean sousDouane, boolean machine,
 						String dateReception, String datePaiement, String commentaire)
 	{
 		modifierLotComplet(lot,
 			typo, affaire, semaine, emplacement, dateReception, datePaiement,
 			nbPieces, lot.getPrixUnitaire(), valeurVente, cadence, lot.getHeures(),
-			lotACharge, statut, statutEchant, sousDouane, commentaire,
+			lotACharge, statut, statutEchant, sousDouane, machine, commentaire,
 			lot.getFormatCarton() != null ? lot.getFormatCarton() : "",
 			lot.getCollisage(), lot.getNbPers(),
 			lot.getDistribution() != null ? lot.getDistribution() : "",
@@ -308,7 +309,7 @@ public class ControleurClient implements IControleur
 							double cadence, double heures,
 							String lotACharge,
 							String statut, String statutEchant,
-							boolean sousDouane,
+							boolean sousDouane, boolean machine,
 							String commentaire,
 							String formatCarton, int collisage, int nbPers,
 							String distribution, double cadenceReel,
@@ -321,7 +322,7 @@ public class ControleurClient implements IControleur
 		lot.setNbPieces(nbPieces);            lot.setValeurVente(valeurVente);
 		lot.setCadence(cadence);              lot.setLotACharge(lotACharge);
 		lot.setStatut(statut);                lot.setStatutEchant(statutEchant);
-		lot.setEstSousDouane(sousDouane);     lot.setCommentaire(commentaire);
+		lot.setEstSousDouane(sousDouane);     lot.setEstMachine(machine);     lot.setCommentaire(commentaire);
 		lot.setFormatCarton(formatCarton);    lot.setCollisage(collisage);
 		lot.setNbPers(nbPers);                lot.setDistribution(distribution);
 		lot.setCadenceReel(cadenceReel);

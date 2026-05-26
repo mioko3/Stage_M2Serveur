@@ -115,7 +115,7 @@ public class Controleur implements IControleur
 	public void ajouterLot(int numCDE, String typologie, String affaire,
 	                       int nbPieces, double cadence, int valeurVente,
 	                       String statut, String statutEchant, String semaine, int priorite,
-	                       String lotACharge, String emplacement, boolean sousDouane,
+	                       String lotACharge, String emplacement, boolean sousDouane, boolean machine,
 	                       String dateReception, String datePaiement, String commentaire)
 	{
 		metier.ajouterLot(numCDE, typologie, affaire, nbPieces, cadence, valeurVente,
@@ -144,7 +144,7 @@ public class Controleur implements IControleur
 	public void modifierLot(Lot lot, String typologie, String affaire,
 	                        int nbPieces, double cadence, int valeurVente,
 	                        String statut, String statutEchant, String semaine, int priorite,
-	                        String lotACharge, String emplacement, boolean sousDouane,
+	                        String lotACharge, String emplacement, boolean sousDouane, boolean machine,
 	                        String dateReception, String datePaiement, String commentaire)
 	{
 		metier.modifierLot(lot, typologie, affaire, nbPieces, cadence, valeurVente,
@@ -163,7 +163,7 @@ public class Controleur implements IControleur
 	                               double cadence, double heures,
 	                               String lotACharge,
 	                               String statut, String statutEchant,
-	                               boolean sousDouane,
+	                               boolean sousDouane, boolean machine,
 	                               String commentaire,
 	                               String formatCarton, int collisage, int nbPers,
 	                               String distribution, double cadenceReel,

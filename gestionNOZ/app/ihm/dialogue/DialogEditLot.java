@@ -42,7 +42,7 @@ public class DialogEditLot extends JDialog
 
 	private JTextField  fTypologie, fAffaire, fNbPieces, fCadence, fValeur;
 	private JTextField  fSemaine, fLotACharge, fDateRec, fDatePai, fCommentaire;
-	private JCheckBox   fDouane;
+	private JCheckBox   fDouane, fMachine;
 	private JComboBox<String> fStatut, fStatutEchant;
 	private JSpinner    fPriorite;
 
@@ -83,6 +83,7 @@ public class DialogEditLot extends JDialog
 		fDatePai     = new JTextField();
 		fCommentaire = new JTextField();
 		fDouane      = new JCheckBox("Sous douane");
+		fMachine     = new JCheckBox("Est machine");
 		fPriorite    = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
 
 		fStatut = new JComboBox<>(new String[]{"", "OU", "TC", "MR"});
@@ -199,6 +200,7 @@ public class DialogEditLot extends JDialog
 		fDatePai    .setText(s(lot.getDatePaiement()));
 		fCommentaire.setText(s(lot.getCommentaire()));
 		fDouane     .setSelected(lot.isEstSousDouane());
+		fMachine    .setSelected(lot.estMachine());
 		fPriorite   .setValue(lot.getPriorite());
 
 		decouperEmplacement(s(lot.getEmplacement()));
@@ -289,6 +291,7 @@ public class DialogEditLot extends JDialog
 				fLotACharge  .getText().trim(),
 				getEmplacementCombine(),
 				fDouane      .isSelected(),
+				fMachine     .isSelected(),
 				fDateRec     .getText().trim(),
 				fDatePai     .getText().trim(),
 				fCommentaire .getText().trim()

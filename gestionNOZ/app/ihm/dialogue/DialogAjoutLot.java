@@ -41,7 +41,7 @@ public class DialogAjoutLot extends JDialog
 	private JTextField        fNumCDE, fTypologie, fAffaire, fNbPieces, fCadence;
 	private JTextField        fValeur, fSemaine, fLotACharge, fDateRec, fDatePai, fCommentaire;
 	private JComboBox<String> fStatut, fStatutEchant;
-	private JCheckBox         fDouane;
+	private JCheckBox         fDouane ,fMachine;
 	private JSpinner          fPriorite;
 
 	private JComboBox<String> fEmplacementLettre;
@@ -79,6 +79,7 @@ public class DialogAjoutLot extends JDialog
 		fDatePai     = new JTextField();
 		fCommentaire = new JTextField();
 		fDouane      = new JCheckBox("Sous douane");
+		fMachine     = new JCheckBox("Lot machine");
 		fPriorite    = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
 
 		fStatut = new JComboBox<>(new String[]{"", "OU", "TC", "MR"});
@@ -137,6 +138,7 @@ public class DialogAjoutLot extends JDialog
 			{"Date réception",   fDateRec},
 			{"Date paiement",    fDatePai},
 			{"",                 fDouane},
+			{"",                 fMachine},
 			{"Commentaire",      fCommentaire},
 		};
 
@@ -227,6 +229,7 @@ public class DialogAjoutLot extends JDialog
 				fLotACharge  .getText().trim(),
 				getEmplacementCombine(),
 				fDouane      .isSelected(),
+				fMachine     .isSelected(),
 				fDateRec     .getText().trim(),
 				fDatePai     .getText().trim(),
 				fCommentaire .getText().trim()
