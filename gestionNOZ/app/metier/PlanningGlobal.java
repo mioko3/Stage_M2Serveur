@@ -32,14 +32,14 @@ public class PlanningGlobal
 	                               int semaine, String cheminXlsxHeures) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminXlsx);
-		this.societes = ExcelReader.lireSocietes(cheminSocietes, this);
+		this.societes = ExcelReader.lireSocietes(cheminSocietes, this.lots);
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsxHeures, this.societes, semaine);
 	}
 
 	public void chargerDepuisJson(String cheminLotsJson, String cheminSocietesJson) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminLotsJson);
-		this.societes = ExcelReader.lireSocietes(cheminSocietesJson, this);
+		this.societes = ExcelReader.lireSocietes(cheminSocietesJson, this.lots);
 	}
 
 	public void importerNouveauxLots(String cheminXlsx) throws IOException
