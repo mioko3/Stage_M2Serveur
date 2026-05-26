@@ -1,3 +1,7 @@
+# ── Aide ──────────────────────────────────────────────
+app/CheminApp.java
+
+# ── Métier ───────────────────────────────────────────────────
 app/metier/lot/Lot.java
 app/metier/lot/Methode.java
 app/metier/lot/LigneColisage.java
@@ -11,8 +15,15 @@ app/metier/personelle/Societe.java
 
 app/metier/collecte/ExcelReader.java
 app/metier/collecte/DonneesSauvegarder.java
+app/metier/collecte/JsonSerialiser.java
 
 app/metier/PlanningGlobal.java
+
+app/Controleur.java
+
+# ── IHM ───────────────────────────────────────────────────
+app/ihm/IhmUtils.java
+app/ihm/FenetrePrincipale.java
 
 app/ihm/login/FenetreLogin.java
 
@@ -33,14 +44,14 @@ app/ihm/gestionlot/PanelAffectation.java
 app/ihm/gestionlot/PanelLots.java
 app/ihm/gestionlot/PanelSocietes.java
 
-app/ihm/IhmUtils.java
-app/ihm/FenetrePrincipale.java
-
-app/IControleur.java
-app/Controleur.java
-app/ServeurHTTP.java
-app/ControleurClient.java
-app/ihm/login/FenetreConnexionClient.java
+# ── IHM Serveur uniquement ────────────────────────────────────
+#  FenetreServeur est gardée car utile sur un PC Windows avec écran.
+#  En mode headless (Linux sans affichage), elle n'est jamais instanciée
+#  grâce au correctif #4 dans ServeurHTTP.java.
 app/ihm/serveur/FenetreServeur.java
-app/metier/collecte/JsonSerialiser.java
+app/ihm/login/FenetreConnexionClient.java
+app/ControleurClient.java
 
+# ── Interfaces et point d'entrée ──────────────────────────────
+app/IControleur.java
+app/ServeurHTTP.java
