@@ -702,13 +702,13 @@ public class ServeurHTTP
 	// ══════════════════════════════════════════════════════════════════════
 
 	/**
-	 * POST /login — authentification, retourne un token de session.
-	 * Route publique : pas de token requis, réponse non chiffrée.
+	 * POST /login — authentification par identifiant uniquement, sans mot de passe.
+	 * Route publique : pas de token requis, corps et réponse non chiffrés.
 	 *
-	 * Corps attendu : {"identifiant":"PAM","motDePasse":"PAM"}
+	 * Corps attendu : {"identifiant":"PAM"}
 	 * Réponse 200   : {"token":"...","accesPAM":true}
-	 * Réponse 401   : identifiant ou mot de passe incorrect
-	 * Réponse 429   : IP bloquée (trop de tentatives)
+	 * Réponse 401   : identifiant inconnu
+	 * Réponse 429   : IP bloquée après trop de tentatives
 	 */
 	class LoginHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
@@ -720,27 +720,27 @@ public class ServeurHTTP
 				rep(ex, 429, "{\"err\":\"Trop de tentatives. Réessayez dans 5 minutes.\"}"); return;
 			}
 			try {
-				// lire() ne déchiffre pas sur /login (le client n'a pas encore la clé)
+				// Lecture brute — pas de déchiffrement, le client n'a pas encore la clé AES
 				String c           = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 				String identifiant = JsonSerialiser.extraireString(c, "identifiant");
-				String motDePasse  = JsonSerialiser.extraireString(c, "motDePasse");
 
-				if (!validerIdentite(identifiant, motDePasse)) {
+				if (!validerIdentite(identifiant, null)) {
 					enregistrerEchecLogin(ip);
-					rep(ex, 401, "{\"err\":\"Identifiant ou mot de passe incorrect.\"}");
+					rep(ex, 401, "{\"err\":\"Identifiant non reconnu.\"}");
 					return;
 				}
-				loginEchecs.remove(ip); // réinitialise le compteur d'échecs
-				boolean pam   = "PAM".equalsIgnoreCase(identifiant);
+				loginEchecs.remove(ip);
+				boolean pam   = "PAM".equalsIgnoreCase(identifiant.trim());
 				String  token = genererToken();
-				sessions.put(token, new SessionInfo(identifiant, pam));
+				sessions.put(token, new SessionInfo(identifiant.trim().toUpperCase(), pam));
 				rep(ex, 200, "{\"token\":" + JsonSerialiser.esc(token) + ",\"accesPAM\":" + pam + "}");
-				log("[Serveur] Connexion réussie : " + identifiant + " depuis " + ip);
+				log("[Serveur] Connexion : " + identifiant + " depuis " + ip);
 			} catch (Exception e) {
 				rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}");
 			}
 		}
 	}
+
 
 	/**
 	 * GET /cle — transmet la clé AES au client authentifié.
@@ -1308,16 +1308,29 @@ public class ServeurHTTP
 	 * Pour un déploiement plus sérieux, stocker des hash BCrypt dans
 	 * un fichier externe et utiliser une bibliothèque comme jBCrypt.
 	 */
+	/**
+	 * Valide l'identifiant reçu à la connexion.
+	 *
+	 * FenetreConnexionClient n'envoie pas de mot de passe — uniquement
+	 * {"identifiant":"PAM"}. On valide donc sur l'identifiant seul,
+	 * comme le faisait l'original du projet.
+	 *
+	 * Pour ajouter un vrai mot de passe plus tard :
+	 *   1. Ajouter un JPasswordField dans FenetreConnexionClient
+	 *   2. L'inclure dans le JSON envoyé
+	 *   3. Réactiver la vérification motDePasse ici
+	 */
 	private boolean validerIdentite(String identifiant, String motDePasse)
 	{
-		if (identifiant == null || motDePasse == null) return false;
-		// Administrateur PAM
-		if ("PAM".equalsIgnoreCase(identifiant) && "PAM".equals(motDePasse)) return true;
-		// Sociétés : identifiant = nom de la société, mot de passe = nom de la société
-		// À changer avant mise en production réelle
+		if (identifiant == null || identifiant.isBlank()) return false;
+
+		// PAM = administrateur, toujours autorisé
+		if ("PAM".equalsIgnoreCase(identifiant.trim())) return true;
+
+		// Société : l'identifiant doit correspondre au nom d'une société chargée
 		return metier.getSocietes().stream()
-			.anyMatch(s -> s.getNom().equalsIgnoreCase(identifiant)
-				&& s.getNom().equalsIgnoreCase(motDePasse));
+			.anyMatch(s -> s.getNom() != null
+				&& s.getNom().equalsIgnoreCase(identifiant.trim()));
 	}
 
 	// ── Point d'entrée ────────────────────────────────────────────────────
