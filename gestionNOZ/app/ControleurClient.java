@@ -311,9 +311,163 @@ public class ControleurClient implements IControleur
 	}
 
 	@Override
-	public void modifierCarteLot(Lot lotancien, Lot lotmodifie)
+	public void modifierTypoLot(Lot lot , String typo)
 	{
-		
+		async("modifierTypoLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"typologie\":" + e(typo) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiertypo", c));
+		});
+	}
+	@Override
+	public void modifierAffaireLot(Lot lot , String affaire)
+	{
+		async("modifierAffaireLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"affaire\":" + e(affaire) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifieraffaire", c));
+		});
+	}
+	@Override
+	public void modifierNbPiecesLot(Lot lot , int nbPieces)
+	{
+		async("modifierNbPiecesLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"nbPieces\":" + nbPieces + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiernbpieces", c));
+		});
+	}
+	@Override
+	public void modifierCadenceLot(Lot lot , double cadence)
+	{
+		async("modifierCadenceLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"cadence\":" + cadence + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercadence", c));
+		});
+	}
+	@Override
+	public void modifierValeurVenteLot(Lot lot , int valeurVente)
+	{
+		async("modifierValeurVenteLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"valeurVente\":" + valeurVente + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiervaleurvente", c));
+		});
+	}
+	@Override
+	public void modifierSemaineLot(Lot lot , String semaine)
+	{
+		async("modifierSemaineLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"semaine\":" + e(semaine) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiersemaine", c));
+		});
+	}
+	@Override
+	public void modifierPrioriteLot(Lot lot , int priorite)
+	{
+		async("modifierPrioriteLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"priorite\":" + priorite + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierpriorite", c));
+		});
+	}
+	@Override
+	public void modifierLotAChargeLot(Lot lot , String lotACharge)
+	{
+		async("modifierLotAChargeLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"lotACharge\":" + e(lotACharge) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierlotacharge", c));
+		});
+	}
+	@Override
+	public void modifierEmplacementLot(Lot lot , String emplacement)
+	{
+		async("modifierEmplacementLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"emplacement\":" + e(emplacement) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifieremplacement", c));
+		});
+	}
+	@Override
+	public void modifierSousDouaneLot(Lot lot , boolean sousDouane)
+	{
+		async("modifierSousDouaneLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"estSousDouane\":" + sousDouane + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdouane", c));
+		});
+	}
+	@Override
+	public void modifierDateReceptionLot(Lot lot , String dateReception)
+	{
+		async("modifierDateReceptionLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"dateReception\":" + e(dateReception) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdatereception", c));
+		});
+	}
+	@Override
+	public void modifierDatePaiementLot(Lot lot , String datePaiement)
+	{
+		async("modifierDatePaiementLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"datePaiement\":" + e(datePaiement) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdatepaiement", c));
+		});
+	}
+	@Override
+	public void modifierCommentaireLot(Lot lot , String commentaire)
+	{
+		async("modifierCommentaireLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"commentaire\":" + e(commentaire) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercommentaire", c));
+		});
+	}
+	@Override
+	public void modifierStatutLot(Lot lot , String statut)
+	{
+		async("modifierStatutLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"statut\":" + e(statut) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierstatut", c));
+		});
+	}
+	@Override
+	public void modifierStatutEchantLot(Lot lot , String statutEchant)
+	{
+		async("modifierStatutEchantLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"statutEchant\":" + e(statutEchant) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierstatutechant", c));
+		});
+	}
+	@Override
+	public void modifierNbPersLot(Lot lot , int nbPers)
+	{
+		async("modifierNbPersLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"nbPers\":" + nbPers + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiernbpers", c));
+		});
+	}
+	@Override
+	public void modifierCollisageLot(Lot lot , int collisage)
+	{
+		async("modifierCollisageLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"collisage\":" + collisage + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifiercollisage", c));
+		});
+	}
+	@Override
+	public void modifierDistributionLot(Lot lot , String distribution)
+	{
+		async("modifierDistributionLot", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"distribution\":" + e(distribution) + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierdistribution", c));
+		});
+	}
+	@Override
+	public void setFormatCarton(String formatCarton) {
+		async("setFormatCarton", () -> {
+			String c = "{\"formatCarton\":" + e(formatCarton) + "}";
+			post("/lots/setformatcarton", c);
+		});
+	}
+	@Override
+	public void modifierPoucentrecupCartonFour(Lot lot , int poucentrecupCartonFour)
+	{
+		async("modifierPoucentrecupCartonFour", () -> {
+			String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"poucentrecupCartonFour\":" + poucentrecupCartonFour + "}";
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifierpoucentrecupcartonfour", c));
+		});
 	}
 
 	@Override

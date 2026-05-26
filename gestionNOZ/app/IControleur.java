@@ -40,6 +40,27 @@ public interface IControleur
 	void    commencerLot(Lot lot);
 	void    annulerLot(Lot lot);
 
+	void modifierTypoLot(Lot lot , String typo);
+	void modifierAffaireLot(Lot lot , String affaire);
+	void modifierNbPiecesLot(Lot lot , int nbPieces);
+	void modifierCadenceLot(Lot lot , double cadence);
+	void modifierValeurVenteLot(Lot lot , int valeurVente);
+	void modifierStatutLot(Lot lot , String statut);
+	void modifierStatutEchantLot(Lot lot , String statutEchant);
+	void modifierSemaineLot(Lot lot , String semaine);
+	void modifierPrioriteLot(Lot lot , int priorite);
+	void modifierLotAChargeLot(Lot lot , String lotACharge);
+	void modifierEmplacementLot(Lot lot , String emplacement);
+	void modifierSousDouaneLot(Lot lot , boolean sousDouane);
+	void modifierDateReceptionLot(Lot lot , String dateReception);
+	void modifierDatePaiementLot(Lot lot , String datePaiement);
+	void modifierCommentaireLot(Lot lot , String commentaire);
+	void modifierNbPersLot(Lot lot , int nbPers);
+	void modifierCollisageLot(Lot lot , int collisage);
+	void modifierPoucentrecupCartonFour(Lot lot , int poucentrecupCartonFour);
+	void modifierDistributionLot(Lot lot , String distribution);
+	void setFormatCarton(String formatCarton);
+
 	// ── Affectation ───────────────────────────────────────────────────────
 	boolean affecterLot(Lot lot, Societe societe, Ace ace);
 	void    desaffecterLot(Lot lot);

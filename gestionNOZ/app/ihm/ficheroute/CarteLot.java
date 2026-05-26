@@ -523,7 +523,7 @@ public class CarteLot extends JPanel implements ActionListener
 		     + (lot.getPhase().isSurPiste()   ? 1 : 0)
 		     + (lot.getPhase().isSortieEtiq() ? 1 : 0)
 		     + (lot.getPhase().isTri()        ? 1 : 0)
-		     + (lot.getPhase().isFinit()      ? 1 : 0);
+		     + (lot.getPhase().isFinit()      ? 5 : 0);
 	}
 
 	// ══════════════════════════════════════════════════════════════════
@@ -587,25 +587,25 @@ public class CarteLot extends JPanel implements ActionListener
 					break;
 				}
 				case "DISTRI":
-					lot.setDistribution((String) combDistri.getSelectedItem());
+					this.ctrl.modifierDistributionLot(this.lot, (String) combDistri.getSelectedItem());
 					break;
 				case "LOT_CHARGE":
-					lot.setLotACharge(textLotCharge.getText().trim());
+					this.ctrl.modifierLotAChargeLot(this.lot, textLotCharge.getText().trim());
 					break;
 				case "FORM_CART":
-					lot.setFormatCarton((String) combFormCart.getSelectedItem());
+					this.ctrl.setFormatCarton((String) combFormCart.getSelectedItem());
 					break;
 				case "COLLISAGES":
 				{
 					int v = Integer.parseInt(textCollisage.getText().trim());
 					if (v < 0) throw new NumberFormatException();
-					lot.setCollisage(v);
+					this.ctrl.modifierCollisageLot(this.lot, v);
 					break;
 				}
 				case "COLISRECUP":
 				{
 					int v = Integer.parseInt(textColisRecup.getText().trim());
-					if (v >= 0 && v <= 100) lot.setPoucentrecupCartonFour(v);
+					if (v >= 0 && v <= 100) this.ctrl.modifierPoucentrecupCartonFour(this.lot, v);
 					break;
 				}
 				case "METHODE":
@@ -614,13 +614,13 @@ public class CarteLot extends JPanel implements ActionListener
 				case "CADENCE":
 				{
 					double v = Double.parseDouble(textCadenceReel.getText().trim());
-					if (v > 0) lot.setCadenceReel(v);
+					if (v > 0) this.ctrl.modifierCadenceLot(this.lot, v);
 					break;
 				}
 				case "NBPERS":
 				{
 					int v = Integer.parseInt(textNbPers.getText().trim());
-					if (v > 0) lot.setNbPers(v);
+					if (v > 0) this.ctrl.modifierNbPersLot(this.lot, v);
 					break;
 				}
 			}
@@ -719,6 +719,7 @@ public class CarteLot extends JPanel implements ActionListener
 
 		void mettreAJour(int nouvValeur)
 		{
+			if (nouvValeur > 5) nouvValeur = 5; // pour que la barre soit toujours visible, même à 0%
 			this.valeur = nouvValeur;
 			repaint();
 		}
@@ -735,7 +736,7 @@ public class CarteLot extends JPanel implements ActionListener
 			int fill = max > 0 ? (int)(W * valeur / (double) max) : 0;
 			if (fill > 0)
 			{
-				Color c = valeur == max ? IhmUtils.VERT : IhmUtils.AMBER;
+				Color c = valeur >= max ? IhmUtils.VERT : IhmUtils.AMBER;
 				g2.setColor(c);
 				g2.fillRoundRect(0, 0, fill, H, H, H);
 			}
