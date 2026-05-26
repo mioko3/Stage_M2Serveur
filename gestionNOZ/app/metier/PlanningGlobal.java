@@ -39,7 +39,6 @@ public class PlanningGlobal
 		this.societes   = new ArrayList<>();
 		this.lots       = new ArrayList<>();
 		this.ficheRoute = new ArrayList<>();
-		ExcelReader.donnerPlanningGlobal(this);
 	}
 
 	// ── Chargement des données ────────────────────────────────────────────
@@ -57,7 +56,7 @@ public class PlanningGlobal
 	                               int semaine, String cheminXlsxHeures) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminXlsx);
-		this.societes = ExcelReader.lireSocietes(cheminSocietes);
+		this.societes = ExcelReader.lireSocietes(cheminSocietes, this);
 		ExcelReader.ajouterHeuresDepuisExcel(cheminXlsxHeures, this.societes, semaine);
 	}
 
@@ -70,7 +69,7 @@ public class PlanningGlobal
 	public void chargerDepuisJson(String cheminLotsJson, String cheminSocietesJson) throws IOException
 	{
 		this.lots     = ExcelReader.lireLots(cheminLotsJson);
-		this.societes = ExcelReader.lireSocietes(cheminSocietesJson);
+		this.societes = ExcelReader.lireSocietes(cheminSocietesJson, this);
 	}
 
 	/**

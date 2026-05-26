@@ -32,19 +32,13 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  */
 public class ExcelReader
 {
-	private static PlanningGlobal planningGlobal;
 	private static final DataFormatter FORMATTER = new DataFormatter();
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
-	public static void donnerPlanningGlobal(PlanningGlobal pg)
-	{
-		planningGlobal = pg;
-	}
-
-	public static ArrayList<Societe> lireSocietes(String chemin) throws IOException
+	public static ArrayList<Societe> lireSocietes(String chemin, PlanningGlobal planningGlobal) throws IOException
 	{
 		if (chemin.toLowerCase().endsWith(".json"))
-			return lireSocietesJson(chemin);
+			return lireSocietesJson(chemin, planningGlobal);
 		return null;
 	}
 
@@ -252,7 +246,7 @@ public class ExcelReader
 
 	// ── Lecture JSON ──────────────────────────────────────────────────────
 
-	private static ArrayList<Societe> lireSocietesJson(String cheminJson) throws IOException
+	private static ArrayList<Societe> lireSocietesJson(String cheminJson, PlanningGlobal planningGlobal) throws IOException
 	{
 		String json = lireFichier(cheminJson);
 		ArrayList<Societe> liste = new ArrayList<>();
@@ -283,7 +277,7 @@ public class ExcelReader
 					{
 						for (String id : parseIdList(blocLotsAce))
 						{
-							Lot lot = trouverLotParId(id);
+							Lot lot = trouverLotParId(id, planningGlobal);
 							if (lot != null && !ace.getLots().contains(lot))
 							{
 								soc.ajouterLotSansHeures(lot, ace);
@@ -301,7 +295,7 @@ public class ExcelReader
 			{
 				for (String id : parseIdList(lotsAffectes))
 				{
-					Lot lot = trouverLotParId(id);
+					Lot lot = trouverLotParId(id, planningGlobal);
 					if (lot != null && !soc.getLots().contains(lot))
 						soc.ajouterLot(lot, null);
 					else if (lot == null)
@@ -313,9 +307,9 @@ public class ExcelReader
 		return liste;
 	}
 
-	private static Lot trouverLotParId(String id)
+	private static Lot trouverLotParId(String id, PlanningGlobal planningGlobal)
 	{
-		for (Lot l : ExcelReader.planningGlobal.getLots())
+		for (Lot l : planningGlobal.getLots())
 			if (l.getId().equals(id)) return l;
 		return null;
 	}

@@ -94,7 +94,7 @@ public class DonneesSauvegarder
             metier.getLots()    .clear();
             metier.getSocietes().clear();
             metier.getLots()    .addAll(ExcelReader.lireLots    (cheminLotsEffectif));
-            metier.getSocietes().addAll(ExcelReader.lireSocietes(cheminSocietesEffectif));
+            metier.getSocietes().addAll(ExcelReader.lireSocietes(cheminSocietesEffectif, metier));
 
             System.out.println("[Chargement] " + metier.getLots().size()
                 + " lots, " + metier.getSocietes().size() + " sociétés depuis " + cheminDossier);

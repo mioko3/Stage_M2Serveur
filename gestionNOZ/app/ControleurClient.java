@@ -394,11 +394,20 @@ public class ControleurClient implements IControleur
 	@Override
 	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
 	{
-		// 1. Affecter localement IMMÉDIATEMENT
+		// 1. Défaire une ancienne affectation si nécessaire
+		Societe ancSociete = getSocieteDuLot(lot);
+		Ace     ancAce     = getAceDuLot(lot);
+		if (ancSociete == societe && ancAce == ace) return true;
+		if (ancSociete != null)
+		{
+			if (ancAce != null) ancSociete.enleverLotACE(ancAce, lot);
+			ancSociete.enleverLot(lot);
+		}
+		// 2. Affecter localement IMMÉDIATEMENT
 		societe.ajouterLot(lot, ace);
-		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		// 3. Rafraîchir la fenêtre IMMÉDIATEMENT
 		if (fenetre != null) fenetre.rafraichirTout();
-		// 3. Synchroniser avec le serveur en arrière-plan
+		// 4. Synchroniser avec le serveur en arrière-plan
 		String c = "{\"numCDE\":" + lot.getNumCDE()
 			+ ",\"societe\":" + e(societe.getNom())
 			+ ",\"ace\":"     + e(ace.getNom()) + "}";
@@ -416,8 +425,10 @@ public class ControleurClient implements IControleur
 	public void desaffecterLot(Lot lot) {
 		// 1. Trouver la societe du lot
 		Societe soc = getSocieteDuLot(lot);
+		Ace     ace = getAceDuLot(lot);
 		if (soc != null) {
 			// 2. Désaffecter localement IMMÉDIATEMENT
+			if (ace != null) soc.enleverLotACE(ace, lot);
 			soc.enleverLot(lot);
 		}
 		// 3. Rafraîchir la fenêtre IMMÉDIATEMENT

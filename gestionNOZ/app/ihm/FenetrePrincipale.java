@@ -437,14 +437,22 @@ public class FenetrePrincipale extends JFrame
 
 	public void rafraichirTout()
 	{
-		SwingUtilities.invokeLater(() -> {
+		Runnable refresh = () -> {
 			if (panelAffectation != null) panelAffectation.rafraichir();
 			this.panelSocietes   .rafraichir();
 			this.panelLots       .rafraichir();
 			this.panelFicheRoute .rafraichir();
 			this.panelMap        .rafraichir();
 			if (lblInfo != null) lblInfo.setText(buildInfo());
-		});
+		};
+		if (SwingUtilities.isEventDispatchThread())
+		{
+			refresh.run();
+		}
+		else
+		{
+			SwingUtilities.invokeLater(refresh);
+		}
 		if (!estModeClient() || !((ControleurClient) ctrl).isDesynchronise())
 			this.ctrl.autoSauvegarde();
 	}
