@@ -268,6 +268,8 @@ public class ServeurHTTP
 		server.createContext("/lots/annuler",      ex -> new AnnulerLotHandler()      .handle(ex));
 		server.createContext("/lots/terminer",     ex -> new TerminerLotHandler()     .handle(ex));
 		server.createContext("/lots/phase",        ex -> new ModifierPhaseHandler()   .handle(ex));
+		server.createContext("/lots/lignecolisage/ajouter",   ex -> new AjouterLigneColisageHandler() .handle(ex));
+		server.createContext("/lots/lignecolisage/supprimer",  ex -> new SupprimerLigneColisageHandler().handle(ex));
 
 		// Routes sociétés / ACE
 		server.createContext("/societes",          ex -> new GetSocietesHandler()     .handle(ex));
@@ -927,6 +929,65 @@ public class ServeurHTTP
 				rep(ex, 200,
 					"{\"lots\":"     + JsonSerialiser.serialiserLots(metier.getLots())
 					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
+			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+			finally { rwLock.writeLock().unlock(); }
+		}
+	}
+
+	/**
+	 * POST /lots/lignecolisage/ajouter — ajoute une LigneColisage à un lot.
+	 * Corps attendu :
+	 *   {"numCDE":1234, "format":"1/4", "collisage":10, "pcs":500}
+	 *
+	 * Le serveur reconstruit la LigneColisage via LigneColisage.fromJson(),
+	 * l'ajoute au lot et renvoie la liste complète des lots mise à jour.
+	 * versionDonnees est incrémenté → tous les clients se rechargent.
+	 */
+	class AjouterLigneColisageHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			if (!exigerToken(ex)) return;
+			rwLock.writeLock().lock();
+			try {
+				String c      = lire(ex);
+				int    numCDE = JsonSerialiser.extraireInt(c, "numCDE");
+				Lot    lot    = findLot(numCDE);
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+
+				// Construire la LigneColisage depuis le JSON reçu
+				// fromJson() de LigneColisage attend : {"format":"...","collisage":N,"pcs":N}
+				app.metier.lot.LigneColisage ligne = app.metier.lot.LigneColisage.fromJson(c);
+				int pcs = JsonSerialiser.extraireInt(c, "pcs");
+				if (pcs <= 0 || pcs >= lot.getNbPieces()) {
+					rep(ex, 400, "{\"err\":\"Nombre de pièces invalide\"}"); return;
+				}
+				lot.ajouterLigneColisage(ligne, pcs);
+				versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+			finally { rwLock.writeLock().unlock(); }
+		}
+	}
+
+	/**
+	 * POST /lots/lignecolisage/supprimer — supprime une LigneColisage d'un lot.
+	 * Corps attendu :
+	 *   {"numCDE":1234, "index":0}
+	 *
+	 * "index" correspond à la position dans getLignesColisage().
+	 */
+	class SupprimerLigneColisageHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			if (!exigerToken(ex)) return;
+			rwLock.writeLock().lock();
+			try {
+				String c      = lire(ex);
+				int    numCDE = JsonSerialiser.extraireInt(c, "numCDE");
+				int    index  = JsonSerialiser.extraireInt(c, "index");
+				Lot    lot    = findLot(numCDE);
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+				lot.supprimerLigneColisage(index);
+				versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}

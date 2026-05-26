@@ -279,6 +279,31 @@ public class ControleurClient implements IControleur
 			"Action réservée au serveur.", "Information", JOptionPane.INFORMATION_MESSAGE);
 	}
 
+	/**
+	 * Envoie l'ajout d'une LigneColisage au serveur.
+	 * Appelé depuis CarteLot.ouvrirDialogueAjoutLigne() après validation locale.
+	 */
+	public void ajouterLigneColisage(Lot lot, app.metier.lot.LigneColisage ligne, int pcs) {
+		String c = "{\"numCDE\":"  + lot.getNumCDE()
+				+ ",\"format\":"   + e(ligne.getFormatCarton())
+				+ ",\"collisage\":" + ligne.getCollisage()
+				+ ",\"pcs\":"       + pcs + "}";
+		async("ajouterLigneColisage", () -> {
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/lignecolisage/ajouter", c));
+		});
+	}
+
+	/**
+	 * Envoie la suppression d'une LigneColisage au serveur.
+	 * Appelé depuis CarteLot.construireRowLigneColisage() au clic sur ✕.
+	 */
+	public void supprimerLigneColisage(Lot lot, int index) {
+		String c = "{\"numCDE\":" + lot.getNumCDE() + ",\"index\":" + index + "}";
+		async("supprimerLigneColisage", () -> {
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/lignecolisage/supprimer", c));
+		});
+	}
+
 	// ── Modification lots ─────────────────────────────────────────────────
 
 	@Override

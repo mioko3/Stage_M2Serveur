@@ -410,14 +410,10 @@ public class CarteLot extends JPanel implements ActionListener
 		btnSuppr.setToolTipText("Supprimer cette ligne");
 		btnSuppr.addActionListener(e -> {
 			lot.supprimerLigneColisage(index);
-			ctrl.modifierLotComplet(lot,
-				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
-				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
-				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
-				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
-				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
-				lot.getMethode() != null ? lot.getMethode().getNom() : "");
+			// Synchroniser la suppression avec le serveur
+			if (ctrl instanceof app.ControleurClient) {
+				((app.ControleurClient) ctrl).supprimerLigneColisage(lot, index);
+			}
 			m.rafraichir();
 		});
 
@@ -484,14 +480,11 @@ public class CarteLot extends JPanel implements ActionListener
 			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces())
 				throw new NumberFormatException();
 			lot.ajouterLigneColisage(new LigneColisage((String) comboFmt.getSelectedItem(), col), pcs);
-			ctrl.modifierLotComplet(lot,
-				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
-				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
-				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
-				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
-				lot.getDistribution(), lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
-				lot.getMethode() != null ? lot.getMethode().getNom() : "");
+			// Synchroniser la LigneColisage avec le serveur
+			if (ctrl instanceof app.ControleurClient) {
+				LigneColisage nvLigne = lot.getLignesColisage().get(lot.getLignesColisage().size() - 1);
+				((app.ControleurClient) ctrl).ajouterLigneColisage(lot, nvLigne, pcs);
+			}
 			m.rafraichir();
 		}
 		catch (NumberFormatException ex)
