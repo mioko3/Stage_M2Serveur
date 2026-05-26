@@ -202,9 +202,19 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void ajouterLot(Lot lot) {
-		try { this.lots = JsonSerialiser.deserialiserLots(postEtRafraichir("/lots/ajouter",
-			JsonSerialiser.serialiserLotSeul(lot))); autoSauvegarde(); }
-		catch (Exception e) { err("ajouterLot(Lot)", e); }
+		// 1. Ajouter localement IMMÉDIATEMENT
+		this.lots.add(lot);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(post("/lots/ajouter",
+					JsonSerialiser.serialiserLotSeul(lot)));
+			} catch (Exception ex) {
+				err("ajouterLot(Lot)", ex);
+			}
+		}).start();
 	}
 
 	@Override
@@ -216,40 +226,50 @@ public class ControleurClient implements IControleur
 	                       boolean sousDouane, String dateReception,
 	                       String datePaiement, String commentaire)
 	{
-		try {
-			String c = "{\"numCDE\":"       + numCDE
-				+ ",\"typologie\":"     + e(typo)
-				+ ",\"affaire\":"       + e(affaire)
-				+ ",\"nbPieces\":"      + nbPieces
-				+ ",\"cadence\":"       + cadence
-				+ ",\"valeurVente\":"   + valeurVente
-				+ ",\"statut\":"        + e(statut)
-				+ ",\"statutEchant\":"  + e(statutEchant)
-				+ ",\"semaine\":"       + e(semaine)
-				+ ",\"priorite\":"      + priorite
-				+ ",\"lotACharge\":"    + e(lotACharge)
-				+ ",\"emplacement\":"   + e(emplacement)
-				+ ",\"estSousDouane\":" + sousDouane
-				+ ",\"dateReception\":" + e(dateReception)
-				+ ",\"datePaiement\":"  + e(datePaiement)
-				+ ",\"commentaire\":"   + e(commentaire) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(postEtRafraichir("/lots/ajouter", c));
-			autoSauvegarde();
-		} catch (Exception ex) { err("ajouterLot", ex); }
+		String c = "{\"numCDE\":"       + numCDE
+			+ ",\"typologie\":"     + e(typo)
+			+ ",\"affaire\":"       + e(affaire)
+			+ ",\"nbPieces\":"      + nbPieces
+			+ ",\"cadence\":"       + cadence
+			+ ",\"valeurVente\":"   + valeurVente
+			+ ",\"statut\":"        + e(statut)
+			+ ",\"statutEchant\":"  + e(statutEchant)
+			+ ",\"semaine\":"       + e(semaine)
+			+ ",\"priorite\":"      + priorite
+			+ ",\"lotACharge\":"    + e(lotACharge)
+			+ ",\"emplacement\":"   + e(emplacement)
+			+ ",\"estSousDouane\":" + sousDouane
+			+ ",\"dateReception\":" + e(dateReception)
+			+ ",\"datePaiement\":"  + e(datePaiement)
+			+ ",\"commentaire\":"   + e(commentaire) + "}";
+		async("ajouterLot", () -> {
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/ajouter", c));
+		});
 	}
 
 	@Override
 	public void supprimerLot(Lot lot) {
-		try { this.lots = JsonSerialiser.deserialiserLots(
-			postEtRafraichir("/lots/supprimer", "{\"numCDE\":" + lot.getNumCDE() + "}")); autoSauvegarde(); }
-		catch (Exception ex) { err("supprimerLot", ex); }
+		// 1. Supprimer localement IMMÉDIATEMENT
+		this.lots.remove(lot);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(
+					post("/lots/supprimer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+			} catch (Exception ex) {
+				err("supprimerLot", ex);
+			}
+		}).start();
 	}
 
 	@Override
 	public void exportNewLot() {
-		try { postEtRafraichir("/nouveaux", "{}"); chargerDepuisServeur();
-			if (fenetre != null) fenetre.rafraichirTout(); }
-		catch (Exception ex) { err("exportNewLot", ex); }
+		async("exportNewLot", () -> {
+			post("/nouveaux", "{}");
+			chargerDepuisServeur();
+		});
 	}
 
 	@Override
@@ -269,116 +289,192 @@ public class ControleurClient implements IControleur
 	                        boolean sousDouane, String dateReception,
 	                        String datePaiement, String commentaire)
 	{
-		try {
-			String c = "{\"numCDE\":"       + lot.getNumCDE()
-				+ ",\"typologie\":"     + e(typo)
-				+ ",\"affaire\":"       + e(affaire)
-				+ ",\"nbPieces\":"      + nbPieces
-				+ ",\"cadence\":"       + cadence
-				+ ",\"valeurVente\":"   + valeurVente
-				+ ",\"statut\":"        + e(statut)
-				+ ",\"statutEchant\":"  + e(statutEchant)
-				+ ",\"semaine\":"       + e(semaine)
-				+ ",\"priorite\":"      + priorite
-				+ ",\"lotACharge\":"    + e(lotACharge)
-				+ ",\"emplacement\":"   + e(emplacement)
-				+ ",\"estSousDouane\":" + sousDouane
-				+ ",\"dateReception\":" + e(dateReception)
-				+ ",\"datePaiement\":"  + e(datePaiement)
-				+ ",\"commentaire\":"   + e(commentaire) + "}";
-			this.lots = JsonSerialiser.deserialiserLots(postEtRafraichir("/lots/modifier", c));
-			autoSauvegarde();
-		} catch (Exception ex) { err("modifierLot", ex); }
+		String c = "{\"numCDE\":"       + lot.getNumCDE()
+			+ ",\"typologie\":"     + e(typo)
+			+ ",\"affaire\":"       + e(affaire)
+			+ ",\"nbPieces\":"      + nbPieces
+			+ ",\"cadence\":"       + cadence
+			+ ",\"valeurVente\":"   + valeurVente
+			+ ",\"statut\":"        + e(statut)
+			+ ",\"statutEchant\":"  + e(statutEchant)
+			+ ",\"semaine\":"       + e(semaine)
+			+ ",\"priorite\":"      + priorite
+			+ ",\"lotACharge\":"    + e(lotACharge)
+			+ ",\"emplacement\":"   + e(emplacement)
+			+ ",\"estSousDouane\":" + sousDouane
+			+ ",\"dateReception\":" + e(dateReception)
+			+ ",\"datePaiement\":"  + e(datePaiement)
+			+ ",\"commentaire\":"   + e(commentaire) + "}";
+		async("modifierLot", () -> {
+			this.lots = JsonSerialiser.deserialiserLots(post("/lots/modifier", c));
+		});
 	}
 
 	@Override
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{
-		try {
-			String c = "{\"numCDE\":"    + lot.getNumCDE()
-				+ ",\"preTri\":"     + preTri
-				+ ",\"surPiste\":"   + surPiste
-				+ ",\"sortieEtiq\":" + sortieEtiq
-				+ ",\"tri\":"        + tri
-				+ ",\"finit\":"      + finit + "}";
-			this.lots = JsonSerialiser.deserialiserLots(post("/lots/phase", c));
-			autoSauvegarde();
-		} catch (Exception ex) { err("modifierPhase", ex); }
+		// 1. Modifier localement IMMÉDIATEMENT
+		lot.getPhase().setPreTri(preTri);
+		lot.getPhase().setSurPiste(surPiste);
+		lot.getPhase().setSortieEtiq(sortieEtiq);
+		lot.getPhase().setTri(tri);
+		lot.getPhase().setFinit(finit);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		String c = "{\"numCDE\":"    + lot.getNumCDE()
+			+ ",\"preTri\":"     + preTri
+			+ ",\"surPiste\":"   + surPiste
+			+ ",\"sortieEtiq\":" + sortieEtiq
+			+ ",\"tri\":"        + tri
+			+ ",\"finit\":"      + finit + "}";
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(post("/lots/phase", c));
+			} catch (Exception ex) {
+				err("modifierPhase", ex);
+			}
+		}).start();
 	}
 
 	@Override
 	public void marquerLotTermine(Lot lot) {
-		try { this.lots = JsonSerialiser.deserialiserLots(
-			postEtRafraichir("/lots/terminer", "{\"numCDE\":" + lot.getNumCDE() + "}")); autoSauvegarde(); }
-		catch (Exception ex) { err("marquerLotTermine", ex); }
+		// 1. Marquer localement IMMÉDIATEMENT
+		lot.setStatut("MC");
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(
+					post("/lots/terminer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+			} catch (Exception ex) {
+				err("marquerLotTermine", ex);
+			}
+		}).start();
 	}
 
 	@Override
 	public void commencerLot(Lot lot) {
-		try { this.lots = JsonSerialiser.deserialiserLots(
-			postEtRafraichir("/lots/commencer", "{\"numCDE\":" + lot.getNumCDE() + "}")); }
-		catch (Exception ex) { err("commencerLot", ex); }
+		// 1. Commencer localement IMMÉDIATEMENT
+		lot.setStatut("TC");
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(
+					post("/lots/commencer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+			} catch (Exception ex) {
+				err("commencerLot", ex);
+			}
+		}).start();
 	}
 
 	@Override
 	public void annulerLot(Lot lot) {
-		try { this.lots = JsonSerialiser.deserialiserLots(
-			postEtRafraichir("/lots/annuler", "{\"numCDE\":" + lot.getNumCDE() + "}")); }
-		catch (Exception ex) { err("annulerLot", ex); }
+		// 1. Annuler localement IMMÉDIATEMENT
+		lot.setStatut("OU");
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(
+					post("/lots/annuler", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+			} catch (Exception ex) {
+				err("annulerLot", ex);
+			}
+		}).start();
 	}
 
 	// ── Affectation ───────────────────────────────────────────────────────
 
 	@Override
-	public boolean affecterLot(Lot lot, Societe societe, Ace ace) {
-		try {
-			String c = "{\"numCDE\":" + lot.getNumCDE()
-				+ ",\"societe\":" + e(societe.getNom())
-				+ ",\"ace\":"     + e(ace.getNom()) + "}";
-			majDual(postEtRafraichir("/lots/affecter", c));
-			autoSauvegarde();
-			return true;
-		} catch (Exception ex) { err("affecterLot", ex); return false; }
+	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
+	{
+		// 1. Affecter localement IMMÉDIATEMENT
+		societe.ajouterLot(lot, ace);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		String c = "{\"numCDE\":" + lot.getNumCDE()
+			+ ",\"societe\":" + e(societe.getNom())
+			+ ",\"ace\":"     + e(ace.getNom()) + "}";
+		new Thread(() -> {
+			try {
+				majDual(post("/lots/affecter", c));
+			} catch (Exception ex) {
+				err("affecterLot", ex);
+			}
+		}).start();
+		return true; // optimiste — le serveur confirmera
 	}
 
 	@Override
 	public void desaffecterLot(Lot lot) {
-		try { majDual(postEtRafraichir("/lots/desaffecter", "{\"numCDE\":" + lot.getNumCDE() + "}")); autoSauvegarde(); }
-		catch (Exception ex) { err("desaffecterLot", ex); }
+		// 1. Trouver la societe du lot
+		Societe soc = getSocieteDuLot(lot);
+		if (soc != null) {
+			// 2. Désaffecter localement IMMÉDIATEMENT
+			soc.enleverLot(lot);
+		}
+		// 3. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 4. Synchroniser avec le serveur en arrière-plan
+		new Thread(() -> {
+			try {
+				majDual(post("/lots/desaffecter", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+			} catch (Exception ex) {
+				err("desaffecterLot", ex);
+			}
+		}).start();
 	}
 
 	// ── Sociétés / ACE ────────────────────────────────────────────────────
 
 	@Override
 	public void modifierSociete(Societe soc, String nom, String ce, int totalHeuresCE, int effectif) {
-		try {
-			String c = "{\"nom\":"           + e(soc.getNom())
-				+ ",\"nouveauNom\":"   + e(nom)
-				+ ",\"ce\":"           + e(ce)
-				+ ",\"totalHeuresCE\":" + totalHeuresCE
-				+ ",\"effectif\":"     + effectif + "}";
-			this.societes = JsonSerialiser.deserialiserSocietes(
-				postEtRafraichir("/societes/modifier", c), this.lots);
-		} catch (Exception ex) { err("modifierSociete", ex); }
+		// 1. Modifier localement IMMÉDIATEMENT
+		soc.setNom(nom);
+		soc.setCe(ce);
+		soc.setTotalHeuresCE(totalHeuresCE);
+		soc.setEffectifTotal(effectif);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		String c = "{\"nom\":"           + e(soc.getNom())
+			+ ",\"nouveauNom\":"   + e(nom)
+			+ ",\"ce\":"           + e(ce)
+			+ ",\"totalHeuresCE\":" + totalHeuresCE
+			+ ",\"effectif\":"     + effectif + "}";
+		new Thread(() -> {
+			try {
+				this.societes = JsonSerialiser.deserialiserSocietes(
+					post("/societes/modifier", c), this.lots);
+			} catch (Exception ex) {
+				err("modifierSociete", ex);
+			}
+		}).start();
 	}
 
 	@Override
 	public boolean mettreAJourAces(Societe soc, List<Ace> nouvellesAces) {
-		try {
-			StringBuilder sb = new StringBuilder("{\"societe\":" + e(soc.getNom()) + ",\"aces\":[");
-			for (int i = 0; i < nouvellesAces.size(); i++) {
-				Ace a = nouvellesAces.get(i);
-				if (i > 0) sb.append(",");
-				sb.append("{\"nom\":").append(e(a.getNom()))
-				  .append(",\"nbPers\":").append(a.getNbPers())
-				  .append(",\"effectifActuel\":").append(a.getEffectifActuel()).append("}");
-			}
-			sb.append("]}");
+		StringBuilder sb = new StringBuilder("{\"societe\":" + e(soc.getNom()) + ",\"aces\":[");
+		for (int i = 0; i < nouvellesAces.size(); i++) {
+			Ace a = nouvellesAces.get(i);
+			if (i > 0) sb.append(",");
+			sb.append("{\"nom\":").append(e(a.getNom()))
+			  .append(",\"nbPers\":").append(a.getNbPers())
+			  .append(",\"effectifActuel\":").append(a.getEffectifActuel()).append("}");
+		}
+		sb.append("]}");
+		async("mettreAJourAces", () -> {
 			this.societes = JsonSerialiser.deserialiserSocietes(
-				postEtRafraichir("/aces/mettreajour", sb.toString()), this.lots);
-			return true;
-		} catch (Exception ex) { err("mettreAJourAces", ex); return false; }
+				post("/aces/mettreajour", sb.toString()), this.lots);
+		});
+		return true;
 	}
 
 	@Override
@@ -386,7 +482,7 @@ public class ControleurClient implements IControleur
 		String xlsx = demanderFichierExcel("Sélectionner le fichier des heures ACE");
 		if (xlsx == null) { JOptionPane.showMessageDialog(null, "Aucun fichier.", "Nouvelle heure",
 			JOptionPane.INFORMATION_MESSAGE); return; }
-		try {
+		async("nouvelleHeurePourSociete", () -> {
 			java.util.Map<String, Integer> heuresParSoc = ExcelReader.lireHeuresSocietes(xlsx, semaine);
 			if (heuresParSoc == null || heuresParSoc.isEmpty()) {
 				JOptionPane.showMessageDialog(null, "Aucune donnée.", "Nouvelle heure",
@@ -402,11 +498,9 @@ public class ControleurClient implements IControleur
 			}
 			sb.append("]}");
 			this.societes = JsonSerialiser.deserialiserSocietes(
-				postEtRafraichir("/nouvelleheure", sb.toString()), this.lots);
-			autoSauvegarde();
+				post("/nouvelleheure", sb.toString()), this.lots);
 			JOptionPane.showMessageDialog(null, "Heures ajoutées !", "OK", JOptionPane.INFORMATION_MESSAGE);
-			if (fenetre != null) fenetre.rafraichirTout();
-		} catch (Exception ex) { err("nouvelleHeurePourSociete", ex); }
+		});
 	}
 
 	@Override
@@ -425,13 +519,22 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void mettreAJourSuiviProd(Lot lot, int nbPieceEtiq, int nbPieceRepart) {
-		try {
-			String c = "{\"numCDE\":"        + lot.getNumCDE()
-				+ ",\"nbPieceEtiq\":"   + nbPieceEtiq
-				+ ",\"nbPieceRepart\":" + nbPieceRepart + "}";
-			this.lots = JsonSerialiser.deserialiserLots(postEtRafraichir("/lots/suiviprod", c));
-			autoSauvegarde();
-		} catch (Exception ex) { err("mettreAJourSuiviProd", ex); }
+		// 1. Mettre à jour localement IMMÉDIATEMENT
+		lot.getSuivieProd().setNbPieceEtiq(nbPieceEtiq);
+		lot.getSuivieProd().setNbPieceRepart(nbPieceRepart);
+		// 2. Rafraîchir la fenêtre IMMÉDIATEMENT
+		if (fenetre != null) fenetre.rafraichirTout();
+		// 3. Synchroniser avec le serveur en arrière-plan
+		String c = "{\"numCDE\":"        + lot.getNumCDE()
+			+ ",\"nbPieceEtiq\":"   + nbPieceEtiq
+			+ ",\"nbPieceRepart\":" + nbPieceRepart + "}";
+		new Thread(() -> {
+			try {
+				this.lots = JsonSerialiser.deserialiserLots(post("/lots/suiviprod", c));
+			} catch (Exception ex) {
+				err("mettreAJourSuiviProd", ex);
+			}
+		}).start();
 	}
 
 	// ── Recherche ─────────────────────────────────────────────────────────
@@ -469,19 +572,20 @@ public class ControleurClient implements IControleur
 	public void sauvegarderDonnees(String cheminDossier, String semaine) {
 		if (desynchronise) {
 			// Mode désynchronisé : sauvegarde locale, le serveur n'est pas contacté
-			try {
+			async("sauvegarderDonnees (local)", () -> {
 				String dossier = cheminDossier + "/S" + semaine;
 				java.nio.file.Files.createDirectories(java.nio.file.Paths.get(dossier));
 				savLocal.sauvegarderLots    (lots,     dossier + "/lots.json");
 				savLocal.sauvegarderSocietes(societes, lots, dossier + "/societes.json");
 				JOptionPane.showMessageDialog(null, "Sauvegarde locale S" + semaine, "OK",
 					JOptionPane.INFORMATION_MESSAGE);
-			} catch (Exception ex) { err("sauvegarderDonnees (local)", ex); }
+			});
 		} else {
 			// Mode normal : délègue la sauvegarde au serveur
-			try { post("/sauvegarder",
-				"{\"chemin\":" + e(cheminDossier) + ",\"semaine\":" + e(semaine) + "}"); }
-			catch (Exception ex) { err("sauvegarderDonnees", ex); }
+			async("sauvegarderDonnees", () -> {
+				post("/sauvegarder",
+					"{\"chemin\":" + e(cheminDossier) + ",\"semaine\":" + e(semaine) + "}");
+			});
 		}
 	}
 
@@ -690,20 +794,6 @@ public class ControleurClient implements IControleur
 		return resp.body();
 	}
 
-	/**
-	 * POST puis rafraîchissement immédiat de la fenêtre.
-	 * À utiliser pour toutes les actions utilisateur (ajouter, modifier,
-	 * affecter, etc.) pour que le résultat soit visible sans attendre le polling.
-	 */
-	private String postEtRafraichir(String route, String json) throws Exception
-	{
-		String rep = post(route, json);
-		// Rafraîchissement immédiat sur le thread Swing
-		if (fenetre != null)
-			SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
-		return rep;
-	}
-
 	// ══════════════════════════════════════════════════════════════════════
 	//  UTILITAIRES INTERNES
 	// ══════════════════════════════════════════════════════════════════════
@@ -718,6 +808,45 @@ public class ControleurClient implements IControleur
 		String jS = JsonSerialiser.extraireBloc(rep, "\"societes\"");
 		if (jL != null) this.lots     = JsonSerialiser.deserialiserLots(jL);
 		if (jS != null) this.societes = JsonSerialiser.deserialiserSocietes(jS, this.lots);
+	}
+
+	/**
+	 * Exécute une action HTTP dans un thread de fond.
+	 * Le thread Swing n'est jamais bloqué. À la fin de l'action,
+	 * la fenêtre est automatiquement rafraîchie.
+	 * 
+	 * Rafraîchissement optimiste : la fenêtre est d'abord rafraîchie 
+	 * IMMÉDIATEMENT et SYNCHRONEMENT (feedback utilisateur instantané),
+	 * puis à nouveau quand la réponse du serveur arrive.
+	 * 
+	 * @param nom   nom de la méthode pour les logs d'erreur
+	 * @param action  le code à exécuter (requête HTTP + mise à jour des données)
+	 */
+	private void async(String nom, CheckedRunnable action) {
+		// Rafraîchir IMMÉDIATEMENT et SYNCHRONEMENT (pas invokeLater!)
+		// On est déjà dans le thread Swing, donc on peut rafraîchir directement
+		if (fenetre != null) fenetre.rafraichirTout();
+
+		new Thread(() -> {
+			try {
+				action.run();
+				// Second refresh quand la vraie réponse du serveur arrive
+				SwingUtilities.invokeLater(() -> {
+					if (fenetre != null) fenetre.rafraichirTout();
+				});
+			} catch (Exception ex) {
+				err(nom, ex);
+			}
+		}).start();
+	}
+
+	/**
+	 * Interface fonctionnelle pour les Runnable qui peuvent lancer des exceptions.
+	 * Permet aux lambdas utilisées avec async() de déclarer les exceptions lancées.
+	 */
+	@FunctionalInterface
+	private interface CheckedRunnable {
+		void run() throws Exception;
 	}
 
 	/** Ouvre un JFileChooser pour sélectionner un fichier Excel. */
