@@ -39,7 +39,7 @@ public class ExcelReader
 	{
 		if (chemin.toLowerCase().endsWith(".json"))
 			return lireSocietesJson(chemin, lots);
-		return null;
+		throw new IOException("Format de fichier sociétés non supporté : " + chemin);
 	}
 
 	public static ArrayList<Lot> lireLots(String chemin) throws IOException
@@ -119,15 +119,22 @@ public class ExcelReader
 	public static void ajouterHeuresDepuisExcel(String exportPath, ArrayList<Societe> societes, int semaine)
 	throws IOException
 	{
+		if (societes == null)
+			throw new IOException("Liste de sociétés introuvable pour ajout des heures Excel.");
 		try (FileInputStream fis = new FileInputStream(exportPath);
 			Workbook wb = WorkbookFactory.create(fis))
 		{
 			FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();
 			Sheet sh = wb.getSheet("TDB V2");
 			if (sh == null)
-				throw new IOException("Feuille Excel introuvable : TDB V2");
+			{
+				sh = wb.getSheetAt(0);
+				if (sh == null)
+					throw new IOException("Aucune feuille Excel trouvée dans " + exportPath);
+				System.err.println("[ExcelReader] Feuille 'TDB V2' introuvable, utilisation de la feuille : " + sh.getSheetName());
+			}
 
-			int colStart = 5 + (semaine - 1) * 7;
+			int colStart = getColonneHeures(semaine);
 
 			for (Societe soc : societes)
 			{
@@ -181,12 +188,12 @@ public class ExcelReader
 			societeRow.put("EUP",  21);
 			societeRow.put("CFP",  28);
  
-			int colStart = 5 + (semaine - 1) * 7;
+			int colStart = getColonneHeures(semaine);
  
 			for (java.util.Map.Entry<String, Integer> entry : societeRow.entrySet())
 			{
 				String nom    = entry.getKey();
-				int    rowIdx = entry.getValue();
+				int rowIdx = entry.getValue();
  
 				Row row = sh.getRow(rowIdx - 1);
 				if (row == null) continue;
@@ -242,6 +249,14 @@ public class ExcelReader
 		}
 		String value = FORMATTER.formatCellValue(cell, evaluator).trim();
 		return value.isEmpty() ? "" : value;
+	}
+
+	private static int getColonneHeures(int semaine) throws IOException
+	{
+		if (semaine <= 0 || semaine > 53)
+			throw new IOException("Numéro de semaine invalide : " + semaine
+				+ ". Vérifiez le fichier des heures Excel et le champ 'semaine'.");
+		return 5 + (semaine - 1) * 7;
 	}
 
 	// ── Lecture JSON ──────────────────────────────────────────────────────

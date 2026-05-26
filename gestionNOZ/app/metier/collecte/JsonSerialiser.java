@@ -162,7 +162,10 @@ public class JsonSerialiser
 		ArrayList<Lot> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
 		ArrayList<String> objets = extraireObjets(json);
+		System.out.println("[JsonSerialiser] Lots objets extraits : " + objets.size());
 		for (int idx = 0; idx < objets.size(); idx++) {
+			String obj = objets.get(idx);
+			System.out.println("[JsonSerialiser] Lot #" + idx + " taille=" + obj.length());
 			try {
 				liste.add(deserialiserLot(objets.get(idx)));
 			}
@@ -175,6 +178,7 @@ public class JsonSerialiser
 
 	public static Lot deserialiserLot(String obj)
 	{
+		System.out.println("[JsonSerialiser] deserialiserLot start taille=" + obj.length());
 		Lot lot = new Lot(
 			getInt   (obj, "numCDE"),
 			getInt   (obj, "nbPieces"),
@@ -184,6 +188,7 @@ public class JsonSerialiser
 			getString(obj, "statut"),
 			getString(obj, "statutEchant")
 		);
+		System.out.println("[JsonSerialiser] deserialiserLot after constructor");
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
@@ -199,17 +204,31 @@ public class JsonSerialiser
 		lot.setCommentaire  (getString(obj, "commentaire"));
 		lot.setMethode      (getString(obj, "methode"));
 		lot.setDistribution (getString(obj, "distribution"));
+		System.out.println("[JsonSerialiser] deserialiserLot after distribution");
 		lot.setFormatCarton (getString(obj, "formatCarton"));
+		System.out.println("[JsonSerialiser] deserialiserLot after formatCarton");
 		lot.setDateDebut    (getString(obj, "dateDebut"));
+		System.out.println("[JsonSerialiser] deserialiserLot after dateDebut");
 		lot.setdateFin      (getString(obj, "dateFin"));
+		System.out.println("[JsonSerialiser] deserialiserLot after dateFin");
 		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
+		System.out.println("[JsonSerialiser] deserialiserLot after dateFinTheorique");
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
+		System.out.println("[JsonSerialiser] deserialiserLot after cadenceReel");
 		lot.setCollisage    (getInt   (obj, "collisage"));
+		System.out.println("[JsonSerialiser] deserialiserLot after collisage");
+		System.out.println("[JsonSerialiser] deserialiserLot before nbPers");
 		lot.setNbPers       (getInt   (obj, "nbPers"));
+		System.out.println("[JsonSerialiser] deserialiserLot after nbPers");
+		System.out.println("[JsonSerialiser] deserialiserLot before poucentrecup");
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
+		System.out.println("[JsonSerialiser] deserialiserLot after poucentrecup");
+		System.out.println("[JsonSerialiser] deserialiserLot before lignesColisage");
 		String lignesColisageStr = extraireBloc(obj, "lignesColisage");
+		System.out.println("[JsonSerialiser] deserialiserLot lignesColisageStr=" + (lignesColisageStr == null ? "null" : lignesColisageStr.length()));
 		if (lignesColisageStr != null) {
 			for (String ligneJson : extraireObjets(lignesColisageStr)) {
+				System.out.println("[JsonSerialiser] deserialiserLot ligneJson taille=" + ligneJson.length());
 				LigneColisage ligne = LigneColisage.fromJson(ligneJson);
 				lot.ajouterLigneColisage(ligne, ligne.getPcs());
 			}
@@ -230,6 +249,7 @@ public class JsonSerialiser
 		ph.setTri       (getBool(obj, "ph_tri"));
 		ph.setFinit     (getBool(obj, "ph_finit"));
 		lot.setPhase(ph);
+		System.out.println("[JsonSerialiser] deserialiserLot end");
 
 		return lot;
 	}
@@ -238,7 +258,11 @@ public class JsonSerialiser
 	{
 		ArrayList<Societe> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
-		for (String obj : extraireObjets(json)) {
+		ArrayList<String> socObjets = extraireObjets(json);
+		System.out.println("[JsonSerialiser] Societes objets extraits : " + socObjets.size());
+		for (int socIndex = 0; socIndex < socObjets.size(); socIndex++) {
+			String obj = socObjets.get(socIndex);
+			System.out.println("[JsonSerialiser] Société #" + socIndex + " JSON taille=" + obj.length());
 			try {
 				ArrayList<Ace> aces = new ArrayList<>();
 				String blocsAces = extraireBloc(obj, "\"aces\"");
@@ -462,6 +486,7 @@ public class JsonSerialiser
 
 	public static ArrayList<String> extraireObjets(String tableau)
 	{
+		System.out.println("[JsonSerialiser] extraireObjets start len=" + (tableau == null ? 0 : tableau.length()));
 		ArrayList<String> liste = new ArrayList<>();
 		int depth = 0, start = -1;
 		for (int i = 0; i < tableau.length(); i++) {
@@ -472,6 +497,7 @@ public class JsonSerialiser
 				if (depth == 0 && start >= 0) { liste.add(tableau.substring(start, i + 1)); start = -1; }
 			}
 		}
+		System.out.println("[JsonSerialiser] extraireObjets end count=" + liste.size());
 		return liste;
 	}
 

@@ -83,9 +83,15 @@ public class DonneesSauvegarder
 		if (!new java.io.File(cheminSocietes).exists())
 			throw new IOException("Fichier introuvable : " + cheminSocietes);
 
-		// Lire et déchiffrer directement en mémoire — plus de fichier _tmp
+		System.out.println("[DonneesSauvegarder] Lecture lots depuis : " + cheminLots);
 		String jsonLots     = lire(cheminLots);
+		System.out.println("[DonneesSauvegarder] JSON lots lu : " + (jsonLots == null ? 0 : jsonLots.length()) + " octets");
+		System.out.println("[DonneesSauvegarder] Début désérialisation lots");
+
+		System.out.println("[DonneesSauvegarder] Lecture societes depuis : " + cheminSocietes);
 		String jsonSocietes = lire(cheminSocietes);
+		System.out.println("[DonneesSauvegarder] JSON societes lu : " + (jsonSocietes == null ? 0 : jsonSocietes.length()) + " octets");
+		System.out.println("[DonneesSauvegarder] Début désérialisation societes");
 
 		metier.getLots()    .clear();
 		metier.getSocietes().clear();
@@ -150,6 +156,9 @@ public class DonneesSauvegarder
 	private String lire(String chemin) throws IOException
 	{
 		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
+		System.out.println("[DonneesSauvegarder] Lecture brute "+chemin+" : " + Math.min(contenu.length(), 200) + " caractères");
+		String prefix = contenu.length() <= 200 ? contenu : contenu.substring(0, 200);
+		System.out.println("[DonneesSauvegarder] Début contenu : " + prefix.replace("\n", "\\n").replace("\r", "\\r"));
 
 		if (aes == null) return contenu;
 
@@ -168,7 +177,11 @@ public class DonneesSauvegarder
 
 		// Fichier chiffré : déchiffrer
 		try {
-			return aes.dechiffrer(contenu);
+			String resultat = aes.dechiffrer(contenu);
+			System.out.println("[DonneesSauvegarder] Contenu déchiffré " + chemin + " : " + Math.min(resultat.length(), 200) + " caractères");
+			String prefixDechiffre = resultat.length() <= 200 ? resultat : resultat.substring(0, 200);
+			System.out.println("[DonneesSauvegarder] Début contenu déchiffré : " + prefixDechiffre.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"));
+			return resultat;
 		} catch (Exception e) {
 			throw new IOException("Erreur déchiffrement de " + chemin
 				+ " (clé incorrecte ou fichier corrompu) : " + e.getMessage(), e);

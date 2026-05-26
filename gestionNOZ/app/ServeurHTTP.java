@@ -215,7 +215,11 @@ public class ServeurHTTP
 		// encore (première exécution), on démarre avec un état vide sans planter.
 		try
 		{
-			savDonnees.charger(metier, CheminApp.resoudre("app/data/courutilisation"));
+			log("[Serveur] Début chargement initial des données...");
+			String dossierCourant = CheminApp.resoudre("app/data/courutilisation");
+			log("[Serveur] Chemin de chargement : " + dossierCourant);
+			savDonnees.charger(metier, dossierCourant);
+			log("[Serveur] Chargement initial terminé.");
 			log("[Serveur] " + metier.getLots().size() + " lots chargés.");
 			detecterSemaineActive();
 		}
@@ -292,6 +296,7 @@ public class ServeurHTTP
 		server.createContext("/nouveaux",          ex -> new NouveauxBloqueHandler()  .handle(ex));
 
 		server.setExecutor(Executors.newCachedThreadPool());
+		log("[Serveur] Avant server.start()");
 		server.start();
 		log("[Serveur] Démarré sur le port " + PORT);
 
@@ -434,7 +439,12 @@ public class ServeurHTTP
 		int semaine = 0;
 		if (!tempLots.isEmpty()) {
 			String sem = tempLots.get(0).getSemaine();
-			try { semaine = Integer.parseInt("" + sem.charAt(sem.length()-2) + sem.charAt(sem.length()-1)); }
+			try
+			{
+				java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d{1,2})$")
+					.matcher(sem == null ? "" : sem.trim());
+				if (matcher.find()) semaine = Integer.parseInt(matcher.group(1));
+			}
 			catch (NumberFormatException ignored) {}
 		}
 
@@ -444,8 +454,16 @@ public class ServeurHTTP
 
 		rwLock.writeLock().lock();
 		try {
-			metier.chargerDepuisExcel(xlsxLots,
-				CheminApp.resoudre("app/data/pastouche/societes.json"), semaine, xlsxHeures);
+			try
+			{
+				metier.chargerDepuisExcel(xlsxLots,
+					CheminApp.resoudre("app/data/pastouche/societes.json"), semaine, xlsxHeures);
+			}
+			catch (IOException e)
+			{
+				log("[Serveur] Erreur chargement nouvelle semaine : " + e.getMessage());
+				return;
+			}
 			cheminLotsJson     = CheminApp.resoudre("app/data/courutilisation/lots.json");
 			cheminSocietesJson = CheminApp.resoudre("app/data/courutilisation/societes.json");
 			save();
@@ -1429,6 +1447,7 @@ public class ServeurHTTP
 
 	public static void main(String[] args)
 	{
+		System.out.println("[Serveur] main() démarré");
 		try                 { new ServeurHTTP();   }
 		catch (Exception e) { e.printStackTrace(); }
 	}

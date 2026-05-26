@@ -67,7 +67,12 @@ public class Controleur implements IControleur
 				if (!tempLots.isEmpty())
 				{
 					String sem = tempLots.get(0).getSemaine();
-					try { semaine = Integer.parseInt("" + sem.charAt(sem.length()-2) + sem.charAt(sem.length()-1)); }
+					try
+					{
+						java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d{1,2})$")
+							.matcher(sem == null ? "" : sem.trim());
+						if (matcher.find()) semaine = Integer.parseInt(matcher.group(1));
+					}
 					catch (NumberFormatException ignored) {}
 				}
 				String xlsxHeures = demanderFichierExcel("Sélectionner le fichier des heures ACE");
