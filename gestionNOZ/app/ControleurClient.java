@@ -119,7 +119,7 @@ public class ControleurClient implements IControleur
 	 */
 	public ControleurClient(String ipServeur, String identifiant, boolean accesPAM, String token)
 	{
-		this.urlServeur   = "http://" + ipServeur + ":8053";
+		this.urlServeur   = "http://" + ipServeur + ":8080";
 		this.identifiant  = identifiant;
 		this.accesPAM     = accesPAM;
 		this.tokenSession = token;
