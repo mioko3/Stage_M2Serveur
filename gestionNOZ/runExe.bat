@@ -29,7 +29,7 @@ REM ═════════════════════════�
 REM  ETAPE 1 — Compilation du projet
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [1/5] COMPILATION DU PROJET =====
+echo ===== [1/6] COMPILATION DU PROJET =====
 javac -encoding UTF-8 -cp "%POI_CP%" -d %BIN% @compile.list
 if errorlevel 1 (
 		echo.
@@ -43,7 +43,7 @@ REM ═════════════════════════�
 REM  ETAPE 2 — Compilation de MergeFatJar
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [2/5] COMPILATION DE MergeFatJar =====
+echo ===== [2/6] COMPILATION DE MergeFatJar =====
 
 REM Ecrire MergeFatJar.java dans tools_build
 (
@@ -136,7 +136,7 @@ REM  les problemes de wildcard sous Windows.
 REM  Si un JAR est absent, il est simplement ignore.
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [3/5] FAT-JAR SERVEUR =====
+echo ===== [3/6] FAT-JAR SERVEUR =====
 java -cp %TOOLS% MergeFatJar %OUT%\ServeurHTTP.jar app.ServeurHTTP ^
 	app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
 	app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
@@ -180,10 +180,23 @@ if errorlevel 1 ( echo ERREUR Fat-JAR Client & pause & exit /b 1 )
 
 
 REM ══════════════════════════════════════════════════
-REM  ETAPE 4 — jpackage
+REM  ETAPE 4 — Préparer les ressources pour l'installateur
+REM ══════════════════════════════════════════════════
+echo.
+echo ===== [4/6] PREPARATION RESSOURCES =====
+if exist %TOOLS%\resource rmdir /s /q %TOOLS%\resource
+mkdir %TOOLS%\resource
+mkdir %TOOLS%\resource\app
+xcopy /E /I /Y app\data %TOOLS%\resource\app\data >nul
+if errorlevel 1 ( echo ERREUR preparation ressources & pause & exit /b 1 )
+echo OK
+
+
+REM ══════════════════════════════════════════════════
+REM  ETAPE 5 — jpackage
 REM ══════════════════════════════════════════
 echo.
-echo ===== [4/5] EXE SERVEUR =====
+echo ===== [5/6] EXE SERVEUR =====
 REM -- Creer un runtime minimal avec jlink (force x64 propre)
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
@@ -201,16 +214,20 @@ jpackage ^
   --main-class app.ServeurHTTP ^
   --dest %EXEOUT% ^
   --runtime-image %TOOLS%\runtime-serveur ^
+  --resource-dir %TOOLS%\resource ^
   --icon app\image\server-icon.ico ^
   --description "Serveur de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
   --java-options "-Xmx512m" ^
-  --win-console
+  --win-console ^
+  --win-dir-chooser ^
+  --win-shortcut ^
+  --win-menu
 
 
 echo.
-echo ===== [5/5] EXE CLIENT =====
+echo ===== [6/6] EXE CLIENT =====
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
   --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
@@ -227,26 +244,17 @@ jpackage ^
   --main-class app.ControleurClient ^
   --dest %EXEOUT% ^
   --runtime-image %TOOLS%\runtime-client ^
+  --resource-dir %TOOLS%\resource ^
   --icon app\image\client-icon.ico ^
   --description "Client de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
   --java-options "-Xmx512m" ^
-  --win-console
+  --win-dir-chooser ^
+  --win-shortcut ^
+  --win-menu
 
 
-
-REM ══════════════════════════════════════════════════
-REM  ETAPE 5 — Copie des donnees a cote des EXE
-REM  Les chemins relatifs (app/data/...) doivent exister
-REM  dans le dossier de l'exe pour que le programme
-REM  retrouve les JSON et les fichiers de reference.
-REM ══════════════════════════════════════════════════
-echo.
-echo ===== [5/5] COPIE DES DONNEES =====
-xcopy /E /I /Y app\data %EXEOUT%\FuturaServer\app\data >nul
-xcopy /E /I /Y app\data %EXEOUT%\FuturaClient\app\data >nul
-echo OK
 
 REM ── Nettoyage des temporaires ──────────────────────
 if exist %TOOLS% rmdir /s /q %TOOLS%
@@ -256,11 +264,11 @@ echo ==================================================
 echo   BUILD TERMINE
 echo ==================================================
 echo.
-echo   Serveur : %EXEOUT%\FuturaServer\FuturaServer.exe
-echo   Client  : %EXEOUT%\FuturaClient\FuturaClient.exe
+echo   Installateurs generes :
+echo   Serveur : %EXEOUT%\FuturaServer-1.0.0.exe
+echo   Client  : %EXEOUT%\FuturaClient-1.0.0.exe
 echo.
-echo   IMPORTANT : copiez et lancez le dossier entier,
-echo   pas seulement le fichier .exe.
-echo   L'application a besoin des fichiers de runtime et des données.
+echo   Lancez l'installateur .exe, puis utilisez
+echo   le raccourci Windows ou le dossier d'installation cree.
 echo.
 pause
