@@ -201,7 +201,7 @@ jpackage ^
   --main-class app.ServeurHTTP ^
   --dest %EXEOUT% ^
   --runtime-image %TOOLS%\runtime-serveur ^
-  --icon app\server-icon.ico ^
+  --icon app\image\server-icon.ico ^
   --description "Serveur de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
@@ -227,7 +227,7 @@ jpackage ^
   --main-class app.ControleurClient ^
   --dest %EXEOUT% ^
   --runtime-image %TOOLS%\runtime-client ^
-  --icon app\client-icon.ico ^
+  --icon app\image\client-icon.ico ^
   --description "Client de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
