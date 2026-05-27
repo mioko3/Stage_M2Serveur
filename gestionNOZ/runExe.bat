@@ -29,7 +29,7 @@ REM ═════════════════════════�
 REM  ETAPE 1 — Compilation du projet
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [1/6] COMPILATION DU PROJET =====
+echo ===== [1/5] COMPILATION DU PROJET =====
 javac -encoding UTF-8 -cp "%POI_CP%" -d %BIN% @compile.list
 if errorlevel 1 (
     echo.
@@ -43,7 +43,7 @@ REM ═════════════════════════�
 REM  ETAPE 2 — Compilation de MergeFatJar
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [2/6] COMPILATION DE MergeFatJar =====
+echo ===== [2/5] COMPILATION DE MergeFatJar =====
 
 REM Ecrire MergeFatJar.java dans tools_build
 (
@@ -136,7 +136,7 @@ REM  les problemes de wildcard sous Windows.
 REM  Si un JAR est absent, il est simplement ignore.
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [3/6] FAT-JAR SERVEUR =====
+echo ===== [3/5] FAT-JAR SERVEUR =====
 java -cp %TOOLS% MergeFatJar %OUT%\ServeurHTTP.jar app.ServeurHTTP ^
   app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
   app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
@@ -158,7 +158,7 @@ if errorlevel 1 ( echo ERREUR Fat-JAR Serveur & pause & exit /b 1 )
 
 
 echo.
-echo ===== [4/6] FAT-JAR CLIENT =====
+echo ===== [3/5] FAT-JAR CLIENT =====
 java -cp %TOOLS% MergeFatJar %OUT%\ControleurClient.jar app.ControleurClient ^
   app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
   app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
@@ -183,7 +183,7 @@ REM ═════════════════════════�
 REM  ETAPE 4 — jpackage
 REM ══════════════════════════════════════════
 echo.
-echo ===== [5/6] EXE SERVEUR =====
+echo ===== [4/5] EXE SERVEUR =====
 jpackage ^
   --type app-image ^
   --name ServeurHTTP ^
@@ -196,7 +196,7 @@ if errorlevel 1 ( echo ERREUR jpackage Serveur & pause & exit /b 1 )
 
 
 echo.
-echo ===== [6/6] EXE CLIENT =====
+echo ===== [5/5] EXE CLIENT =====
 jpackage ^
   --type app-image ^
   --name ControleurClient ^
@@ -216,7 +216,7 @@ REM  dans le dossier de l'exe pour que le programme
 REM  retrouve les JSON et les fichiers de reference.
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [7/7] COPIE DES DONNEES =====
+echo ===== [5/5] COPIE DES DONNEES =====
 xcopy /E /I /Y app\data %EXEOUT%\ServeurHTTP\app\data >nul
 xcopy /E /I /Y app\data %EXEOUT%\ControleurClient\app\data >nul
 echo OK
@@ -230,7 +230,6 @@ echo   BUILD TERMINE
 echo ==================================================
 echo.
 echo   Serveur : %EXEOUT%\ServeurHTTP\ServeurHTTP.exe
-echo   Client  : %EXEOUT%\ControleurClient\ControleurClient.exe
 echo.
 echo   IMPORTANT : lancez les .exe depuis leur dossier,
 echo   pas en double-cliquant depuis l'explorateur,
