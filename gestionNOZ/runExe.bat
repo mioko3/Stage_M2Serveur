@@ -193,10 +193,10 @@ echo OK
 
 
 REM ══════════════════════════════════════════════════
-REM  ETAPE 5 — jpackage
+REM  ETAPE 5 — jpackage app-image
 REM ══════════════════════════════════════════
 echo.
-echo ===== [5/6] EXE SERVEUR =====
+echo ===== [5/6] PACKAGE SERVEUR =====
 REM -- Creer un runtime minimal avec jlink (force x64 propre)
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
@@ -207,7 +207,7 @@ jlink ^
   --no-man-pages
 
 jpackage ^
-  --type exe ^
+  --type app-image ^
   --name FuturaServer ^
   --input %OUT% ^
   --main-jar ServeurHTTP.jar ^
@@ -220,14 +220,11 @@ jpackage ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
   --java-options "-Xmx512m" ^
-  --win-console ^
-  --win-dir-chooser ^
-  --win-shortcut ^
-  --win-menu
+  --win-console
 
 
 echo.
-echo ===== [6/6] EXE CLIENT =====
+echo ===== [6/6] PACKAGE CLIENT =====
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
   --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
@@ -237,7 +234,7 @@ jlink ^
   --no-man-pages
 
 jpackage ^
-  --type exe ^
+  --type app-image ^
   --name FuturaClient ^
   --input %OUT% ^
   --main-jar ControleurClient.jar ^
@@ -250,9 +247,7 @@ jpackage ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
   --java-options "-Xmx512m" ^
-  --win-dir-chooser ^
-  --win-shortcut ^
-  --win-menu
+  --win-console
 
 
 
@@ -264,11 +259,10 @@ echo ==================================================
 echo   BUILD TERMINE
 echo ==================================================
 echo.
-echo   Installateurs generes :
-echo   Serveur : %EXEOUT%\FuturaServer-1.0.0.exe
-echo   Client  : %EXEOUT%\FuturaClient-1.0.0.exe
+echo   Packages generes :
+echo   Serveur : %EXEOUT%\FuturaServer
+echo   Client  : %EXEOUT%\FuturaClient
 echo.
-echo   Lancez l'installateur .exe, puis utilisez
-echo   le raccourci Windows ou le dossier d'installation cree.
+echo   Chaque dossier contient un .exe utilisable et les fichiers app/data.
 echo.
 pause
