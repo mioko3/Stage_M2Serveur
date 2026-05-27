@@ -185,27 +185,35 @@ REM ═════════════════════════�
 echo.
 echo ===== [4/5] EXE SERVEUR =====
 jpackage ^
-  --type app-image ^
-  --name ServeurHTTP ^
+  --type exe ^
+  --name FuturaServer ^
   --input %OUT% ^
   --main-jar ServeurHTTP.jar ^
   --main-class app.ServeurHTTP ^
   --dest %EXEOUT% ^
-  --java-options "-Xmx512m"
-if errorlevel 1 ( echo ERREUR jpackage Serveur & pause & exit /b 1 )
+  --icon app\icon.ico ^
+  --description "Serveur de gestion Planning Global Futura" ^
+  --vendor "Futura" ^
+  --app-version "1.0.0" ^
+  --java-options "-Xmx512m" ^
+  --win-console
 
 
 echo.
 echo ===== [5/5] EXE CLIENT =====
 jpackage ^
-  --type app-image ^
-  --name ControleurClient ^
+  --type exe ^
+  --name FuturaClient ^
   --input %OUT% ^
   --main-jar ControleurClient.jar ^
   --main-class app.ControleurClient ^
   --dest %EXEOUT% ^
-  --java-options "-Xmx512m"
-if errorlevel 1 ( echo ERREUR jpackage Client & pause & exit /b 1 )
+  --icon app\icon.ico ^
+  --description "Client Planning Global Futura" ^
+  --vendor "Futura" ^
+  --app-version "1.0.0" ^
+  --java-options "-Xmx512m" ^
+  --win-console
 
 
 
