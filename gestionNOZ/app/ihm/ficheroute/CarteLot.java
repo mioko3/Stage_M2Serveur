@@ -412,6 +412,10 @@ public class CarteLot extends JPanel implements ActionListener
 		btnSuppr.setToolTipText("Supprimer cette ligne");
 		btnSuppr.addActionListener(e -> {
 			lot.supprimerLigneColisage(index);
+			// Synchroniser la suppression avec le serveur
+			if (ctrl instanceof app.ControleurClient) {
+				((app.ControleurClient) ctrl).supprimerLigneColisage(lot, index);
+			}
 			m.rafraichir();
 		});
 
@@ -478,6 +482,11 @@ public class CarteLot extends JPanel implements ActionListener
 			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces())
 				throw new NumberFormatException();
 			lot.ajouterLigneColisage(new LigneColisage((String) comboFmt.getSelectedItem(), col), pcs);
+			// Synchroniser la LigneColisage avec le serveur
+			if (ctrl instanceof app.ControleurClient) {
+				LigneColisage nvLigne = lot.getLignesColisage().get(lot.getLignesColisage().size() - 1);
+				((app.ControleurClient) ctrl).ajouterLigneColisage(lot, nvLigne, pcs);
+			}
 			m.rafraichir();
 		}
 		catch (NumberFormatException ex)

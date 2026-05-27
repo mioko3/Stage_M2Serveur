@@ -29,7 +29,7 @@ REM ═════════════════════════�
 REM  ETAPE 1 — Compilation du projet
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [1/5] COMPILATION DU PROJET =====
+echo ===== [1/6] COMPILATION DU PROJET =====
 javac -encoding UTF-8 -cp "%POI_CP%" -d %BIN% @compile.list
 if errorlevel 1 (
     echo.
@@ -43,7 +43,7 @@ REM ═════════════════════════�
 REM  ETAPE 2 — Compilation de MergeFatJar
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [2/5] COMPILATION DE MergeFatJar =====
+echo ===== [2/6] COMPILATION DE MergeFatJar =====
 
 REM Ecrire MergeFatJar.java dans tools_build
 (
@@ -136,7 +136,7 @@ REM  les problemes de wildcard sous Windows.
 REM  Si un JAR est absent, il est simplement ignore.
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [3/5] FAT-JAR SERVEUR =====
+echo ===== [3/6] FAT-JAR SERVEUR =====
 java -cp %TOOLS% MergeFatJar %OUT%\ServeurHTTP.jar app.ServeurHTTP ^
   app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
   app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
@@ -157,11 +157,33 @@ java -cp %TOOLS% MergeFatJar %OUT%\ServeurHTTP.jar app.ServeurHTTP ^
 if errorlevel 1 ( echo ERREUR Fat-JAR Serveur & pause & exit /b 1 )
 
 
+echo.
+echo ===== [4/6] FAT-JAR CLIENT =====
+java -cp %TOOLS% MergeFatJar %OUT%\ControleurClient.jar app.ControleurClient ^
+  app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
+  app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
+  app\jar\poi-bin-5.2.3\poi-ooxml-full-5.2.3.jar ^
+  app\jar\poi-bin-5.2.3\poi-ooxml-lite-5.2.3.jar ^
+  app\jar\poi-bin-5.2.3\lib\commons-codec-1.15.jar ^
+  app\jar\poi-bin-5.2.3\lib\commons-collections4-4.4.jar ^
+  app\jar\poi-bin-5.2.3\lib\commons-io-2.11.0.jar ^
+  app\jar\poi-bin-5.2.3\lib\commons-math3-3.6.1.jar ^
+  app\jar\poi-bin-5.2.3\lib\log4j-api-2.18.0.jar ^
+  app\jar\poi-bin-5.2.3\lib\SparseBitSet-1.2.jar ^
+  app\jar\poi-bin-5.2.3\ooxml-lib\commons-compress-1.21.jar ^
+  app\jar\poi-bin-5.2.3\ooxml-lib\commons-logging-1.2.jar ^
+  app\jar\poi-bin-5.2.3\ooxml-lib\curvesapi-1.07.jar ^
+  app\jar\poi-bin-5.2.3\ooxml-lib\log4j-api-2.18.0.jar ^
+  app\jar\poi-bin-5.2.3\ooxml-lib\xmlbeans-5.1.1.jar ^
+  %BIN%
+if errorlevel 1 ( echo ERREUR Fat-JAR Client & pause & exit /b 1 )
+
+
 REM ══════════════════════════════════════════════════
 REM  ETAPE 4 — jpackage
-REM ══════════════════════════════════════════════════
+REM ══════════════════════════════════════════
 echo.
-echo ===== [4/5] EXE SERVEUR =====
+echo ===== [5/6] EXE SERVEUR =====
 jpackage ^
   --type app-image ^
   --name ServeurHTTP ^
@@ -173,6 +195,20 @@ jpackage ^
 if errorlevel 1 ( echo ERREUR jpackage Serveur & pause & exit /b 1 )
 
 
+echo.
+echo ===== [6/6] EXE CLIENT =====
+jpackage ^
+  --type app-image ^
+  --name ControleurClient ^
+  --input %OUT% ^
+  --main-jar ControleurClient.jar ^
+  --main-class app.ControleurClient ^
+  --dest %EXEOUT% ^
+  --java-options "-Xmx512m"
+if errorlevel 1 ( echo ERREUR jpackage Client & pause & exit /b 1 )
+
+
+
 REM ══════════════════════════════════════════════════
 REM  ETAPE 5 — Copie des donnees a cote des EXE
 REM  Les chemins relatifs (app/data/...) doivent exister
@@ -180,7 +216,7 @@ REM  dans le dossier de l'exe pour que le programme
 REM  retrouve les JSON et les fichiers de reference.
 REM ══════════════════════════════════════════════════
 echo.
-echo ===== [5/5] COPIE DES DONNEES =====
+echo ===== [7/7] COPIE DES DONNEES =====
 xcopy /E /I /Y app\data %EXEOUT%\ServeurHTTP\app\data >nul
 xcopy /E /I /Y app\data %EXEOUT%\ControleurClient\app\data >nul
 echo OK
@@ -194,6 +230,7 @@ echo   BUILD TERMINE
 echo ==================================================
 echo.
 echo   Serveur : %EXEOUT%\ServeurHTTP\ServeurHTTP.exe
+echo   Client  : %EXEOUT%\ControleurClient\ControleurClient.exe
 echo.
 echo   IMPORTANT : lancez les .exe depuis leur dossier,
 echo   pas en double-cliquant depuis l'explorateur,
