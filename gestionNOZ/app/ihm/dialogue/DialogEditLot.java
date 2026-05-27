@@ -147,6 +147,7 @@ public class DialogEditLot extends JDialog
 			{"Date réception",   fDateRec},
 			{"Date paiement",    fDatePai},
 			{"",                 fDouane},
+			{"",                 fMachine},
 			{"Commentaire",      fCommentaire},
 		};
 
