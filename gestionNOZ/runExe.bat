@@ -225,8 +225,8 @@ REM  retrouve les JSON et les fichiers de reference.
 REM ══════════════════════════════════════════════════
 echo.
 echo ===== [5/5] COPIE DES DONNEES =====
-xcopy /E /I /Y app\data %EXEOUT%\ServeurHTTP\app\data >nul
-xcopy /E /I /Y app\data %EXEOUT%\ControleurClient\app\data >nul
+xcopy /E /I /Y app\data %EXEOUT%\FuturaServer\app\data >nul
+xcopy /E /I /Y app\data %EXEOUT%\FuturaClient\app\data >nul
 echo OK
 
 REM ── Nettoyage des temporaires ──────────────────────
