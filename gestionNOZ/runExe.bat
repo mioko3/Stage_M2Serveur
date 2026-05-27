@@ -185,13 +185,13 @@ REM ═════════════════════════�
 echo.
 echo ===== [4/5] EXE SERVEUR =====
 jpackage ^
-  --type exe ^
+  --type app-image ^
   --name FuturaServer ^
   --input %OUT% ^
   --main-jar ServeurHTTP.jar ^
   --main-class app.ServeurHTTP ^
   --dest %EXEOUT% ^
-  --icon app\icon.ico ^
+  --icon app\image\server-icon.ico ^
   --description "Serveur de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
@@ -202,13 +202,13 @@ jpackage ^
 echo.
 echo ===== [5/5] EXE CLIENT =====
 jpackage ^
-  --type exe ^
+  --type app-image ^
   --name FuturaClient ^
   --input %OUT% ^
   --main-jar ControleurClient.jar ^
   --main-class app.ControleurClient ^
   --dest %EXEOUT% ^
-  --icon app\icon.ico ^
+  --icon app\image\client-icon.ico ^
   --description "Client Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
