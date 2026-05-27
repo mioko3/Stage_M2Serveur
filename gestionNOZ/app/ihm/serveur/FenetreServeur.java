@@ -1,14 +1,14 @@
 package app.ihm.serveur;
 
 import app.ServeurHTTP;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.File;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
-import java.io.File;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 /**
  * ══════════════════════════════════════════════════════════════
@@ -410,7 +410,7 @@ public class FenetreServeur extends JFrame
 		JLabel dot = new JLabel("●");
 		dot.setFont(new Font("SansSerif", Font.PLAIN, 10));
 		dot.setForeground(C_GREEN);
-		JLabel txtServeur = new JLabel("Serveur actif — Port 8080");
+		JLabel txtServeur = new JLabel("Serveur actif — Port 8053");
 		txtServeur.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		txtServeur.setForeground(C_MUTED);
 		left.add(dot);

@@ -77,8 +77,8 @@ public class ServeurHTTP
 	// Semaine actuellement chargée (affichée dans FenetreServeur)
 	private volatile String semaineActive = "";
 
-	// Port d'écoute HTTP — fixé à 8080, doit être ouvert dans le firewall
-	private static final int PORT = 8080;
+	// Port d'écoute HTTP — fixé à 8053, doit être ouvert dans le firewall
+	private static final int PORT = 8053;
 
 	// ── CORRECTIF #5 — ReadWriteLock ─────────────────────────────────────
 	// Un verrou classique synchronized(verrou) bloque TOUT le monde,

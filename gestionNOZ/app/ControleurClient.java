@@ -66,7 +66,7 @@ public class ControleurClient implements IControleur
 {
 	private FenetrePrincipale fenetre;
 
-	// URL de base du serveur, ex: "http://192.168.1.10:8080"
+	// URL de base du serveur, ex: "http://192.168.1.10:8053"
 	private final String     urlServeur;
 
 	// Client HTTP Java 11 — réutilisé pour toutes les requêtes
@@ -119,7 +119,7 @@ public class ControleurClient implements IControleur
 	 */
 	public ControleurClient(String ipServeur, String identifiant, boolean accesPAM, String token)
 	{
-		this.urlServeur   = "http://" + ipServeur + ":8080";
+		this.urlServeur   = "http://" + ipServeur + ":8053";
 		this.identifiant  = identifiant;
 		this.accesPAM     = accesPAM;
 		this.tokenSession = token;
