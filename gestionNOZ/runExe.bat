@@ -32,10 +32,10 @@ echo.
 echo ===== [1/5] COMPILATION DU PROJET =====
 javac -encoding UTF-8 -cp "%POI_CP%" -d %BIN% @compile.list
 if errorlevel 1 (
-    echo.
-    echo ERREUR : La compilation a echoue. Corrigez les erreurs ci-dessus.
-    pause
-    exit /b 1
+		echo.
+		echo ERREUR : La compilation a echoue. Corrigez les erreurs ci-dessus.
+		pause
+		exit /b 1
 )
 echo OK
 
@@ -123,9 +123,9 @@ echo }
 
 javac -d %TOOLS% %TOOLS%\MergeFatJar.java
 if errorlevel 1 (
-    echo ERREUR : Compilation de MergeFatJar echouee.
-    pause
-    exit /b 1
+		echo ERREUR : Compilation de MergeFatJar echouee.
+		pause
+		exit /b 1
 )
 echo OK
 
@@ -138,44 +138,44 @@ REM ═════════════════════════�
 echo.
 echo ===== [3/5] FAT-JAR SERVEUR =====
 java -cp %TOOLS% MergeFatJar %OUT%\ServeurHTTP.jar app.ServeurHTTP ^
-  app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-full-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-lite-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-codec-1.15.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-collections4-4.4.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-io-2.11.0.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-math3-3.6.1.jar ^
-  app\jar\poi-bin-5.2.3\lib\log4j-api-2.18.0.jar ^
-  app\jar\poi-bin-5.2.3\lib\SparseBitSet-1.2.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\commons-compress-1.21.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\commons-logging-1.2.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\curvesapi-1.07.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\log4j-api-2.18.0.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\xmlbeans-5.1.1.jar ^
-  %BIN%
+	app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-full-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-lite-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-codec-1.15.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-collections4-4.4.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-io-2.11.0.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-math3-3.6.1.jar ^
+	app\jar\poi-bin-5.2.3\lib\log4j-api-2.18.0.jar ^
+	app\jar\poi-bin-5.2.3\lib\SparseBitSet-1.2.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\commons-compress-1.21.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\commons-logging-1.2.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\curvesapi-1.07.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\log4j-api-2.18.0.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\xmlbeans-5.1.1.jar ^
+	%BIN%
 if errorlevel 1 ( echo ERREUR Fat-JAR Serveur & pause & exit /b 1 )
 
 
 echo.
 echo ===== [3/5] FAT-JAR CLIENT =====
 java -cp %TOOLS% MergeFatJar %OUT%\ControleurClient.jar app.ControleurClient ^
-  app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-full-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\poi-ooxml-lite-5.2.3.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-codec-1.15.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-collections4-4.4.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-io-2.11.0.jar ^
-  app\jar\poi-bin-5.2.3\lib\commons-math3-3.6.1.jar ^
-  app\jar\poi-bin-5.2.3\lib\log4j-api-2.18.0.jar ^
-  app\jar\poi-bin-5.2.3\lib\SparseBitSet-1.2.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\commons-compress-1.21.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\commons-logging-1.2.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\curvesapi-1.07.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\log4j-api-2.18.0.jar ^
-  app\jar\poi-bin-5.2.3\ooxml-lib\xmlbeans-5.1.1.jar ^
-  %BIN%
+	app\jar\poi-bin-5.2.3\poi-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-full-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\poi-ooxml-lite-5.2.3.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-codec-1.15.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-collections4-4.4.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-io-2.11.0.jar ^
+	app\jar\poi-bin-5.2.3\lib\commons-math3-3.6.1.jar ^
+	app\jar\poi-bin-5.2.3\lib\log4j-api-2.18.0.jar ^
+	app\jar\poi-bin-5.2.3\lib\SparseBitSet-1.2.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\commons-compress-1.21.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\commons-logging-1.2.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\curvesapi-1.07.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\log4j-api-2.18.0.jar ^
+	app\jar\poi-bin-5.2.3\ooxml-lib\xmlbeans-5.1.1.jar ^
+	%BIN%
 if errorlevel 1 ( echo ERREUR Fat-JAR Client & pause & exit /b 1 )
 
 
@@ -185,35 +185,35 @@ REM ═════════════════════════�
 echo.
 echo ===== [4/5] EXE SERVEUR =====
 jpackage ^
-  --type app-image ^
-  --name FuturaServer ^
-  --input %OUT% ^
-  --main-jar ServeurHTTP.jar ^
-  --main-class app.ServeurHTTP ^
-  --dest %EXEOUT% ^
-  --icon app\image\server-icon.ico ^
-  --description "Serveur de gestion Planning Global Futura" ^
-  --vendor "Futura" ^
-  --app-version "1.0.0" ^
-  --java-options "-Xmx512m" ^
-  --win-console
+	--type app-image ^
+	--name FuturaServer ^
+	--input %OUT% ^
+	--main-jar ServeurHTTP.jar ^
+	--main-class app.ServeurHTTP ^
+	--dest %EXEOUT% ^
+	--icon app\image\server-icon.ico ^
+	--description "Serveur de gestion Planning Global Futura" ^
+	--vendor "Futura" ^
+	--app-version "1.0.0" ^
+	--java-options "-Xmx512m" ^
+	--win-console
 
 
 echo.
 echo ===== [5/5] EXE CLIENT =====
 jpackage ^
-  --type app-image ^
-  --name FuturaClient ^
-  --input %OUT% ^
-  --main-jar ControleurClient.jar ^
-  --main-class app.ControleurClient ^
-  --dest %EXEOUT% ^
-  --icon app\image\client-icon.ico ^
-  --description "Client Planning Global Futura" ^
-  --vendor "Futura" ^
-  --app-version "1.0.0" ^
-  --java-options "-Xmx512m" ^
-  --win-console
+	--type app-image ^
+	--name FuturaClient ^
+	--input %OUT% ^
+	--main-jar ControleurClient.jar ^
+	--main-class app.ControleurClient ^
+	--dest %EXEOUT% ^
+	--icon app\image\client-icon.ico ^
+	--description "Client Planning Global Futura" ^
+	--vendor "Futura" ^
+	--app-version "1.0.0" ^
+	--java-options "-Xmx512m" ^
+	--win-console
 
 
 
