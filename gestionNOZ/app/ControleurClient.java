@@ -426,8 +426,7 @@ public class ControleurClient implements IControleur
 		// 3. Synchroniser avec le serveur
 		new Thread(() -> {
 			try {
-				this.lots = JsonSerialiser.deserialiserLots(
-					post("/lots/terminer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+				majDual(post("/lots/terminer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
 			} catch (Exception ex) {
 				err("marquerLotTermine", ex);
 			}
@@ -443,8 +442,7 @@ public class ControleurClient implements IControleur
 		// 3. Synchroniser avec le serveur
 		new Thread(() -> {
 			try {
-				this.lots = JsonSerialiser.deserialiserLots(
-					post("/lots/commencer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+				majDual(post("/lots/commencer", "{\"numCDE\":" + lot.getNumCDE() + "}"));
 			} catch (Exception ex) {
 				err("commencerLot", ex);
 			}
@@ -460,8 +458,7 @@ public class ControleurClient implements IControleur
 		// 3. Synchroniser avec le serveur
 		new Thread(() -> {
 			try {
-				this.lots = JsonSerialiser.deserialiserLots(
-					post("/lots/annuler", "{\"numCDE\":" + lot.getNumCDE() + "}"));
+				majDual(post("/lots/annuler", "{\"numCDE\":" + lot.getNumCDE() + "}"));
 			} catch (Exception ex) {
 				err("annulerLot", ex);
 			}

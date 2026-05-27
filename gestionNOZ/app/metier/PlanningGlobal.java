@@ -222,6 +222,7 @@ public class PlanningGlobal
 		String formatted = LocalDateTime.now()
 			.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
 		l.setDateDebut(formatted);
+		l.calculDateFinThéorique();
 	}
 
 	public void annulerLot(Lot l)

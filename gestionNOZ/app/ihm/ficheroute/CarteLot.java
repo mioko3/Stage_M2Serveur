@@ -268,18 +268,20 @@ public class CarteLot extends JPanel implements ActionListener
 		this.estcommencer = true;
 		this.ctrl.commencerLot(lot);
 
-		Lot lotMaj = ctrl.getLots().stream()
-			.filter(l -> l.getId().equals(lot.getId()))
-			.findFirst().orElse(lot);
-		lotMaj.calculDateFinThéorique();
+		String now = java.time.LocalDateTime.now()
+			.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+		lot.setDateDebut(now);
+		lot.calculDateFinThéorique();
 		this.m.rafraichir();
 	}
 
 	private void annuler()
 	{
 		this.estcommencer = false;
-		this.ctrl.annulerLot(lot);
+		lot.setDateDebut("");
+		lot.setdateFin("");
 		lot.setdateFinT("");
+		this.ctrl.annulerLot(lot);
 		this.m.rafraichir();
 	}
 
