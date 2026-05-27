@@ -184,36 +184,55 @@ REM  ETAPE 4 — jpackage
 REM ══════════════════════════════════════════
 echo.
 echo ===== [4/5] EXE SERVEUR =====
+REM -- Creer un runtime minimal avec jlink (force x64 propre)
+jlink ^
+  --module-path "%JAVA_HOME%\jmods" ^
+  --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
+  --output %TOOLS%\runtime-serveur ^
+  --strip-debug ^
+  --no-header-files ^
+  --no-man-pages
+
 jpackage ^
-	--type app-image ^
-	--name FuturaServer ^
-	--input %OUT% ^
-	--main-jar ServeurHTTP.jar ^
-	--main-class app.ServeurHTTP ^
-	--dest %EXEOUT% ^
-	--icon app\image\server-icon.ico ^
-	--description "Serveur de gestion Planning Global Futura" ^
-	--vendor "Futura" ^
-	--app-version "1.0.0" ^
-	--java-options "-Xmx512m" ^
-	--win-console
+  --type exe ^
+  --name FuturaServer ^
+  --input %OUT% ^
+  --main-jar ServeurHTTP.jar ^
+  --main-class app.ServeurHTTP ^
+  --dest %EXEOUT% ^
+  --runtime-image %TOOLS%\runtime-serveur ^
+  --icon app\server-icon.ico ^
+  --description "Serveur de gestion Planning Global Futura" ^
+  --vendor "Futura" ^
+  --app-version "1.0.0" ^
+  --java-options "-Xmx512m" ^
+  --win-console
 
 
 echo.
 echo ===== [5/5] EXE CLIENT =====
+jlink ^
+  --module-path "%JAVA_HOME%\jmods" ^
+  --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
+  --output %TOOLS%\runtime-client ^
+  --strip-debug ^
+  --no-header-files ^
+  --no-man-pages
+
 jpackage ^
-	--type app-image ^
-	--name FuturaClient ^
-	--input %OUT% ^
-	--main-jar ControleurClient.jar ^
-	--main-class app.ControleurClient ^
-	--dest %EXEOUT% ^
-	--icon app\image\client-icon.ico ^
-	--description "Client Planning Global Futura" ^
-	--vendor "Futura" ^
-	--app-version "1.0.0" ^
-	--java-options "-Xmx512m" ^
-	--win-console
+  --type exe ^
+  --name FuturaClient ^
+  --input %OUT% ^
+  --main-jar ControleurClient.jar ^
+  --main-class app.ControleurClient ^
+  --dest %EXEOUT% ^
+  --runtime-image %TOOLS%\runtime-client ^
+  --icon app\client-icon.ico ^
+  --description "Client de gestion Planning Global Futura" ^
+  --vendor "Futura" ^
+  --app-version "1.0.0" ^
+  --java-options "-Xmx512m" ^
+  --win-console
 
 
 
