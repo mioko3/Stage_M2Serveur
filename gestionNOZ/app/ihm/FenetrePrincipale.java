@@ -1,6 +1,5 @@
 package app.ihm;
 
-import app.ControleurClient;
 import app.IControleur;
 import app.ihm.diagrame.*;
 import app.ihm.ficheroute.PanelFicheRoute;
@@ -70,7 +69,7 @@ public class FenetrePrincipale extends JFrame
 	public FenetrePrincipale(IControleur ctrl)
 	{
 		this.ctrl = ctrl;
-		setTitle("Planning Global Futura — PAM" + titreComplement());
+		setTitle("Planning Global Futura — PAM");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(1480, 780);
 		setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -80,13 +79,6 @@ public class FenetrePrincipale extends JFrame
 
 		setJMenuBar(creerMenuBar());
 		add(creerEntete(), BorderLayout.NORTH);
-
-		// Bandeau état client (PAM ou société)
-		if (estModeClient())
-		{
-			bandeauEtat = creerBandeauEtat();
-			add(bandeauEtat, BorderLayout.AFTER_LAST_LINE);
-		}
 
 		this.panelAffectation = new PanelAffectation(ctrl, this);
 		this.panelSocietes    = new PanelSocietes   (ctrl, this);
@@ -98,9 +90,7 @@ public class FenetrePrincipale extends JFrame
 		JTabbedPane onglets = new JTabbedPane();
 		onglets.setFont(new Font("SansSerif", Font.PLAIN, 13));
 
-		// PanelAffectation masqué si client société (non PAM)
-		if (!estModeClient() || clientPAM())
-			onglets.addTab("⊕ Affectation", panelAffectation);
+		onglets.addTab("⊕ Affectation", panelAffectation);
 
 		onglets.addTab("📋 Fiches de Route",   panelFicheRoute);
 		onglets.addTab("☰ Liste des lots",    panelLots);
@@ -116,120 +106,13 @@ public class FenetrePrincipale extends JFrame
 				panelMap.rafraichir();
 		});
 
-		if (!estModeClient() || clientPAM())
-			panelAffectation.remplirComboSocietes();
+		panelAffectation.remplirComboSocietes();
 
 		rafraichirTout();
 		setVisible(true);
 	}
 
-	// ── Bandeau état client ───────────────────────────────────────────────
-
-	private JPanel creerBandeauEtat()
-	{
-		JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-		p.setBackground(new Color(30, 60, 120));
-
-		lblBandeauTexte = new JLabel();
-		lblBandeauTexte.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		lblBandeauTexte.setForeground(new Color(200, 220, 255));
-		p.add(lblBandeauTexte);
-
-		// Bouton désync — PAM uniquement
-		if (clientPAM())
-		{
-			btnDesync = new JButton("🔓 Se désynchroniser");
-			btnDesync.setFont(new Font("SansSerif", Font.BOLD, 11));
-			btnDesync.setBackground(new Color(180, 120, 20));
-			btnDesync.setForeground(Color.WHITE);
-			btnDesync.setFocusPainted(false);
-			btnDesync.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
-			btnDesync.setToolTipText("Préparer des semaines futures sans affecter les clients");
-			btnDesync.addActionListener(e -> seDesynchroniser());
-			p.add(btnDesync);
-
-			btnResync = new JButton("🔒 Se resynchroniser");
-			btnResync.setFont(new Font("SansSerif", Font.BOLD, 11));
-			btnResync.setBackground(new Color(40, 140, 60));
-			btnResync.setForeground(Color.WHITE);
-			btnResync.setFocusPainted(false);
-			btnResync.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
-			btnResync.setToolTipText("Revenir aux données du serveur");
-			btnResync.addActionListener(e -> seResynchroniser());
-			btnResync.setVisible(false);
-			p.add(btnResync);
-		}
-
-		majTextureBandeau(p);
-		return p;
-	}
-
-	/** Met à jour le texte et les boutons du bandeau selon l'état courant. */
-	public void majBandeauEtat()
-	{
-		if (bandeauEtat == null) return;
-		ControleurClient cc = (ControleurClient) ctrl;
-		majTextureBandeau(bandeauEtat);
-		majMenuFichier();
-		bandeauEtat.revalidate();
-		bandeauEtat.repaint();
-	}
-
-	private void majTextureBandeau(JPanel p)
-	{
-		if (lblBandeauTexte == null) return;
-		ControleurClient cc = (ControleurClient) ctrl;
-		boolean desync = cc.isDesynchronise();
-
-		if (desync)
-		{
-			p.setBackground(new Color(100, 60, 10));
-			lblBandeauTexte.setText(
-				"⚠  Mode DÉSYNCHRONISÉ — Vous travaillez en local. Les clients ne voient pas vos modifications.");
-			if (btnDesync != null) btnDesync.setVisible(false);
-			if (btnResync != null) btnResync.setVisible(true);
-		}
-		else
-		{
-			p.setBackground(new Color(30, 60, 120));
-			String id = cc.getIdentifiant();
-			if (cc.isAccesPAM())
-				lblBandeauTexte.setText("🔒  Connecté en tant que PAM — Synchronisé avec le serveur");
-			else
-				lblBandeauTexte.setText("🔒  Connecté en tant que " + id + " — Accès limité (lecture / suivi)");
-			if (btnDesync != null) btnDesync.setVisible(true);
-			if (btnResync != null) btnResync.setVisible(false);
-		}
-	}
-
-	// ── Actions désync ────────────────────────────────────────────────────
-
-	private void seDesynchroniser()
-	{
-		int r = JOptionPane.showConfirmDialog(this,
-			"Se désynchroniser du serveur ?\n\n"
-				+ "Vous pourrez préparer des semaines futures localement.\n"
-				+ "Les autres clients ne seront pas affectés.",
-			"Désynchronisation", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (r != JOptionPane.YES_OPTION) return;
-		((ControleurClient) ctrl).seDesynchroniser();
-		majBandeauEtat();
-		majMenuFichier();
-	}
-
-	private void seResynchroniser()
-	{
-		int r = JOptionPane.showConfirmDialog(this,
-			"Se resynchroniser avec le serveur ?\n\n"
-				+ "Vos modifications locales seront perdues.",
-			"Resynchronisation", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (r != JOptionPane.YES_OPTION) return;
-		((ControleurClient) ctrl).seResynchroniser();
-		majBandeauEtat();
-		majMenuFichier();
-	}
-
-	// ── Menu Fichier ──────────────────────────────────────────────────────
+// ── Menu Fichier ──────────────────────────────────────────────────────
 
 	private JMenuBar creerMenuBar()
 	{
@@ -249,16 +132,6 @@ public class FenetrePrincipale extends JFrame
 		itemSauvegarder.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
 		itemNouveaux   .setAccelerator(KeyStroke.getKeyStroke("ctrl N"));
 
-		// En mode client synchronisé, désactiver charger/nouveaux
-		if (estModeClient())
-		{
-			itemOuvrir .setEnabled(false);
-			itemNouveaux.setEnabled(false);
-			String tip = "Disponible en mode désynchronisé (bouton dans la barre d'état)";
-			itemOuvrir .setToolTipText(tip);
-			itemNouveaux.setToolTipText(tip);
-		}
-
 		menuFichier.add(itemOuvrir);
 		menuFichier.addSeparator();
 		menuFichier.add(itemSauvegarder);
@@ -268,28 +141,10 @@ public class FenetrePrincipale extends JFrame
 		return bar;
 	}
 
-	/** Met à jour l'état actif/inactif du menu selon synchro. */
-	private void majMenuFichier()
-	{
-		if (itemOuvrir == null || itemNouveaux == null) return;
-		if (!estModeClient()) return;
-		boolean desync = ((ControleurClient) ctrl).isDesynchronise();
-		itemOuvrir  .setEnabled(desync);
-		itemNouveaux.setEnabled(desync);
-	}
-
-	// ── Actions menu ──────────────────────────────────────────────────────
+// ── Actions menu ──────────────────────────────────────────────────────
 
 	private void ouvrirSauvegarde()
 	{
-		if (estModeClient() && !((ControleurClient) ctrl).isDesynchronise())
-		{
-			JOptionPane.showMessageDialog(this,
-				"⛔  Désynchronisez-vous d'abord pour charger des données locales.",
-				"Action non autorisée", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-
 		JFileChooser fc = new JFileChooser();
 		fc.setDialogTitle("Ouvrir une sauvegarde JSON");
 		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -341,14 +196,6 @@ public class FenetrePrincipale extends JFrame
 
 	public void nouveaux()
 	{
-		if (estModeClient() && !((ControleurClient) ctrl).isDesynchronise())
-		{
-			JOptionPane.showMessageDialog(this,
-				"⛔  Désynchronisez-vous d'abord pour importer un nouveau fichier Excel.",
-				"Action non autorisée", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-
 		int res = JOptionPane.showConfirmDialog(this,
 			"Voulez-vous vraiment réinitialiser les données ?",
 			"Nouvelle session", JOptionPane.YES_NO_OPTION);
@@ -384,10 +231,8 @@ public class FenetrePrincipale extends JFrame
 		btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
 		btnSup.setBackground(IhmUtils.HEADER);
 		btnSup.setForeground(new Color(255, 255, 180));
-		btnSup.setEnabled(!estModeClient()); // désactivé pour les clients
+		btnSup.setEnabled(true);
 		btnSup.addActionListener(e -> this.SemaineSup());
-		if (estModeClient())
-			btnSup.setLabel("Heures Sup (serveur)");
 
 		lblInfo = new JLabel(buildInfo());
 		lblInfo.setForeground(new Color(180, 180, 180));
@@ -410,8 +255,7 @@ public class FenetrePrincipale extends JFrame
 		long nbAff = ctrl.getSocietes().stream().mapToLong(s -> s.getLots().size()).sum();
 		int  nbH   = ctrl.getSocietes().stream().mapToInt(s -> s.getTotalHeuresCE()).sum();
 		String heureSup = PlanningGlobal.estHeureSup ? "oui" : "non";
-		String desyncInfo = (estModeClient() && ((ControleurClient) ctrl).isDesynchronise())
-			? "  |  ⚠ DÉSYNC" : "";
+		String desyncInfo = "";
 		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot" + getHeureLotTotal()
 			+ ctrl.getSocietes().size() + " sociétés  |  "
 			+ nbAff + " affectés  |  "
@@ -453,36 +297,13 @@ public class FenetrePrincipale extends JFrame
 		{
 			SwingUtilities.invokeLater(refresh);
 		}
-		if (!estModeClient() || !((ControleurClient) ctrl).isDesynchronise())
-			this.ctrl.autoSauvegarde();
+		this.ctrl.autoSauvegarde();
 	}
 
 	public void SemaineSup()
 	{
-		if (estModeClient())
-		{
-			JOptionPane.showMessageDialog(this,
-				"Les heures supplémentaires sont gérées depuis le panneau de contrôle du serveur.",
-				"Information", JOptionPane.INFORMATION_MESSAGE);
-			return;
-		}
 		ctrl.semaineSup();
 		rafraichirTout();
-	}
-
-	// ── Utilitaires ──────────────────────────────────────────────────────
-
-	private boolean estModeClient() { return ctrl instanceof ControleurClient; }
-	private boolean clientPAM()
-	{
-		return estModeClient() && ((ControleurClient) ctrl).isAccesPAM();
-	}
-
-	private String titreComplement()
-	{
-		if (!estModeClient()) return "";
-		ControleurClient cc = (ControleurClient) ctrl;
-		return cc.isAccesPAM() ? " [PAM]" : " [" + cc.getIdentifiant() + "]";
 	}
 
 	public PanelAffectation getPanelAffectation() { return panelAffectation; }

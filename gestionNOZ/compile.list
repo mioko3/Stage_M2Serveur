@@ -49,8 +49,6 @@ app/ihm/gestionlot/PanelSocietes.java
 #  En mode headless (Linux sans affichage), elle n'est jamais instanciée
 #  grâce au correctif #4 dans ServeurHTTP.java.
 app/ihm/serveur/FenetreServeur.java
-app/ihm/login/FenetreConnexionClient.java
-app/ControleurClient.java
 
 # ── Interfaces et point d'entrée ──────────────────────────────
 app/IControleur.java
