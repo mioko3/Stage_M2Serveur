@@ -104,7 +104,6 @@ public class ExcelReader
 				lots.add(lot);
 			}
 
-			System.out.println("  → " + lots.size() + " lots lus depuis export.XLSX");
 			return lots;
 		}
 	}

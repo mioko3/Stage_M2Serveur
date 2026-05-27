@@ -83,15 +83,9 @@ public class DonneesSauvegarder
 		if (!new java.io.File(cheminSocietes).exists())
 			throw new IOException("Fichier introuvable : " + cheminSocietes);
 
-		System.out.println("[DonneesSauvegarder] Lecture lots depuis : " + cheminLots);
 		String jsonLots     = lire(cheminLots);
-		System.out.println("[DonneesSauvegarder] JSON lots lu : " + (jsonLots == null ? 0 : jsonLots.length()) + " octets");
-		System.out.println("[DonneesSauvegarder] Début désérialisation lots");
 
-		System.out.println("[DonneesSauvegarder] Lecture societes depuis : " + cheminSocietes);
 		String jsonSocietes = lire(cheminSocietes);
-		System.out.println("[DonneesSauvegarder] JSON societes lu : " + (jsonSocietes == null ? 0 : jsonSocietes.length()) + " octets");
-		System.out.println("[DonneesSauvegarder] Début désérialisation societes");
 
 		metier.getLots()    .clear();
 		metier.getSocietes().clear();
@@ -100,8 +94,6 @@ public class DonneesSauvegarder
 		metier.getLots().addAll(lots);
 		metier.getSocietes().addAll(JsonSerialiser.deserialiserSocietes(jsonSocietes, lots));
 
-		System.out.println("[Chargement] " + metier.getLots().size()
-			+ " lots, " + metier.getSocietes().size() + " sociétés depuis " + cheminDossier);
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -156,19 +148,15 @@ public class DonneesSauvegarder
 	private String lire(String chemin) throws IOException
 	{
 		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
-		System.out.println("[DonneesSauvegarder] Lecture brute "+chemin+" : " + Math.min(contenu.length(), 200) + " caractères");
 		String prefix = contenu.length() <= 200 ? contenu : contenu.substring(0, 200);
-		System.out.println("[DonneesSauvegarder] Début contenu : " + prefix.replace("\n", "\\n").replace("\r", "\\r"));
 
 		if (aes == null) return contenu;
 
 		// JSON brut non chiffré (migration)
 		if (contenu.startsWith("[") || contenu.startsWith("{"))
 		{
-			System.out.println("[AES] Migration : chiffrement de " + chemin);
 			try {
 				Files.writeString(Paths.get(chemin), aes.chiffrer(contenu));
-				System.out.println("[AES] Migration réussie : " + chemin);
 			} catch (Exception e) {
 				System.err.println("[AES] Migration échouée : " + e.getMessage());
 			}
@@ -178,9 +166,7 @@ public class DonneesSauvegarder
 		// Fichier chiffré : déchiffrer
 		try {
 			String resultat = aes.dechiffrer(contenu);
-			System.out.println("[DonneesSauvegarder] Contenu déchiffré " + chemin + " : " + Math.min(resultat.length(), 200) + " caractères");
 			String prefixDechiffre = resultat.length() <= 200 ? resultat : resultat.substring(0, 200);
-			System.out.println("[DonneesSauvegarder] Début contenu déchiffré : " + prefixDechiffre.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"));
 			return resultat;
 		} catch (Exception e) {
 			throw new IOException("Erreur déchiffrement de " + chemin

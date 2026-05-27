@@ -88,15 +88,19 @@ public class CarteLot extends JPanel implements ActionListener
 		corps.setLayout(new BoxLayout(corps, BoxLayout.Y_AXIS));
 		corps.setBackground(bg);
 
+		JPanel corps2 = new JPanel();
+		corps2.setLayout(new BorderLayout());
+		corps2.setBackground(bg);
+
 		panelLogistique = construireLigne5Logistique(bg);
 
 		// ── Ordre des lignes (identique à livraison) ───────────────────
 		corps.add(construireLigne1(bg));
 		corps.add(Box.createVerticalStrut(5));
 		corps.add(separateur());
-		corps.add(construireLigne2(bg));
-		corps.add(separateur());
-		corps.add(construireLigneFin(bg));
+		corps2.add(construireLigne2(bg), BorderLayout.WEST);
+		corps2.add(construireLigneFin(bg), BorderLayout.EAST);
+		corps.add(corps2);
 		corps.add(separateur());
 		corps.add(construireLigneDate(bg));
 		corps.add(separateur());
