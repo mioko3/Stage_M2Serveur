@@ -198,9 +198,10 @@ REM ═════════════════════════�
 echo.
 echo ===== [5/6] PACKAGE SERVEUR =====
 REM -- Creer un runtime minimal avec jlink (force x64 propre)
+if exist %TOOLS%\runtime-serveur rmdir /s /q %TOOLS%\runtime-serveur
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
-  --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
+  --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming,jdk.httpserver ^
   --output %TOOLS%\runtime-serveur ^
   --strip-debug ^
   --no-header-files ^
@@ -219,12 +220,11 @@ jpackage ^
   --description "Serveur de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
-  --java-options "-Xmx512m" ^
-  --win-console
-
+  --java-options "-Xmx512m"
 
 echo.
 echo ===== [6/6] PACKAGE CLIENT =====
+if exist %TOOLS%\runtime-client rmdir /s /q %TOOLS%\runtime-client
 jlink ^
   --module-path "%JAVA_HOME%\jmods" ^
   --add-modules java.base,java.desktop,java.net.http,java.logging,java.xml,java.naming ^
@@ -246,8 +246,17 @@ jpackage ^
   --description "Client de gestion Planning Global Futura" ^
   --vendor "Futura" ^
   --app-version "1.0.0" ^
-  --java-options "-Xmx512m" ^
-  --win-console
+  --java-options "-Xmx512m"
+
+if exist "%EXEOUT%\FuturaServer\app\data" rmdir /s /q "%EXEOUT%\FuturaServer\app\data"
+xcopy /E /I /Y "%TOOLS%\resource\app\data" "%EXEOUT%\FuturaServer\app\data" >nul
+if errorlevel 1 ( echo ERREUR : copie donnees serveur vers package & pause & exit /b 1 )
+
+echo.
+echo ===== [7/7] COPIE DONNEES CLIENT =====
+if exist "%EXEOUT%\FuturaClient\app\data" rmdir /s /q "%EXEOUT%\FuturaClient\app\data"
+xcopy /E /I /Y "%TOOLS%\resource\app\data\pastouche\methodes" "%EXEOUT%\FuturaClient\app\data\pastouche\methodes" >nul
+if errorlevel 1 ( echo ERREUR : copie donnees client vers package & pause & exit /b 1 )
 
 
 

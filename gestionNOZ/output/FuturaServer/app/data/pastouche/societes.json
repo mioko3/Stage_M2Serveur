@@ -1,0 +1,50 @@
+[
+  {
+    "nom": "EUP",
+    "ce": "GERALDINE",
+    "totalHeuresCE": 200,
+    "aces": [
+      { "nom": "CHARLENE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0, "est Machine": false, "lotsACE": [] },
+      { "nom": "FLORE"   , "nbPers": 0, "totalHeures": 0, "effectifActuel": 0, "est Machine": false, "lotsACE": [] },
+      { "nom": "SOPHIE F", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0, "est Machine": false, "lotsACE": [] }
+    ],
+    "lotsAffectes": []
+  },
+  {
+    "nom": "CFP",
+    "ce": "LAETITIA",
+    "totalHeuresCE": 200,
+    "aces": [
+      { "nom": "SOLENNE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0,"est Machine": true, "lotsACE": [] },
+      { "nom": "CAMILLE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0,"est Machine": false, "lotsACE": [] }
+    ],
+    "lotsAffectes": []
+  },
+  {
+    "nom": "PA",
+    "ce": "CLYDE",
+    "totalHeuresCE": 200,
+    "aces": [
+      { "nom": "CHLOE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0,"est Machine": false, "lotsACE": [] },
+      { "nom": "MAUD" , "nbPers": 0, "totalHeures": 0, "effectifActuel": 0,"est Machine": false, "lotsACE": [] }
+    ],
+    "lotsAffectes": []
+  },
+  {
+    "nom": "NP",
+    "ce": "CHRISTELLE",
+    "totalHeuresCE": 200,
+    "aces": [
+      { "nom": "CHRISTELLE", "nbPers": 0, "totalHeures": 0, "effectifActuel": 0, "est Machine": false, "lotsACE": [] }
+    ],
+    "lotsAffectes": []
+  },
+  {
+    "nom": "Autre 3",
+    "ce": "Autre CE 3",
+    "totalHeuresCE": 0,
+    "aces": [
+    ],
+    "lotsAffectes": []
+  }
+]
