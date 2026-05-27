@@ -237,12 +237,11 @@ echo ==================================================
 echo   BUILD TERMINE
 echo ==================================================
 echo.
-echo   Serveur : %EXEOUT%\ServeurHTTP\ServeurHTTP.exe
+echo   Serveur : %EXEOUT%\FuturaServer\FuturaServer.exe
+echo   Client  : %EXEOUT%\FuturaClient\FuturaClient.exe
 echo.
-echo   IMPORTANT : lancez les .exe depuis leur dossier,
-echo   pas en double-cliquant depuis l'explorateur,
-echo   sinon les chemins relatifs (app/data) seront faux.
-echo   Pour lancer correctement : clic droit sur le .exe
-echo   puis "Ouvrir" depuis son dossier.
+echo   IMPORTANT : copiez et lancez le dossier entier,
+echo   pas seulement le fichier .exe.
+echo   L'application a besoin des fichiers de runtime et des données.
 echo.
 pause
