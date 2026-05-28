@@ -181,70 +181,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  *
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
-package app;
 
-import app.ihm.FenetrePrincipale;
-import app.metier.PlanningGlobal;
-import app.metier.collecte.DonneesSauvegarder;
-import app.metier.collecte.ExcelReader;
-import app.metier.collecte.JsonSerialiser;
-import app.metier.ficheroute.FicheRoute;
-import app.metier.lot.Lot;
-import app.metier.personelle.Ace;
-import app.metier.personelle.Societe;
-import app.securite.ChiffrementAES;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
-
-/**
- * ══════════════════════════════════════════════════════════════
- *  ControleurClient — mode réseau sécurisé avec chiffrement AES
- *
- *  FONCTIONNEMENT GÉNÉRAL :
- *  ────────────────────────
- *  Ce contrôleur remplace Controleur.java quand l'application
- *  tourne en mode client réseau (connexion à un ServeurHTTP distant).
- *
- *  Il implémente IControleur, donc la FenetrePrincipale n'a pas
- *  besoin de savoir si elle tourne en mode solo ou réseau.
- *
- *  SÉQUENCE DE DÉMARRAGE :
- *  ───────────────────────
- *  1. Constructeur appelé avec IP, identifiant, token de session
- *  2. Thread de fond : chargerDepuisServeur() → charge lots + sociétés
- *  3. Thread de fond : recupererCle() → récupère la clé AES via GET /cle
- *  4. À partir de là, tous les échanges HTTP sont chiffrés
- *  5. FenetrePrincipale s'ouvre sur le thread Swing (invokeLater)
- *  6. Thread de polling démarre (toutes les 3s : GET /version)
- *
- *  CHIFFREMENT AES (correctif #9) :
- *  ──────────────────────────────────
- *  - La clé est reçue du serveur via GET /cle après authentification
- *  - get()  : déchiffre automatiquement la réponse si aes != null
- *  - post() : chiffre automatiquement le body si aes != null
- *  - aes = null jusqu'à recupererCle() → les premiers échanges
- *    (chargerDepuisServeur, /cle lui-même) transitent en clair, ce qui
- *    est inévitable puisqu'on ne peut pas déchiffrer avant d'avoir la clé
- *
- *  MODE DÉSYNCHRONISÉ :
- *  ─────────────────────
- *  PAM peut se désynchroniser du serveur pour préparer des semaines futures
- *  localement sans perturber les autres clients. Le polling est suspendu,
- *  les modifications sont sauvegardées en local uniquement.
- *  La resynchronisation recharge l'état du serveur et perd les modifs locales.
- * ══════════════════════════════════════════════════════════════
- */
 public class ControleurClient implements IControleur
 {
 	private FenetrePrincipale fenetre;

@@ -53,19 +53,7 @@ import java.util.ArrayList;
  *
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
-package app.metier.personelle;
 
-import app.metier.lot.Lot;
-import java.awt.Color;
-import java.util.ArrayList;
-
-/**
- * Chef d'ACE (Atelier de Conditionnement et d'Expédition).
- *
- * IMPORTANT : les heures de l'ACE ne sont PAS décomptées lors d'une affectation.
- *             Seules les heures de la SOCIÉTÉ sont décomptées (totalHeuresCE).
- *             L'ACE sert uniquement à identifier le responsable d'un lot.
- */
 public class Ace
 {
 	/** Nom du chef d'ACE (ex: "Alice", "Bob") */

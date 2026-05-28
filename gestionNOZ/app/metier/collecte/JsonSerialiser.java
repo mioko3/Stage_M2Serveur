@@ -54,11 +54,11 @@ import java.util.ArrayList;
  *   \n → newline
  *   \r → carriage return
  *   \t → tab
- *   \uXXXX → caractère Unicode
+ *   \\uXXXX → caractère Unicode
  *
  * Exemple :
- *   Texte brut : "Lot avec "guillemets" et \backslash"
- *   JSON : "Lot avec \"guillemets\" et \\backslash"
+ *   Texte brut : "Lot avec \"guillemets\" et \\backslash"
+ *   JSON : "Lot avec \\\"guillemets\\\" et \\\\backslash"
  *
  * Méthode esc() gère tous ces cas.
  * ⚠️  Erreur courante : oublier d'échapper → JSON invalide
@@ -114,17 +114,6 @@ import java.util.ArrayList;
  *
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
-package app.metier.collecte;
-
-import app.metier.ficheroute.FicheRoute;
-import app.metier.ficheroute.Phase;
-import app.metier.ficheroute.SuivieProd;
-import app.metier.lot.LigneColisage;
-import app.metier.lot.Lot;
-import app.metier.personelle.Ace;
-import app.metier.personelle.Societe;
-import java.util.ArrayList;
-
 
 public class JsonSerialiser
 {

@@ -102,16 +102,7 @@ public class Lot
 	private double  prixUnitaire;  // Calculé = valeurVente / nbPieces
 	private String  semaine;       // "S17", "S18", etc. (semaine de production)
 	private int     priorite;      // 1-5 (1 = très urgent)
-	private String  typologie;
-	private String  affaire;
-	private int     nbPieces;
-	private double  cadence,cadenceReel;
-	private double  heures;
-	private double  heuresAce; // les temps que ça prend (heure / nbpersonne)
-	private int     valeurVente;
-	private double  prixUnitaire;
-	private String  semaine;
-	private int     priorite;
+	private String  typologie;     // Alias pour typographie (nomenclature utilisée dans le code)
 
 	// ── Statuts ───────────────────────────────────────────────────────────
 	private String  statut;         // statut interne (OU, TC, MC)

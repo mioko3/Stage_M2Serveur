@@ -131,38 +131,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  *
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
-package app.metier.collecte;
 
-import app.metier.lot.LigneColisage;
-import app.metier.lot.Lot;
-import app.metier.ficheroute.Phase;
-import app.metier.personelle.Ace;
-import app.metier.personelle.Societe;
-import app.metier.PlanningGlobal;
-
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
-
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-
-/**
- * Lit des données depuis Excel via Apache POI ou depuis le JSON existant.
- */
 public class ExcelReader
 {
 	private static final DataFormatter FORMATTER = new DataFormatter();

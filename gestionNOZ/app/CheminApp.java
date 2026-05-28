@@ -45,6 +45,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
 package app;
+
+import java.io.File;
+import java.nio.file.Paths;
+
 public class CheminApp
 {
 	private static final String BASE_DIR = calculerBaseDir();

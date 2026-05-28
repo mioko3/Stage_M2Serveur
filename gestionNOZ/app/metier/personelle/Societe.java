@@ -60,19 +60,7 @@ import java.util.ArrayList;
  *
  * ═══════════════════════════════════════════════════════════════════════════════════
  */
-package app.metier.personelle;
 
-import app.metier.lot.Lot;
-import java.util.ArrayList;
-
-/**
- * Société de conditionnement.
- *
- * Règle heures :
- *   - totalHeuresCE = heures DISPONIBLES de la société (décrémenté à chaque affectation)
- *   - L'ACE n'a PAS de compteur d'heures propre : il reçoit des lots mais ses heures
- *     ne sont pas décomptées séparément (on ne risque pas de tomber en négatif sur l'ACE).
- */
 public class Societe
 {
 	/** Nom de la société (ex: "Arcile", "Prat", "Carton Bretagne") */
