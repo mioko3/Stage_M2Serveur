@@ -121,54 +121,6 @@ Les en-têtes des classes suivantes ont été enrichis de commentaires détaill�
 
 ---
 
-## 🚀 Prochaines étapes recommandées
-
-### Courte terme (cette semaine)
-1. ✅ Créer manuels de base
-2. 🟡 Commenter classes métier critiques (`Lot`, `Societe`, `Ace`)
-3. 🟡 Enrichir `PlanningGlobal` et `DonneesSauvegarder`
-4. 🔲 Tester tous les exemples du manuel
-
-### Moyen terme (ce mois-ci)
-1. 🔲 Commenter classes `collecte/` (Excel, JSON)
-2. 🔲 Documenter classes `ficheroute/`
-3. 🔲 Enrichir `ChiffrementAES` et `ServeurHTTP`
-4. 🔲 Ajouter commentaires à `ControleurClient`
-5. 🔲 Créer diagrammes UML (classes, séquences)
-
-### Long terme (prochains mois)
-1. 🔲 Documenter IHM Swing (très complexe, 20+ classes)
-2. 🔲 Créer guide de contribution (code style, PR process)
-3. 🔲 Ajouter tests unitaires avec documentation
-4. 🔲 Créer quick-start video (YouTubr / screencast)
-
----
-
-## 📞 Contact et support
-
-### En cas de problème
-1. **Logs vides ?** → Lire "Mode de débogage" pour logs console
-2. **Erreur compilation ?** → Vérifier `compile.list` et CLASSPATH
-3. **Pas d'interface ?** → Vérifier `CheminApp` localise `app/data/`
-4. **Serveur crash ?** → Consulter FAQ "Le serveur se fige (hang)"
-
-### Pour contribuer à la documentation
-1. Fork le repo
-2. Ajouter/modifier markdown dans racine
-3. Enrichir commentaires Javadoc dans `app/**/*.java`
-4. Pull request avec description claire
-
----
-
-## 📝 Historique des mises à jour
-
-| Date | Auteur | Changes |
-|------|--------|---------|
-| 28/05/2026 | Développeur | ✅ Création manuelle complet + guide commentaires + en-têtes classes |
-| À venir | - | 🔲 Enrichissements progressifs |
-
----
-
 ## 🎯 Objectif atteint
 
 ✅ **Un développeur nouveau peut maintenant** :

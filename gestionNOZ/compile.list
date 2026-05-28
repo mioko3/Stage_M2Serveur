@@ -19,14 +19,12 @@ app/metier/collecte/JsonSerialiser.java
 
 app/metier/PlanningGlobal.java
 
-app/Controleur.java
 app/ControleurClient.java
 
 # ── IHM ───────────────────────────────────────────────────
 app/ihm/IhmUtils.java
 app/ihm/FenetrePrincipale.java
 
-app/ihm/login/FenetreLogin.java
 app/ihm/login/FenetreConnexionClient.java
 
 app/ihm/diagrame/Paneldiagrame.java
