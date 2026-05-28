@@ -135,12 +135,11 @@ Planning Global Futura
 ```
 
 ### Flux de démarrage expliqué
-- Démarrage solo : 4 étapes + code
 - Démarrage serveur : 4 étapes + architecture
 - Démarrage client : 6 étapes + threading
 
 ### Patterns de conception
-- **Strategy** : Controleur vs ControleurClient
+- **Strategy** : ControleurClient
 - **Singleton** : CheminApp
 - **Factory** : ExcelReader
 - **Adapter** : DonneesSauvegarder

@@ -149,39 +149,7 @@ gestionNOZ/
 
 ## Composants principaux
 
-### 1. **Controleur** (Mode Solo)
-
-**Fichier** : [app/Controleur.java](app/Controleur.java)
-
-**Rôle** : Implémente `IControleur` en mode application unique (pas de réseau)
-
-**Responsabilités** :
-- Charger les données depuis Excel ou JSON
-- Gérer les interactions IHM
-- Invoquer `PlanningGlobal` pour les opérations métier
-- Persister les données avec `DonneesSauvegarder`
-
-**Méthodes clés** :
-- `lancerApp(String login, boolean utiliserExcel)` : démarre l'IHM
-- `chargerDepuisExcelInteractif()` : sélection et chargement Excel
-- `chargerFallbackJson()` : fallback sur JSON
-- `getListeLots()`, `getListeSocietes()` : accès aux données
-- `sauvegarderLots()`, `sauvegarderSocietes()` : persistance
-
-**Flux d'initialisation** :
-```
-new Controleur()
-  → new PlanningGlobal()
-  → new DonneesSauvegarder()
-  → invokeLater(() → new FenetreLogin(this))
-  → utilisateur entre login
-  → lancerApp(login, excel)
-  → new FenetrePrincipale(this)
-```
-
----
-
-### 2. **ServeurHTTP** (Mode Serveur)
+### 1. **ServeurHTTP** (Mode Serveur)
 
 **Fichier** : [app/ServeurHTTP.java](app/ServeurHTTP.java)
 
@@ -213,7 +181,7 @@ new Controleur()
 
 ---
 
-### 3. **ControleurClient** (Mode Client Réseau)
+### 2. **ControleurClient** (Mode Client Réseau)
 
 **Fichier** : [app/ControleurClient.java](app/ControleurClient.java)
 
