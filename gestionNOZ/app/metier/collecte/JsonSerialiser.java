@@ -10,10 +10,126 @@ import app.metier.personelle.Societe;
 import java.util.ArrayList;
 
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  JsonSerialiser — Sérialisation bidirectionnelle Java ↔ JSON
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * RÔLE :
+ * ──────
+ * Convertir entre objets Java et chaînes JSON (pas de dépendance externe comme Gson/Jackson).
+ * Implémentation MANUELLE pour contrôle total et légèreté.
+ *
+ * FORMATS JSON :
+ * ──────────────
+ * • Lots : [ { lot1 }, { lot2 }, ... ]
+ * • Sociétés : [ { societe1 }, { societe2 }, ... ]
+ * • ACE : { "nom": "Alice", "nbPers": 5, "lots": [numCDE1, numCDE2] }
+ *
+ * EXEMPLE JSON Lot complet :
+ * ──────────────────────────
+ * {
+ *   "id": "550e8400-e29b-41d4-a716-446655440000",
+ *   "numCDE": 12345,
+ *   "typographie": "électronique",
+ *   "affaire": "CLI001",
+ *   "nbPieces": 1000,
+ *   "cadence": 100,
+ *   "heures": 10,
+ *   "statut": "OU",
+ *   "semaine": "S17",
+ *   "emplacement": "A12",
+ *   "commentaire": "Urgent client",
+ *   ...
+ * }
+ *
+ * GESTION D'ÉCHAPPEMENT JSON :
+ * ────────────────────────────
+ * JSON a des caractères spéciaux qui doivent être échappés :
+ *   \" → quote
+ *   \\ → backslash
+ *   \/ → slash
+ *   \b → backspace
+ *   \f → form feed
+ *   \n → newline
+ *   \r → carriage return
+ *   \t → tab
+ *   \uXXXX → caractère Unicode
+ *
+ * Exemple :
+ *   Texte brut : "Lot avec "guillemets" et \backslash"
+ *   JSON : "Lot avec \"guillemets\" et \\backslash"
+ *
+ * Méthode esc() gère tous ces cas.
+ * ⚠️  Erreur courante : oublier d'échapper → JSON invalide
+ *
+ * DEUX SENS :
+ * ───────────
+ * SÉRIALISATION (Objet → JSON) :
+ *   serialiserLots(ArrayList<Lot>)
+ *   serialiserLotSeul(Lot)
+ *   serialiserSocietes(ArrayList<Societe>)
+ *   Utilisé par : DonneesSauvegarder.sauvegarder*()
+ *
+ * DÉSÉRIALISATION (JSON → Objet) :
+ *   deserialiserLots(String)
+ *   deserialiserSocietes(String, lots)
+ *   Utilisé par : ExcelReader.lireLotsJson()
+ *
+ * CHAMPS COMPLEXES :
+ * ──────────────────
+ * • ArrayList<Lot> dans Societe → sérialisée comme [numCDE1, numCDE2, ...]
+ * • ArrayList<Ace> dans Societe → sérialisée comme [ { ace1 }, { ace2 } ]
+ * • SuivieProd et Phase → sérialises avec flags (sp_nbPieceEtiq, ph_preTri, etc.)
+ * • Methode → stockée en tant que nom (String)
+ *
+ * LIMITES :
+ * ─────────
+ * ⚠️  Pas de gestion de références circulaires (infinite loop si présentes)
+ * ⚠️  Pas de versioning JSON (si structure change → migration manuelle)
+ * ⚠️  Performance : O(n) pour chaque objet (pas optimal pour très gros volumes)
+ * ⚠️  Validation : aucune (JSON mal formé peut crasher la désérialisation)
+ *
+ * POURQUOI PAS GSON/JACKSON ?
+ * ────────────────────────────
+ * • Contrôle total du format
+ * • Pas de dépendances externes (simplification build)
+ * • Léger et rapide pour nos besoins
+ * • Évite la complexité de @SerializedName, @Expose, etc.
+ *
+ * ARCHITECTURE :
+ * ──────────────
+ * Classe 100% statique.
+ * Appels typiques :
+ *   String json = JsonSerialiser.serialiserLots(lots);
+ *   ArrayList<Lot> restored = JsonSerialiser.deserialiserLots(json);
+ *
+ * HELPERS :
+ * ─────────
+ * • esc(String)        : échappe pour JSON
+ * • unesc(String)      : déséchappe depuis JSON
+ * • d2(double)         : formate double à 2 décimales
+ * • getString()        : extrait valeur depuis JSON object
+ * • ...
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+package app.metier.collecte;
+
+import app.metier.ficheroute.FicheRoute;
+import app.metier.ficheroute.Phase;
+import app.metier.ficheroute.SuivieProd;
+import app.metier.lot.LigneColisage;
+import app.metier.lot.Lot;
+import app.metier.personelle.Ace;
+import app.metier.personelle.Societe;
+import java.util.ArrayList;
+
+
 public class JsonSerialiser
 {
 	// ══════════════════════════════════════════════════════════════════════
-	//  SÉRIALISATION
+	//  SÉRIALISATION (Objet → JSON)
 	// ══════════════════════════════════════════════════════════════════════
 
 	public static String serialiserLots(ArrayList<Lot> lots)

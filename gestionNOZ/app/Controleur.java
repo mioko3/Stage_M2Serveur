@@ -20,6 +20,148 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  Controleur — Contrôleur du mode Solo (application locale sans réseau)
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * RÔLE :
+ * ──────
+ * Gère l'application en mode SOLO (sans réseau, une seule instance).
+ * Implémente l'interface IControleur, donc la FenetrePrincipale n'a pas besoin
+ * de connaître l'existence du mode solo vs réseau.
+ *
+ * RESPONSABILITÉS :
+ * ──────────────────
+ * • Orchestrer le démarrage (FenetreLogin → chargement données → FenetrePrincipale)
+ * • Déléguer TOUTE la logique métier à PlanningGlobal
+ * • Gérer la persistance (lecture/écriture JSON) via DonneesSauvegarder
+ * • Afficher les dialogues de sélection fichier (Excel)
+ * • Sauvegarder automatiquement après chaque modification
+ *
+ * FLUX DE DÉMARRAGE :
+ * ───────────────────
+ *   1. new Controleur()
+ *      → Crée PlanningGlobal() et DonneesSauvegarder()
+ *      → Lance FenetreLogin() sur thread Swing
+ *   
+ *   2. Utilisateur saisit identifiant et clique "Connexion"
+ *      → FenetreLogin.validerConnexion() → lancerApp(identifiant, useExcel)
+ *   
+ *   3. lancerApp() charge les données (Excel ou JSON)
+ *      → chargerDepuisExcelInteractif() ou chargerFallbackJson()
+ *      → Appelle metier.chargerDepuisExcel/Json()
+ *   
+ *   4. Crée FenetrePrincipale() sur thread Swing
+ *      → L'IHM s'affiche et se met en contact avec this (Controleur)
+ *      → FenetrePrincipale appelle les méthodes de IControleur
+ *
+ * ARCHITECTURE DESIGN PATTERN :
+ * ─────────────────────────────
+ * Implémentation du pattern Strategy (IControleur) :
+ *   • IControleur = interface abstraite
+ *   • Controleur = stratégie "local" (ce fichier)
+ *   • ControleurClient = stratégie "réseau" (autre classe)
+ *   → FenetrePrincipale appelle TOUJOURS des méthodes de IControleur
+ *   → L'IHM reste indépendante du mode d'exécution !
+ *
+ * CHARGEMENT DES DONNÉES :
+ * ────────────────────────
+ * Stratégie : Excel d'abord (si demandé), sinon JSON
+ *
+ * Cas 1 : Utilisateur choisit Excel
+ *   chargerDepuisExcelInteractif()
+ *   → Sélectionner "export.xlsx" (lots)
+ *   → Sélectionner "heures.xlsx" (ACE)
+ *   → ExcelReader.lireLots() → ArrayList<Lot>
+ *   → ExcelReader.lireSocietes() → ArrayList<Societe>
+ *   → Sauvegarde en JSON pour utilisation future (rapide ~100ms)
+ *
+ * Cas 2 : Utiliser JSON (par défaut)
+ *   chargerFallbackJson()
+ *   → Lit app/data/courutilisation/lots.json
+ *   → Lit app/data/courutilisation/societes.json
+ *   → Rapide (~100ms) comparé à Excel (~5s)
+ *
+ * Cas 3 : Première utilisation (pas de fichiers)
+ *   → FenetrePrincipale s'ouvre sur des listes VIDES
+ *   → Utilisateur peut ajouter des lots manuellement
+ *   → autoSauvegarder() sauvegarde au fur et à mesure
+ *
+ * SAUVEGARDE AUTOMATIQUE :
+ * ────────────────────────
+ * Après CHAQUE modification :
+ *   • Modification lot → autoSauvegarderLots() → appel sauvegarder()
+ *   • Modification société → autoSauvegarderSocietes() → appel sauvegarder()
+ *
+ * Fichiers persistants :
+ *   • app/data/courutilisation/lots.json
+ *   • app/data/courutilisation/societes.json
+ *
+ * UTILISATION CONCRÈTE :
+ * ───────────────────────
+ * Point d'entrée :
+ *   public static void main(String[] args) {
+ *       new Controleur();  // ← Lance l'application
+ *   }
+ *
+ * FenetrePrincipale utilise cet objet comme suit :
+ *   Controleur ctrl = new Controleur(); // reçu en param du constructeur
+ *   ctrl.getLots()               // récupère la liste des lots
+ *   ctrl.modifierLot(lot, ...)   // modifie un lot
+ *   ctrl.sauvegarderLots(...)    // demande une sauvegarde
+ *
+ * IMPLÉMENTATION DE IControleur :
+ * ────────────────────────────────
+ * Toutes les méthodes de l'interface IControleur sont implémentées ici.
+ * Elles délèguent DIRECTEMENT à PlanningGlobal et/ou DonneesSauvegarder.
+ *
+ * Exemple :
+ *   @Override
+ *   public ArrayList<Lot> getLots() {
+ *       return metier.getLots();  // ← délégation directe
+ *   }
+ *
+ * DIFFÉRENCE AVEC ControleurClient :
+ * ──────────────────────────────────
+ * Controleur (ce fichier) :
+ *   • Données locales en JSON
+ *   • Pas de réseau
+ *   • Une seule instance lancée
+ *   • Instant (pas de latence réseau)
+ *   • Idéal : développement local, tests unitaires
+ *
+ * ControleurClient :
+ *   • Données sur serveur distant
+ *   • Communication HTTP
+ *   • Multiples instances possibles
+ *   • Latence réseau (30-300ms)
+ *   • Chiffrement AES des échanges
+ *   • Idéal : production, multi-utilisateurs
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+package app;
+
+import app.ihm.FenetrePrincipale;
+import app.ihm.login.FenetreLogin;
+import app.metier.PlanningGlobal;
+import app.metier.collecte.DonneesSauvegarder;
+import app.metier.ficheroute.FicheRoute;
+import app.metier.lot.Lot;
+import app.metier.personelle.Ace;
+import app.metier.personelle.Societe;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+/**
  * Contrôleur mode SOLO — implémente IControleur.
  * Toutes les méthodes délèguent à PlanningGlobal (couche métier).
  */

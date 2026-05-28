@@ -25,6 +25,189 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  ControleurClient — Client réseau sécurisé avec synchronisation HTTP/chiffrement AES
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * RÔLE :
+ * ──────
+ * Gère l'application en mode RÉSEAU CLIENT.
+ * Implémente l'interface IControleur, donc l'IHM (FenetrePrincipale) fonctionne
+ * IDENTIQUEMENT en mode solo (Controleur) ou mode réseau (ControleurClient).
+ *
+ * ⚠️  IMPORTANT : Cet objet est JETABLE. À chaque déconnexion/reconnexion,
+ *    créer une NOUVELLE instance, pas de réutilisation.
+ *
+ * ARCHITECTURE :
+ * ──────────────
+ * Schéma :
+ *   FenetrePrincipale (IHM)
+ *          ↓
+ *     IControleur (interface)
+ *      /          \
+ *    Solo         Réseau
+ *   (Controleur) (ControleurClient)
+ *     ↓              ↓
+ *  Métier local    HTTP + ChiffrementAES
+ *     ↓              ↓
+ * JSON local     ServeurHTTP
+ *
+ * FLUX DE DÉMARRAGE :
+ * ───────────────────
+ * 1. FenetreConnexionClient.validerConnexion()
+ *    ↓ Saisit IP, identifiant, mot de passe
+ * 2. POST /login
+ *    ↓ Validation serveur
+ * 3. Réponse : { "token": "abc123...", "timeout": 30 }
+ * 4. new ControleurClient(ip, identifiant, accesPAM, token)
+ *    ↓ Lance threads de fond (chargement, clé AES, polling)
+ * 5. chargerDepuisServeur() : GET /lots + GET /societes (sans chiffrement yet)
+ * 6. recupererCle() : GET /cle → récup clé AES
+ *    ↓ À partir d'ici, tous les échanges sont chiffrés
+ * 7. FenetrePrincipale s'ouvre sur thread Swing
+ * 8. demarrerPolling() : GET /version toutes les 3s (synchronisation)
+ *
+ * CHIFFREMENT AES-256-CBC :
+ * ──────────────────────────
+ * ⚠️  Tous les échanges HTTP après /cle sont chiffrés.
+ *
+ * AVANT /cle (en clair) :
+ *   • POST /login
+ *   • GET /lots, /societes (premiers chargements)
+ *   • GET /cle (récupération de la clé)
+ *   ↓ Inévitable : on ne peut pas déchiffrer si on n'a pas la clé !
+ *
+ * APRÈS /cle (chiffrés) :
+ *   • GET /version
+ *   • GET /lots, /societes (updates)
+ *   • POST /lots, /societes
+ *   • GET /aces, etc.
+ *
+ * Mécanisme :
+ *   get(url)    : effectue GET, déchiffre si aes != null
+ *   post(url, body) : chiffre body si aes != null, puis POST
+ *
+ * THREADING :
+ * ────────────
+ * ⚠️  Multithreadé (très important !) :
+ *
+ * Thread Swing (principal) :
+ *   • Affichage IHM
+ *   • Interactions utilisateur
+ *   • Appels aux méthodes de IControleur
+ *
+ * Thread de fond :
+ *   • chargerDepuisServeur() : bloquant (~1s)
+ *   • recupererCle() : bloquant (~0.5s)
+ *   • demarrerPolling() : infini (GET /version toutes les 3s)
+ *
+ * ⚠️  CRITIQUE : synchronisation entre threads !
+ *   • lots/societes : accès depuis multiple threads
+ *   • aes : volatile (atomic read/write)
+ *   • versionLocale : volatile
+ *   • desynchronise : volatile
+ *
+ * MODE DÉSYNCHRONISÉ :
+ * ─────────────────────
+ * ⚠️  Utilisé UNIQUEMENT par PAM (administrateur).
+ *
+ * Cas d'usage : préparer une semaine future (S18) pendant que les autres
+ *              travaillent sur la semaine courante (S17).
+ *
+ * Flux :
+ *   1. PAM clique "Désynchroniser" (action dans l'IHM)
+ *   2. desynchronise = true
+ *   3. Polling stoppé (ne vérifie pas GET /version)
+ *   4. Modifications sauvegardées en LOCAL SEULEMENT
+ *      (via savLocal, pas d'envoi serveur)
+ *   5. PAM clique "Resynchroniser"
+ *   6. desynchronise = false
+ *   7. Polling redémarre
+ *   8. GET /version recharge l'état du SERVEUR
+ *   9. Les modifs locales sont PERDUES (écrasées par serveur)
+ *      ⚠️  Accepté volontairement par PAM
+ *
+ * POLLING INTELLIGENT :
+ * ──────────────────────
+ * Toutes les 3 secondes, GET /version retourne le numéro de version courant.
+ * Stratégie :
+ *   • Si version == versionLocale : rien ne change, on laisse passer
+ *   • Si version != versionLocale : serveur a changé (autre client l'a modifié)
+ *     → Recharger GET /lots et GET /societes
+ *     → Afficher notification "données mises à jour"
+ *
+ * Si desynchronise = true : polling en attente (boucle infinie, mais pas d'action)
+ *
+ * GESTION DES ERREURS :
+ * ─────────────────────
+ * Timeout réseau : HttpClient.connectTimeout(10s)
+ *   → Si serveur ne répond pas, on affiche erreur et "Reconnecter"
+ *
+ * Authentification échouée : POST /login retourne 401
+ *   → FenetreConnexionClient réaffichée
+ *
+ * Token expiré : GET /lots retourne 401
+ *   → Déconnexion + reconnexion demandée
+ *
+ * Réseau down : IOException
+ *   → Retry automatique (3 tentatives)
+ *   → Si toujours échoue : offline mode (local cache)
+ *
+ * DIFFÉRENCE AVEC Controleur :
+ * ────────────────────────────
+ * Controleur (solo) :
+ *   • Les modifications sont IMMÉDIATES et persistées en JSON
+ *   • Pas d'attente réseau
+ *   • Une seule instance
+ *
+ * ControleurClient (réseau) :
+ *   • Les modifications sont envoyées au serveur (POST)
+ *   • Autres clients reçoivent via polling
+ *   • Latence : ~500ms-1s
+ *   • Multiples instances possibles
+ *   • Conflits possibles (deux clients modifient le même lot)
+ *
+ * LIMITES CONNUES :
+ * ──────────────────
+ * ⚠️  Pas de gestion des CONFLITS écriture :
+ *   Client1 modifie lot 123
+ *   Client2 modifie lot 123 à la même seconde
+ *   → DERNIÈRE écriture GAGNE (possible perte de données)
+ *   Solution : ajouter un champ "dateModification" et détecter les conflits
+ *
+ * ⚠️  Polling est simple (3s) :
+ *   → Si 100 clients pollent, serveur subit 33 requêtes/secondes
+ *   Solution : WebSocket ou Server-Sent Events (plus complexe)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+package app;
+
+import app.ihm.FenetrePrincipale;
+import app.metier.PlanningGlobal;
+import app.metier.collecte.DonneesSauvegarder;
+import app.metier.collecte.ExcelReader;
+import app.metier.collecte.JsonSerialiser;
+import app.metier.ficheroute.FicheRoute;
+import app.metier.lot.Lot;
+import app.metier.personelle.Ace;
+import app.metier.personelle.Societe;
+import app.securite.ChiffrementAES;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+/**
  * ══════════════════════════════════════════════════════════════
  *  ControleurClient — mode réseau sécurisé avec chiffrement AES
  *

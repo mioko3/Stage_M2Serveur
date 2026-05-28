@@ -28,6 +28,139 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  ExcelReader — Lecteur universel (Excel XLSX + JSON)
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * RÔLE :
+ * ──────
+ * Charge les données métier depuis DEUX sources possibles :
+ *   1. Fichiers Excel (.xlsx, .xlsm) — export du système ERP
+ *   2. Fichiers JSON — sauvegarde/chargement rapide
+ *
+ * STRATÉGIE POLYVALENTE :
+ * ──────────────────────
+ * Les méthodes publiques automatiquement ROUTENT vers Excel ou JSON selon
+ * l'extension du fichier. Cela évite la duplication et facilite la migration.
+ *
+ * Exemple :
+ *   lireLots("export.xlsx") → lireLotsExcel()   (Apache POI)
+ *   lireLots("lots.json")   → lireLotsJson()    (JsonSerialiser)
+ *
+ * UTILISATION PRINCIPALE :
+ * ────────────────────────
+ * 1. DÉMARRAGE INITIAL : lire depuis export.xlsx (source ERP)
+ *    → PlanningGlobal.chargerDepuisExcel(xlsx, societes.json, semaine, heures.xlsx)
+ *    → Crée ArrayList<Lot> et ArrayList<Societe>
+ *    → Sauvegarde en JSON pour utilisation suivante
+ *
+ * 2. RÉUTILISATION : lire depuis JSON (rapide, ~100ms)
+ *    → DonneesSauvegarder.charger(metier, "app/data/courutilisation/")
+ *    → Utilise ExcelReader.lireLotsJson() et lireSocietesJson()
+ *
+ * 3. MISES À JOUR PARTIELLES : importer nouveau lots
+ *    → PlanningGlobal.importerNouveauxLots("nouveaux.xlsx")
+ *    → Fusionne les listes sans écraser l'existant
+ *
+ * FICHIERS ATTENDUS :
+ * ───────────────────
+ * EXCEL export.xlsx contient :
+ *   • Feuille 1 (par défaut) : les lots
+ *     - Colonnes : numCDE, typographie, affaire, nbPieces, cadence, heures, ...
+ *   • Autres feuilles ignorées
+ *
+ * JSON lots.json contient :
+ *   • Array de Lot : [ { "numCDE": 123, "typographie": "...", ... }, ... ]
+ *
+ * JSON societes.json contient :
+ *   • Array de Societe : [ { "nom": "Arcile", "ce": "CE123", "aces": [...], ... }, ... ]
+ *
+ * APACHE POI (dépendance) :
+ * ─────────────────────────
+ * Bibliothèque pour lire Excel.
+ * Chemin : jar/poi-bin-5.2.3/lib/*.jar
+ * Classes utilisées :
+ *   • Workbook → représente un fichier Excel
+ *   • Sheet → une feuille du classeur
+ *   • Row → une ligne
+ *   • Cell → une cellule (colonne + numéro)
+ *   • FormulaEvaluator → évaluer les formules Excel
+ *   • DataFormatter → formater les valeurs (dates, nombres)
+ *
+ * DONNÉES CRITIQUES À EXTRAIRE :
+ * ──────────────────────────────
+ * • numCDE (colonne 3)       : numéro de commande
+ * • nbPieces (colonne 7)     : quantité
+ * • cadence (colonne 8)      : vitesse (pièces/heure)
+ * • heures (colonne 16)      : temps théorique (si vide : = nbPieces/cadence)
+ * • typographie (colonne X)  : type produit
+ * • affaire (colonne Y)      : code client
+ * • ... (20+ colonnes au total)
+ *
+ * PIÈGES COURANTS :
+ * ──────────────────
+ * ⚠️  Numéros en tant que STRING dans Excel → parseInt("1,5") échoue
+ *     Solution : remplacer "," par "." avant parsing
+ *
+ * ⚠️  Dates Excel en nombre (ex: 44900) → formatDate() les convertit
+ *     Solution : utiliser DateUtil et SimpleDateFormat
+ *
+ * ⚠️  Cellules NULL ou vides → NullPointerException
+ *     Solution : getCell() retourne Cell null-safe
+ *
+ * ⚠️  Formules Excel non évaluées → valeur "#NAME!" lue
+ *     Solution : FormulaEvaluator.evaluate(cell)
+ *
+ * PERFORMANCE :
+ * ──────────────
+ * • Excel (XLSX) : 3-5 secondes (premiers démarrages)
+ * • JSON : 100-200 ms (démarrages suivants)
+ * → Toujours sauvegarder en JSON après premier chargement
+ *
+ * ARCHITECTURE :
+ * ──────────────
+ * Classe 100% statique (pas d'instanciation).
+ * Toutes les méthodes sont public static → appels directs.
+ *
+ * Hiérarchie des méthodes :
+ *   lireLots() / lireSocietes()      ← PUBLIC (automatique CSV/JSON)
+ *     ↓
+ *   lireLotsExcel() / lireLotsJson() ← PRIVATE (détail d'implémentation)
+ *     ↓
+ *   Helpers : getCell(), numSafe(), strSafe(), ...
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+package app.metier.collecte;
+
+import app.metier.lot.LigneColisage;
+import app.metier.lot.Lot;
+import app.metier.ficheroute.Phase;
+import app.metier.personelle.Ace;
+import app.metier.personelle.Societe;
+import app.metier.PlanningGlobal;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+
+/**
  * Lit des données depuis Excel via Apache POI ou depuis le JSON existant.
  */
 public class ExcelReader
