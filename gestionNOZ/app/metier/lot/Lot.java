@@ -11,24 +11,97 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 /**
- * Représente un lot de production issu du fichier export.XLSX.
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  Lot — Représentation d'une commande de production
+ * ═══════════════════════════════════════════════════════════════════════════════════
  *
- * Heures = NbPieces / Cadence (valeur directe du fichier, pas étiq+répart séparés).
- * Pas de champ Societe : l'affectation est gérée exclusivement par Societe.ajouterLot().
+ * RÔLE :
+ * ──────
+ * Modèle métier représentant UNE commande à produire (lot).
+ * Rassemble toutes les informations administratives et logistiques d'une production.
  *
- * Identifiant interne : id (UUID généré à la création, sauvegardé en JSON).
- * numCDE reste pour l'affichage mais n'est PAS unique → ne jamais l'utiliser comme clé.
+ * ORIGINE DES DONNÉES :
+ * ─────────────────────
+ * Les lots proviennent d'un fichier export.XLSX produit par le système ERP.
+ * Format fichier XLSX → ExcelReader.lireLots() → ArrayList<Lot>
+ *
+ * IDENTIFIANT :
+ * ─────────────
+ * • id (UUID)     : clé technique UNIQUE, génération auto, persistée en JSON
+ * • numCDE (int)  : numéro affiché à l'utilisateur (ex: "CDE-2024-001")
+ *                   ⚠️  NON UNIQUE ! Ne JAMAIS l'utiliser comme clé de recherche
+ *
+ * HEURES :
+ * ────────
+ * Heures = NbPieces / Cadence
+ *   • nbPieces   : quantité totale à produire
+ *   • cadence    : vitesse nominale (pièces/heure) du fichier XLSX
+ *   • cadenceReel: vitesse réelle mesurée (peut différer)
+ *   • heures     : temps total théorique (= nbPieces / cadenceReel)
+ *   • heuresAce  : temps par personne (= heures / nbPersonnes)
+ *
+ * Recalcul automatique : appeler recalculerHeures() après modif nbPieces ou cadence
+ *
+ * AFFECTATION : Un lot n'a PAS de champ "societe" directement.
+ * ─────────────────────────────────────────────────────
+ * L'affectation lot → société → ACE se gère via :
+ *   • Societe.ajouterLot(lot, ace)   → ajoute lot à la société
+ *   • Ace.donnerLotACE(lot)          → ajoute lot à l'ACE
+ *
+ * CHAMPS ADMINISTRATIFS :
+ * ───────────────────────
+ * • typographie  : type de produit ("électronique", "carton", etc.)
+ * • affaire      : code client/projet
+ * • statut       : "OU", "TC", "MC" (ouvert, travail commencé, clôturé)
+ * • priorite     : 1-5 (1 = urgent)
+ * • semaine      : "S17", "S18" (semaine production)
+ *
+ * CHAMPS LOGISTIQUES (CarteLot) :
+ * ────────────────────────────────
+ * • formatCarton   : "1/16", "1/8", "1/4", "1/2", "box"
+ * • collisage      : nombre de pièces par carton
+ * • distribution   : "PI", "PM", "PREPA", "MI"
+ * • nbPers         : nombre de personnes assignées
+ * • estMachine     : true si processus avec machine
+ *
+ * SUIVI DE PRODUCTION :
+ * ─────────────────────
+ * • suivieProd     : SuivieProd (historique et avancement)
+ * • phase          : Phase (étape actuelle)
+ * • methode        : Methode (processus)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
  */
 public class Lot
 {
+	// Constantes des formats de carton et distributions
 	public static final String[] F_CARTON = new String[]{"","1/16","1/8","1/4","1/2","box"};
 	public static final String[] DISTRI   = new String[]{"","PI","PM","PREPA","MI","PREPA + MI","PREPA + PART"};
+	
+	/** Formateur pour les dates ("dd/MM/yyyy HH:mm:ss") */
 	private final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
+	/** Cache des IDs générés pour éviter les doublons UUID */
 	private static ArrayList<String> tabId;
-	// ── Identité ──────────────────────────────────────────────────────────
-	private String  id;      // clé technique unique (UUID), persistée en JSON
-	private int     numCDE;  // numéro affiché à l'utilisateur — pas unique
+	
+	// ── IDENTITÉ ───────────────────────────────────────────────────────────────────
+	/** Identifiant technique unique (UUID) — clé métier de ce lot */
+	private String  id;
+	
+	/** Numéro de commande affiché — NON UNIQUE ! N'utiliser QUE pour l'affichage */
+	private int     numCDE;
+	
+	private String  typographie;   // Type produit ("électronique", "carton", etc.)
+	private String  affaire;       // Code client/projet
+	private int     nbPieces;      // Quantité totale à produire
+	private double  cadence;       // Pièces/heure nominal (du fichier XLSX)
+	private double  cadenceReel;   // Pièces/heure réellement mesurée
+	private double  heures;        // Heures totales = nbPieces / cadenceReel
+	private double  heuresAce;     // Heures par personne = heures / nbPers
+	private int     valeurVente;   // Prix TTC
+	private double  prixUnitaire;  // Calculé = valeurVente / nbPieces
+	private String  semaine;       // "S17", "S18", etc. (semaine de production)
+	private int     priorite;      // 1-5 (1 = très urgent)
 	private String  typologie;
 	private String  affaire;
 	private int     nbPieces;

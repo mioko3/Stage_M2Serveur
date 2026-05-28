@@ -9,22 +9,49 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Interface du contrôleur — implémentée par Controleur (solo) et ControleurClient (réseau).
+ * ═══════════════════════════════════════════════════════════════════
+ *  IControleur — Interface abstraite du contrôleur
+ * ═══════════════════════════════════════════════════════════════════
  *
- * STRATÉGIE pour les champs logistiques de CarteLot :
- * ────────────────────────────────────────────────────
- * On ajoute UNE NOUVELLE MÉTHODE modifierLotComplet() distincte.
- * L'ancienne modifierLot() n'est PAS modifiée → DialogEditLot, PanelAffectation,
- * DialogAjoutLot et tout autre code IHM existant continuent de compiler sans
- * aucun changement.
+ * RÔLE GLOBAL :
+ * ─────────────
+ * Interface contrat implémentée par deux contrôleurs distincts :
+ *   • Controleur (solo)        : accès local direct à PlanningGlobal
+ *   • ControleurClient (réseau): accès via HTTP au ServeurHTTP distant
  *
- * CarteLot appelle modifierLotComplet() avec tous les champs logistiques.
- * DialogEditLot continue d'appeler modifierLot() avec les champs de base.
+ * L'IHM (FenetrePrincipale, dialogues) n'a PAS besoin de savoir quel
+ * contrôleur est utilisé → elle appelle simplement les méthodes
+ * définies ici, le reste est transparent.
+ *
+ * ARCHITECTURE : Patron Strategy appliqué au contrôle de l'application
+ *   FenetrePrincipale --depends-on--> IControleur <--impl-- Controleur
+ *                                                    <--impl-- ControleurClient
+ *
+ * CHAMPS LOGISTIQUES — CarteLot vs DialogEditLot :
+ * ───────────────────────────────────────────────
+ * Pour éviter les conflits lors de mise à jour côté métier :
+ *   • modifierLot()        : champs administratifs de base (DialogEditLot, inchangé)
+ *   • modifierLotComplet() : TOUS les champs + logistiques (CarteLot)
+ * Pourquoi ? CarteLot ajoute des champs qu'DialogEditLot ne gère pas
+ * (formatCarton, collisage, etc.) → deux signatures maintiennent la rétrocompatibilité.
+ *
+ * ═══════════════════════════════════════════════════════════════════
  */
 public interface IControleur
 {
-	// ── Données ───────────────────────────────────────────────────────────
+	// ───────────────────────────────────────────────────────────────────
+	// ACCÈS AUX DONNÉES
+	// ───────────────────────────────────────────────────────────────────
+	/**
+	 * Retourne la liste des sociétés en cours.
+	 * ⚠️  En réseau : copie (ne pas modifier), effectue GET /societes
+	 */
 	ArrayList<Societe> getSocietes();
+
+	/**
+	 * Retourne la liste des lots en cours.
+	 * ⚠️  En réseau : copie (ne pas modifier), effectue GET /lots
+	 */
 	ArrayList<Lot>     getLots();
 
 	// ── Lots ──────────────────────────────────────────────────────────────

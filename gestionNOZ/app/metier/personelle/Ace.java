@@ -5,6 +5,61 @@ import java.awt.Color;
 import java.util.ArrayList;
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *  Ace — Chef d'Atelier de Conditionnement et Expédition
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ *
+ * RÔLE :
+ * ──────
+ * Représente un ACE = responsable d'une unité de production au sein d'une Société.
+ * • Chaque ACE gère un groupe de personnes (effectif)
+ * • Reçoit des lots de production assignés
+ * • A un budget horaire théorique (totalHeures) — informatif seulement
+ *
+ * ⚠️  IMPORTANT : LES HEURES DE L'ACE NE SONT PAS DÉCOMPTÉES
+ * ────────────────────────────────────────────────────────────────
+ * Seules les heures de la SOCIÉTÉ sont décomptées lors d'une affectation.
+ * L'ACE sert à IDENTIFIER le responsable, pas à gérer un compteur d'heures.
+ *
+ * Exemple de flux d'affectation :
+ *   1. Societe.ajouterLot(lot, ace)
+ *      → Décrémente totalHeuresCE de la SOCIÉTÉ (- 100h)
+ *      → Appelle ace.donnerLotACE(lot) pour la traçabilité
+ *   2. ace.donnerLotACE(lot)
+ *      → Ajoute lot à la liste ace.lots
+ *      → Si lot.nbPers = 0 : le met à jour avec l'effectif de l'ACE
+ *      → Ne touche PAS à totalHeures
+ *
+ * HIÉRARCHIE :
+ * ────────────
+ *   Societe
+ *     └─ ArrayList<Ace>
+ *         └─ Ace
+ *             ├─ nom, nbPers, effectifActuel
+ *             ├─ totalHeures (informatif, réparti depuis Societe)
+ *             ├─ estMachine (true si a une machine)
+ *             ├─ col (Color, généré from nom pour affichage)
+ *             └─ ArrayList<Lot> (lots assignés à cet ACE)
+ *
+ * CHAMP MACHINE :
+ * ───────────────
+ * estMachine = true si cet ACE dispose d'une MACHINE (automatisation).
+ * Impacte les calculs de cadence et timeline de production.
+ *
+ * COULEUR ASSOCIÉE :
+ * ──────────────────
+ * Chaque ACE a une couleur générée déterministe depuis son nom (trouverColor()).
+ * Utilisée pour l'affichage visuel des lots dans les diagrammes Gantt.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+package app.metier.personelle;
+
+import app.metier.lot.Lot;
+import java.awt.Color;
+import java.util.ArrayList;
+
+/**
  * Chef d'ACE (Atelier de Conditionnement et d'Expédition).
  *
  * IMPORTANT : les heures de l'ACE ne sont PAS décomptées lors d'une affectation.
@@ -13,12 +68,25 @@ import java.util.ArrayList;
  */
 public class Ace
 {
+	/** Nom du chef d'ACE (ex: "Alice", "Bob") */
 	private String         nom;
+	
+	/** Nombre de personnes sous ce chef (taille de l'équipe) */
 	private int            nbPers;
-	private int            totalHeures;      // ← Ajouté : heures théoriques de l'ACE
+	
+	/** Heures théoriques affectées à cet ACE (informatif, réparti de la Société) */
+	private int            totalHeures;
+	
+	/** Effectif réel pouvant travailler (peut être < nbPers en cas absence) */
 	private int            effectifActuel;
-	private boolean        estMachine;      // ← Ajouté : indique si l'ACE a une machine
+	
+	/** true si cet ACE dispose d'une machine (automatisation) */
+	private boolean        estMachine;
+	
+	/** Couleur associée à cet ACE (générée depuis le nom, pour affichage diagramme) */
 	private Color          col;
+	
+	/** Lots assignés à cet ACE */
 	private ArrayList<Lot> lots;
 
 	public Ace(String nom, int nbPers, int effectifActuel)
