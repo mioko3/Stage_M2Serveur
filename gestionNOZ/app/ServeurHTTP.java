@@ -20,7 +20,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
@@ -29,21 +28,11 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  ServeurHTTP — version finale avec toutes les fonctionnalités
+ *  ServeurHTTP — Planning Global Futura
  *
- *  NOUVELLES FONCTIONNALITÉS :
- *   #A Login avec mot de passe   → POST /login {identifiant, motDePasse}
- *   #B Création de compte        → POST /creer-compte {identifiant, motDePasse}
- *   #C Gestion demandes (PAM)    → GET /admin/demandes
- *                                   POST /admin/demandes/approuver
- *                                   POST /admin/demandes/refuser
- *   #D Semaine suivante          → GET/POST /semaine-suivante/...
- *
- *  CORRECTIONS :
- *   #1 Port unifié : PORT = 8082 partout (FenetreServeur + README)
- *   #2 ReadWriteLock sur toutes les routes
- *   #3 CORS sur toutes les réponses
- *   #4 Mode headless automatique
+ *  CORRECTIF :
+ *  • ModifierLotHandler : estMachine appliqué après modifierLot()
+ *  • Tous les champs logistiques appliqués dans le handler
  * ══════════════════════════════════════════════════════════════
  */
 public class ServeurHTTP
@@ -55,7 +44,6 @@ public class ServeurHTTP
 	private String cheminSocietesJson;
 	private volatile String semaineActive = "";
 
-	// PORT unifié — correction bug #1
 	static final int PORT = 8082;
 
 	// ── ReadWriteLock ─────────────────────────────────────────────────────
@@ -113,97 +101,91 @@ public class ServeurHTTP
 		this.cheminLotsJson     = CheminApp.resoudre("app/data/courutilisation/lots.json");
 		this.cheminSocietesJson = CheminApp.resoudre("app/data/courutilisation/societes.json");
 
+		// Dossiers obligatoires
+		new File(CheminApp.resoudre("app/data/courutilisation")).mkdirs();
+		new File(CheminApp.resoudre("app/data/semaine_suivante")).mkdirs();
+		new File(CheminApp.resoudre("app/data/enregistrementparsemaine")).mkdirs();
+
 		log("[Serveur] Racine : " + CheminApp.getBaseDir());
 
 		// Chiffrement AES
-		try
-		{
+		try {
 			this.aes = ChiffrementAES.chargerOuCreer(CheminApp.resoudre("secret.key"));
 			this.savDonnees.setCrypte(aes);
 			log("[Serveur] Chiffrement AES-256 activé.");
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			log("[Serveur] AVERTISSEMENT chiffrement désactivé : " + e.getMessage());
 		}
 
 		// Chargement données
-		try
-		{
+		try {
 			savDonnees.charger(metier, CheminApp.resoudre("app/data/courutilisation"));
 			log("[Serveur] " + metier.getLots().size() + " lots, "
 				+ metier.getSocietes().size() + " sociétés.");
 			detecterSemaineActive();
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			log("[Serveur] Pas de données initiales : " + e.getMessage());
 		}
 
 		// ── Démarrage HTTP ────────────────────────────────────────────────
 		HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 
-		// Routes publiques (sans token)
-		server.createContext("/login",                       ex -> new LoginHandler()         .handle(ex));
-		server.createContext("/creer-compte",                ex -> new CreerCompteHandler()   .handle(ex));
+		// Routes publiques
+		server.createContext("/login",                       ex -> new LoginHandler()              .handle(ex));
+		server.createContext("/creer-compte",                ex -> new CreerCompteHandler()        .handle(ex));
 
-		// Routes admin (PAM uniquement)
-		server.createContext("/admin/demandes",              ex -> new DemandesHandler()      .handle(ex));
-		server.createContext("/admin/demandes/approuver",    ex -> new ApprouverHandler()     .handle(ex));
-		server.createContext("/admin/demandes/refuser",      ex -> new RefuserHandler()       .handle(ex));
+		// Routes admin PAM
+		server.createContext("/admin/demandes",              ex -> new DemandesHandler()           .handle(ex));
+		server.createContext("/admin/demandes/approuver",    ex -> new ApprouverHandler()          .handle(ex));
+		server.createContext("/admin/demandes/refuser",      ex -> new RefuserHandler()            .handle(ex));
 
 		// Clé AES
-		server.createContext("/cle",                         ex -> new CleHandler()           .handle(ex));
+		server.createContext("/cle",                         ex -> new CleHandler()                .handle(ex));
 
 		// Lots
-		server.createContext("/lots",                        ex -> new GetLotsHandler()       .handle(ex));
-		server.createContext("/lots/ajouter",                ex -> new AjouterLotHandler()    .handle(ex));
-		server.createContext("/lots/supprimer",              ex -> new SupprimerLotHandler()  .handle(ex));
-		server.createContext("/lots/modifier",               ex -> new ModifierLotHandler()   .handle(ex));
-		server.createContext("/lots/affecter",               ex -> new AffecterLotHandler()   .handle(ex));
-		server.createContext("/lots/desaffecter",            ex -> new DesaffecterLotHandler().handle(ex));
-		server.createContext("/lots/suiviprod",              ex -> new SuiviProdHandler()     .handle(ex));
-		server.createContext("/lots/commencer",              ex -> new CommencerLotHandler()  .handle(ex));
-		server.createContext("/lots/annuler",                ex -> new AnnulerLotHandler()    .handle(ex));
-		server.createContext("/lots/terminer",               ex -> new TerminerLotHandler()   .handle(ex));
-		server.createContext("/lots/phase",                  ex -> new ModifierPhaseHandler() .handle(ex));
-		server.createContext("/lots/lignecolisage/ajouter",
-			ex -> new AjouterLigneColisageHandler() .handle(ex));
-		server.createContext("/lots/lignecolisage/supprimer",
-			ex -> new SupprimerLigneColisageHandler().handle(ex));
+		server.createContext("/lots",                        ex -> new GetLotsHandler()            .handle(ex));
+		server.createContext("/lots/ajouter",                ex -> new AjouterLotHandler()         .handle(ex));
+		server.createContext("/lots/supprimer",              ex -> new SupprimerLotHandler()       .handle(ex));
+		server.createContext("/lots/modifier",               ex -> new ModifierLotHandler()        .handle(ex));
+		server.createContext("/lots/affecter",               ex -> new AffecterLotHandler()        .handle(ex));
+		server.createContext("/lots/desaffecter",            ex -> new DesaffecterLotHandler()     .handle(ex));
+		server.createContext("/lots/suiviprod",              ex -> new SuiviProdHandler()          .handle(ex));
+		server.createContext("/lots/commencer",              ex -> new CommencerLotHandler()       .handle(ex));
+		server.createContext("/lots/annuler",                ex -> new AnnulerLotHandler()         .handle(ex));
+		server.createContext("/lots/terminer",               ex -> new TerminerLotHandler()        .handle(ex));
+		server.createContext("/lots/phase",                  ex -> new ModifierPhaseHandler()      .handle(ex));
+		server.createContext("/lots/lignecolisage/ajouter",  ex -> new AjouterLigneColisageHandler() .handle(ex));
+		server.createContext("/lots/lignecolisage/supprimer",ex -> new SupprimerLigneColisageHandler().handle(ex));
 
 		// Sociétés / ACE
-		server.createContext("/societes",                    ex -> new GetSocietesHandler()   .handle(ex));
-		server.createContext("/societes/modifier",           ex -> new ModifierSocieteHandler().handle(ex));
-		server.createContext("/aces/modifier",               ex -> new ModifierAceHandler()   .handle(ex));
-		server.createContext("/aces/mettreajour",            ex -> new MettreAJourAcesHandler().handle(ex));
+		server.createContext("/societes",                    ex -> new GetSocietesHandler()        .handle(ex));
+		server.createContext("/societes/modifier",           ex -> new ModifierSocieteHandler()    .handle(ex));
+		server.createContext("/aces/modifier",               ex -> new ModifierAceHandler()        .handle(ex));
+		server.createContext("/aces/mettreajour",            ex -> new MettreAJourAcesHandler()    .handle(ex));
 
 		// Semaine suivante
-		server.createContext("/semaine-suivante",
-			ex -> new GetSemaineSuivanteHandler()       .handle(ex));
-		server.createContext("/semaine-suivante/sauvegarder",
-			ex -> new SauvSemaineSuivanteHandler()      .handle(ex));
-		server.createContext("/semaine-suivante/basculer",
-			ex -> new BasculerSemaineSuivanteHandler()  .handle(ex));
+		server.createContext("/semaine-suivante",            ex -> new GetSemaineSuivanteHandler()       .handle(ex));
+		server.createContext("/semaine-suivante/sauvegarder",ex -> new SauvSemaineSuivanteHandler()      .handle(ex));
+		server.createContext("/semaine-suivante/basculer",   ex -> new BasculerSemaineSuivanteHandler()  .handle(ex));
 
 		// Système
-		server.createContext("/ficheroute/",                 ex -> new FicheRouteHandler()    .handle(ex));
-		server.createContext("/sauvegarder",                 ex -> new SauvegarderHandler()   .handle(ex));
-		server.createContext("/nouvelleheure",               ex -> new NouvelleHeureHandler() .handle(ex));
-		server.createContext("/semainesup",                  ex -> new SemaineSupHandler()    .handle(ex));
-		server.createContext("/autosave/lots",               ex -> new AutoSaveLotsHandler()  .handle(ex));
-		server.createContext("/autosave/societes",           ex -> new AutoSaveSocietesHandler().handle(ex));
-		server.createContext("/version",                     ex -> new VersionHandler()       .handle(ex));
+		server.createContext("/ficheroute/",                 ex -> new FicheRouteHandler()         .handle(ex));
+		server.createContext("/sauvegarder",                 ex -> new SauvegarderHandler()        .handle(ex));
+		server.createContext("/nouvelleheure",               ex -> new NouvelleHeureHandler()      .handle(ex));
+		server.createContext("/semainesup",                  ex -> new SemaineSupHandler()         .handle(ex));
+		server.createContext("/autosave/lots",               ex -> new AutoSaveLotsHandler()       .handle(ex));
+		server.createContext("/autosave/societes",           ex -> new AutoSaveSocietesHandler()   .handle(ex));
+		server.createContext("/version",                     ex -> new VersionHandler()            .handle(ex));
 
-		// Routes bloquées (réservées serveur)
-		server.createContext("/charger",    ex -> new ChargerBloqueHandler() .handle(ex));
-		server.createContext("/nouveaux",   ex -> new NouveauxBloqueHandler().handle(ex));
+		// Routes bloquées
+		server.createContext("/charger",                     ex -> new ChargerBloqueHandler()      .handle(ex));
+		server.createContext("/nouveaux",                    ex -> new NouveauxBloqueHandler()     .handle(ex));
 
 		server.setExecutor(Executors.newFixedThreadPool(8));
 		server.start();
 		log("[Serveur] HTTP démarré sur le port " + PORT);
 
-		// Nettoyage sessions expirées toutes les heures
+		// Nettoyage sessions
 		Thread t = new Thread(() -> {
 			while (true) {
 				try { Thread.sleep(3_600_000L); } catch (InterruptedException e) { break; }
@@ -212,24 +194,20 @@ public class ServeurHTTP
 		});
 		t.setDaemon(true); t.setName("session-cleaner"); t.start();
 
-		// IHM ou mode headless
+		// IHM
 		if (!GraphicsEnvironment.isHeadless())
 		{
 			final ServeurHTTP self = this;
 			javax.swing.SwingUtilities.invokeLater(
 				() -> new app.ihm.serveur.FenetreServeur(self));
 		}
-		else
-		{
-			menuConsole();
-		}
+		else { menuConsole(); }
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  HANDLERS — AUTH
 	// ══════════════════════════════════════════════════════════════════════
 
-	/** POST /login — {identifiant, motDePasse} via GestionComptes (config.json) */
 	class LoginHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!"POST".equalsIgnoreCase(ex.getRequestMethod()))
@@ -238,18 +216,25 @@ public class ServeurHTTP
 			if (estBloquee(ip))
 			{ rep(ex, 429, "{\"err\":\"Trop de tentatives. Réessayez dans 5 minutes.\"}"); return; }
 			try {
-				String corps      = lire(ex);
+				String corps = lire(ex);
 				String identifiant = JsonSerialiser.extraireString(corps, "identifiant").trim();
 				String motDePasse  = JsonSerialiser.extraireString(corps, "motDePasse").trim();
+				if (identifiant.isEmpty()) { rep(ex, 400, "{\"err\":\"Identifiant manquant\"}"); return; }
+
+				// Compte en attente de validation → bloquer
 				if (gestionComptes.estEnAttente(identifiant)) {
 					rep(ex, 403, "{\"err\":\"Votre compte est en attente de validation.\"}"); return;
 				}
+
+				// valider() retourne l'Utilisateur si ok, null sinon
 				GestionComptes.Utilisateur u = gestionComptes.valider(identifiant, motDePasse);
 				if (u == null) {
 					enregistrerEchecLogin(ip);
 					try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-					rep(ex, 401, "{\"err\":\"Identifiant ou mot de passe incorrect.\"}"); return;
+					rep(ex, 401, "{\"err\":\"Identifiant ou mot de passe incorrect.\"}");
+					return;
 				}
+
 				loginEchecs.remove(ip); loginBlocage.remove(ip);
 				String token = genererToken();
 				sessions.put(token, new SessionInfo(u.identifiant, u.accesPAM));
@@ -261,7 +246,6 @@ public class ServeurHTTP
 		}
 	}
 
-	/** POST /creer-compte — {identifiant, motDePasse} — route publique */
 	class CreerCompteHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!"POST".equalsIgnoreCase(ex.getRequestMethod()))
@@ -272,8 +256,7 @@ public class ServeurHTTP
 				String motDePasse  = JsonSerialiser.extraireString(corps, "motDePasse").trim();
 				String erreur = gestionComptes.creerDemande(identifiant, motDePasse);
 				if (erreur != null) {
-					int code = erreur.contains("existe") || erreur.contains("réservé")
-						|| erreur.contains("attente") ? 409 : 400;
+					int code = erreur.contains("existe") || erreur.contains("attente") ? 409 : 400;
 					rep(ex, code, "{\"err\":\"" + erreur + "\"}"); return;
 				}
 				rep(ex, 200, "{\"ok\":true,\"attente\":true}");
@@ -281,7 +264,6 @@ public class ServeurHTTP
 		}
 	}
 
-	/** GET /admin/demandes — liste des demandes en attente (PAM) */
 	class DemandesHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -292,7 +274,6 @@ public class ServeurHTTP
 		}
 	}
 
-	/** POST /admin/demandes/approuver — {identifiant} (PAM) */
 	class ApprouverHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -300,16 +281,14 @@ public class ServeurHTTP
 			if (info == null || !info.accesPAM)
 			{ rep(ex, 403, "{\"err\":\"Réservé à PAM.\"}"); return; }
 			try {
-				String corps = lire(ex);
-				String id    = JsonSerialiser.extraireString(corps, "identifiant");
-				String err   = gestionComptes.approuver(id);
+				String id  = JsonSerialiser.extraireString(lire(ex), "identifiant");
+				String err = gestionComptes.approuver(id);
 				if (err != null) { rep(ex, 404, "{\"err\":\"" + err + "\"}"); return; }
 				rep(ex, 200, gestionComptes.serialiserDemandesJson());
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 		}
 	}
 
-	/** POST /admin/demandes/refuser — {identifiant} (PAM) */
 	class RefuserHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -317,22 +296,19 @@ public class ServeurHTTP
 			if (info == null || !info.accesPAM)
 			{ rep(ex, 403, "{\"err\":\"Réservé à PAM.\"}"); return; }
 			try {
-				String corps = lire(ex);
-				String id    = JsonSerialiser.extraireString(corps, "identifiant");
-				String err   = gestionComptes.refuser(id);
+				String id  = JsonSerialiser.extraireString(lire(ex), "identifiant");
+				String err = gestionComptes.refuser(id);
 				if (err != null) { rep(ex, 404, "{\"err\":\"" + err + "\"}"); return; }
 				rep(ex, 200, gestionComptes.serialiserDemandesJson());
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 		}
 	}
 
-	/** GET /cle — transmet la clé AES. Non chiffré. */
 	class CleHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
 			if (aes == null) { rep(ex, 204, ""); return; }
 			try {
-				// cleEnBase64() est la méthode réelle de ChiffrementAES
 				String cleBase64 = aes.cleEnBase64();
 				byte[] bytes = ("{\"cle\":\"" + cleBase64 + "\"}").getBytes(StandardCharsets.UTF_8);
 				ajouterHeadersCORS(ex);
@@ -368,7 +344,6 @@ public class ServeurHTTP
 				String c = lire(ex);
 				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
 				if (numCDE <= 0) { rep(ex, 400, "{\"err\":\"numCDE invalide\"}"); return; }
-				// Signature exacte de PlanningGlobal.ajouterLot : 17 paramètres
 				metier.ajouterLot(numCDE,
 					JsonSerialiser.extraireString(c, "typologie"),
 					JsonSerialiser.extraireString(c, "affaire"),
@@ -385,8 +360,10 @@ public class ServeurHTTP
 					JsonSerialiser.extraireBool  (c, "estMachine"),
 					JsonSerialiser.extraireString(c, "dateReception"),
 					JsonSerialiser.extraireString(c, "datePaiement"),
-					JsonSerialiser.extraireString(c, "commentaire"));
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+					JsonSerialiser.extraireString(c, "commentaire")
+				);
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -400,62 +377,64 @@ public class ServeurHTTP
 			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
+				int numCDE = JsonSerialiser.extraireInt(lire(ex), "numCDE");
+				if (numCDE <= 0) { rep(ex, 400, "{\"err\":\"numCDE invalide\"}"); return; }
 				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.supprimerLot(lot);
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
 	}
 
+	// ── CORRECTIF : estMachine appliqué après modifierLot() ──────────────
 	class ModifierLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			synchronized (verrou) {
-				try {
-					String c = lire(ex);
-					Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
-					if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
- 
-					// Champs administratifs
-					metier.modifierLot(lot,
-						JsonSerialiser.extraireString(c, "typologie"),
-						JsonSerialiser.extraireString(c, "affaire"),
-						JsonSerialiser.extraireInt   (c, "nbPieces"),
-						JsonSerialiser.extraireDouble (c, "cadence"),
-						JsonSerialiser.extraireInt   (c, "valeurVente"),
-						JsonSerialiser.extraireString(c, "statut"),
-						JsonSerialiser.extraireString(c, "statutEchant"),
-						JsonSerialiser.extraireString(c, "semaine"),
-						JsonSerialiser.extraireInt   (c, "priorite"),
-						JsonSerialiser.extraireString(c, "lotACharge"),
-						JsonSerialiser.extraireString(c, "emplacement"),
-						JsonSerialiser.extraireBool  (c, "estSousDouane"),
-						JsonSerialiser.extraireString(c, "dateReception"),
-						JsonSerialiser.extraireString(c, "datePaiement"),
-						JsonSerialiser.extraireString(c, "commentaire")
-					);
- 
-					// CORRECTIF : estMachine appliqué directement après modifierLot()
-					lot.setEstMachine  (JsonSerialiser.extraireBool  (c, "estMachine"));
- 
-					// Champs logistiques
-					lot.setMethode     (JsonSerialiser.extraireString(c, "methode"));
-					lot.setDistribution(JsonSerialiser.extraireString(c, "distribution"));
-					lot.setFormatCarton(JsonSerialiser.extraireString(c, "formatCarton"));
-					lot.setCollisage   (JsonSerialiser.extraireInt   (c, "collisage"));
-					lot.setNbPers      (JsonSerialiser.extraireInt   (c, "nbPers"));
-					lot.setCadenceReel (JsonSerialiser.extraireDouble (c, "cadenceReel"));
-					lot.setPoucentrecupCartonFour(JsonSerialiser.extraireInt(c, "poucentrecup"));
- 
-					save();
-					versionDonnees = System.currentTimeMillis();
-					rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			}
+			rwLock.writeLock().lock();
+			try {
+				String c = lire(ex);
+				Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+
+				// Champs administratifs
+				metier.modifierLot(lot,
+					JsonSerialiser.extraireString(c, "typologie"),
+					JsonSerialiser.extraireString(c, "affaire"),
+					JsonSerialiser.extraireInt   (c, "nbPieces"),
+					JsonSerialiser.extraireDouble (c, "cadence"),
+					JsonSerialiser.extraireInt   (c, "valeurVente"),
+					JsonSerialiser.extraireString(c, "statut"),
+					JsonSerialiser.extraireString(c, "statutEchant"),
+					JsonSerialiser.extraireString(c, "semaine"),
+					JsonSerialiser.extraireInt   (c, "priorite"),
+					JsonSerialiser.extraireString(c, "lotACharge"),
+					JsonSerialiser.extraireString(c, "emplacement"),
+					JsonSerialiser.extraireBool  (c, "estSousDouane"),
+					JsonSerialiser.extraireString(c, "dateReception"),
+					JsonSerialiser.extraireString(c, "datePaiement"),
+					JsonSerialiser.extraireString(c, "commentaire")
+				);
+
+				// CORRECTIF : estMachine non présent dans la signature de modifierLot()
+				// → appliqué directement sur le lot après l'appel
+				lot.setEstMachine(JsonSerialiser.extraireBool(c, "estMachine"));
+
+				// Champs logistiques
+				lot.setMethode     (JsonSerialiser.extraireString(c, "methode"));
+				lot.setDistribution(JsonSerialiser.extraireString(c, "distribution"));
+				lot.setFormatCarton(JsonSerialiser.extraireString(c, "formatCarton"));
+				lot.setCollisage   (JsonSerialiser.extraireInt   (c, "collisage"));
+				lot.setNbPers      (JsonSerialiser.extraireInt   (c, "nbPers"));
+				lot.setCadenceReel (JsonSerialiser.extraireDouble (c, "cadenceReel"));
+				lot.setPoucentrecupCartonFour(JsonSerialiser.extraireInt(c, "poucentrecup"));
+
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+			finally { rwLock.writeLock().unlock(); }
 		}
 	}
 
@@ -464,24 +443,19 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			SessionInfo info = verifierToken(ex);
 			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
+			{ rep(ex, 403, "{\"err\":\"Affectation réservée à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE    = JsonSerialiser.extraireInt(c, "numCDE");
-				String nomSoc = JsonSerialiser.extraireString(c, "societeNom");
-				if (nomSoc == null || nomSoc.isEmpty())
-					nomSoc = JsonSerialiser.extraireString(c, "societe");
-				String nomAce = JsonSerialiser.extraireString(c, "aceNom");
-				if (nomAce == null || nomAce.isEmpty())
-					nomAce = JsonSerialiser.extraireString(c, "ace");
-				Lot lot = findLot(numCDE);
-				Societe soc = findSociete(nomSoc);
-				if (lot == null || soc == null)
-				{ rep(ex, 404, "{\"err\":\"Lot ou société introuvable.\"}"); return; }
-				Ace ace = nomAce.isEmpty() ? null : soc.getAce(nomAce);
+				String  c      = lire(ex);
+				Lot     lot    = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				Societe soc    = findSociete(JsonSerialiser.extraireString(c, "societe"));
+				String  nomAce = JsonSerialiser.extraireString(c, "ace");
+				if (lot == null || soc == null) { rep(ex, 404, "{\"err\":\"lot ou société introuvable\"}"); return; }
+				Ace ace = soc.getAces().stream().filter(a -> a.getNom().equals(nomAce)).findFirst().orElse(null);
 				metier.affecterLot(lot, soc, ace);
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, "{\"lots\":" + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -492,15 +466,15 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			SessionInfo info = verifierToken(ex);
 			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
+			{ rep(ex, 403, "{\"err\":\"Désaffectation réservée à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
+				Lot lot = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.desaffecterLot(lot);
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, "{\"lots\":" + JsonSerialiser.serialiserLots(metier.getLots())
+					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -511,49 +485,30 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				lot.getSuivieProd().setNbPieceEtiq  (extraireIntPref(c, "nbPieceEtiq", "sp_nbPieceEtiq"));
-				lot.getSuivieProd().setNbPieceRepart(extraireIntPref(c, "nbPieceRepart", "sp_nbPieceRepart"));
-				lot.recalculerHeures();
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				String c    = lire(ex);
+				Lot    lot  = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+				int etiq  = extraireIntPref(c, "nbPieceEtiq",  "sp_nbPieceEtiq");
+				int repart= extraireIntPref(c, "nbPieceRepart","sp_nbPieceRepart");
+				if (etiq  >= 0 && etiq  <= lot.getNbPieces()) lot.getSuivieProd().setNbPieceEtiq(etiq);
+				if (repart>= 0 && repart<= lot.getNbPieces()) lot.getSuivieProd().setNbPieceRepart(repart);
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
 	}
 
-	// Commencer : accessible à TOUS les utilisateurs
 	class CommencerLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				// PlanningGlobal.commencerLot() — signature exacte
+				Lot lot = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.commencerLot(lot);
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			finally { rwLock.writeLock().unlock(); }
-		}
-	}
-
-	class TerminerLotHandler implements HttpHandler {
-		public void handle(HttpExchange ex) throws IOException {
-			if (!exigerToken(ex)) return;
-			rwLock.writeLock().lock();
-			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				// PlanningGlobal.marquerLotTermine()
-				metier.marquerLotTermine(lot);
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -567,13 +522,26 @@ public class ServeurHTTP
 			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				// PlanningGlobal.annulerLot()
+				Lot lot = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.annulerLot(lot);
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+			finally { rwLock.writeLock().unlock(); }
+		}
+	}
+
+	class TerminerLotHandler implements HttpHandler {
+		public void handle(HttpExchange ex) throws IOException {
+			if (!exigerToken(ex)) return;
+			rwLock.writeLock().lock();
+			try {
+				Lot lot = findLot(JsonSerialiser.extraireInt(lire(ex), "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+				metier.marquerLotTermine(lot);
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -584,18 +552,17 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				// PlanningGlobal.modifierPhase() — signature exacte
+				String c   = lire(ex);
+				Lot    lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				metier.modifierPhase(lot,
-					extraireBoolPref(c, "phase_preTri", "preTri"),
-					extraireBoolPref(c, "phase_surPiste", "surPiste"),
+					extraireBoolPref(c, "phase_preTri",     "preTri"),
+					extraireBoolPref(c, "phase_surPiste",   "surPiste"),
 					extraireBoolPref(c, "phase_sortieEtiq", "sortieEtiq"),
-					extraireBoolPref(c, "phase_tri", "tri"),
-					extraireBoolPref(c, "phase_finit", "finit"));
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+					extraireBoolPref(c, "phase_tri",        "tri"),
+					extraireBoolPref(c, "phase_finit",      "finit"));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -607,14 +574,12 @@ public class ServeurHTTP
 			rwLock.writeLock().lock();
 			try {
 				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				String format = JsonSerialiser.extraireString(c, "format");
-				int    coli   = JsonSerialiser.extraireInt(c, "collisage");
-				int    pcs    = JsonSerialiser.extraireInt(c, "pcs");
-				// Signature exacte : ajouterLigneColisage(LigneColisage, int)
-				lot.ajouterLigneColisage(new LigneColisage(format, coli), pcs);
+				Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+				lot.ajouterLigneColisage(
+					new LigneColisage(JsonSerialiser.extraireString(c, "format"),
+						JsonSerialiser.extraireInt(c, "collisage")),
+					JsonSerialiser.extraireInt(c, "pcs"));
 				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
@@ -627,9 +592,8 @@ public class ServeurHTTP
 			rwLock.writeLock().lock();
 			try {
 				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
+				Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
 				lot.supprimerLigneColisage(JsonSerialiser.extraireInt(c, "index"));
 				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
@@ -638,7 +602,7 @@ public class ServeurHTTP
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  HANDLERS — SOCIÉTÉS
+	//  HANDLERS — SOCIÉTÉS / ACE
 	// ══════════════════════════════════════════════════════════════════════
 
 	class GetSocietesHandler implements HttpHandler {
@@ -656,22 +620,19 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			SessionInfo info = verifierToken(ex);
 			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
+			{ rep(ex, 403, "{\"err\":\"Réservé à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				String nom = JsonSerialiser.extraireString(c, "nom");
-				Societe s = findSociete(nom);
-				if (s == null) {
-					s = new Societe(nom, "", new ArrayList<>(), 0);
-					metier.getSocietes().add(s);
-				}
-				String nNom = JsonSerialiser.extraireString(c, "nouveauNom");
-				if (!nNom.isEmpty()) s.setNom(nNom);
-				s.setCe(JsonSerialiser.extraireString(c, "ce"));
-				s.setTotalHeuresCE(JsonSerialiser.extraireInt(c, "totalHeuresCE"));
-				s.setEffectifTotal(JsonSerialiser.extraireInt(c, "effectifTotal"));
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				String  c   = lire(ex);
+				Societe soc = findSociete(JsonSerialiser.extraireString(c, "nom"));
+				if (soc == null) { rep(ex, 404, "{\"err\":\"société introuvable\"}"); return; }
+				metier.modifierSociete(soc,
+					JsonSerialiser.extraireString(c, "nouveauNom"),
+					JsonSerialiser.extraireString(c, "ce"),
+					JsonSerialiser.extraireInt   (c, "totalHeuresCE"),
+					JsonSerialiser.extraireInt   (c, "effectif"));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -680,27 +641,20 @@ public class ServeurHTTP
 	class ModifierAceHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			SessionInfo info = verifierToken(ex);
-			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
 				String c = lire(ex);
-				String nomSoc = JsonSerialiser.extraireString(c, "societeNom");
-				Societe s = findSociete(nomSoc);
-				if (s == null) { rep(ex, 404, "{\"err\":\"Société introuvable.\"}"); return; }
-				String nomAce = JsonSerialiser.extraireString(c, "nom");
-				int nbPers    = JsonSerialiser.extraireInt(c, "nbPers");
-				int eff       = JsonSerialiser.extraireInt(c, "effectifActuel");
-				Ace ace = s.getAce(nomAce);
-				if (ace == null) {
-					ace = new Ace(nomAce, nbPers, eff, 0);
-					s.getAces().add(ace);
-				} else {
-					// PlanningGlobal.modifierAce()
-					metier.modifierAce(ace, nomAce, nbPers, eff);
-				}
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				Societe soc = findSociete(JsonSerialiser.extraireString(c, "societe"));
+				if (soc == null) { rep(ex, 404, "{\"err\":\"société introuvable\"}"); return; }
+				String nomAce = JsonSerialiser.extraireString(c, "ace");
+				Ace ace = soc.getAces().stream()
+					.filter(a -> a.getNom().equals(nomAce)).findFirst().orElse(null);
+				if (ace == null) { rep(ex, 404, "{\"err\":\"ACE introuvable\"}"); return; }
+				metier.modifierAce(ace, ace.getNom(),
+					JsonSerialiser.extraireInt(c, "nbPers"),
+					JsonSerialiser.extraireInt(c, "effectifActuel"));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -711,29 +665,27 @@ public class ServeurHTTP
 			if (!exigerToken(ex)) return;
 			SessionInfo info = verifierToken(ex);
 			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Accès réservé à PAM\"}"); return; }
+			{ rep(ex, 403, "{\"err\":\"Réservé à PAM\"}"); return; }
 			rwLock.writeLock().lock();
 			try {
-				String c = lire(ex);
-				String nomSoc = JsonSerialiser.extraireString(c, "societeNom");
-				Societe s = findSociete(nomSoc);
-				if (s == null) { rep(ex, 404, "{\"err\":\"Société introuvable.\"}"); return; }
-				String acesJson = JsonSerialiser.extraireBloc(c, "\"aces\"");
-				if (acesJson != null) {
-					List<Ace> ancien = new ArrayList<>(s.getAces());
-					s.getAces().clear();
-					for (String obj : JsonSerialiser.extraireObjets(acesJson)) {
-						String nm = JsonSerialiser.extraireString(obj, "nom");
-						int    np = JsonSerialiser.extraireInt(obj, "nbPers");
-						int    ef = JsonSerialiser.extraireInt(obj, "effectifActuel");
-						Ace old = ancien.stream()
-							.filter(a -> a.getNom().equals(nm)).findFirst().orElse(null);
-						Ace nAce = new Ace(nm, np, ef, 0);
-						if (old != null) for (Lot l : old.getLots()) nAce.getLots().add(l);
-						s.getAces().add(nAce);
-					}
+				String c      = lire(ex);
+				String nomSoc = JsonSerialiser.extraireString(c, "societe");
+				Societe soc   = findSociete(nomSoc);
+				if (soc == null) { rep(ex, 404, "{\"err\":\"société introuvable\"}"); return; }
+				String bloc = JsonSerialiser.extraireBloc(c, "\"aces\"");
+				List<Ace> nouvellesAces = JsonSerialiser.deserialiserAces(bloc);
+				List<Ace> aces = soc.getAces();
+				int min = Math.min(aces.size(), nouvellesAces.size());
+				for (int i = 0; i < min; i++)
+					metier.modifierAce(aces.get(i), nouvellesAces.get(i).getNom(),
+						nouvellesAces.get(i).getNbPers(), nouvellesAces.get(i).getEffectifActuel());
+				for (int i = aces.size() - 1; i >= nouvellesAces.size(); i--) aces.remove(i);
+				for (int i = min; i < nouvellesAces.size(); i++) {
+					Ace n = nouvellesAces.get(i);
+					aces.add(new Ace(n.getNom(), n.getNbPers(), n.getEffectifActuel()));
 				}
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -743,20 +695,15 @@ public class ServeurHTTP
 	//  HANDLERS — SEMAINE SUIVANTE
 	// ══════════════════════════════════════════════════════════════════════
 
-	/** GET /semaine-suivante */
 	class GetSemaineSuivanteHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			SessionInfo info = verifierToken(ex);
-			if (info != null && !info.accesPAM)
-			{ rep(ex, 403, "{\"err\":\"Réservé à PAM.\"}"); return; }
 			try {
-				String chemin = CheminApp.resoudre(DIR_SUIV_LOTS);
-				if (!new File(chemin).exists()) {
-					rep(ex, 200, "{\"lots\":[],\"societes\":[],\"existe\":false}"); return;
-				}
-				String lotsJson = new String(Files.readAllBytes(Paths.get(chemin)), StandardCharsets.UTF_8);
+				String lotsChemin = CheminApp.resoudre(DIR_SUIV_LOTS);
 				String socsChemin = CheminApp.resoudre(DIR_SUIV_SOCS);
+				if (!new File(lotsChemin).exists())
+				{ rep(ex, 200, "{\"existe\":false,\"lots\":[],\"societes\":[]}"); return; }
+				String lotsJson = new String(Files.readAllBytes(Paths.get(lotsChemin)), StandardCharsets.UTF_8);
 				String socsJson = new File(socsChemin).exists()
 					? new String(Files.readAllBytes(Paths.get(socsChemin)), StandardCharsets.UTF_8) : "[]";
 				rep(ex, 200, "{\"lots\":" + lotsJson + ",\"societes\":" + socsJson + ",\"existe\":true}");
@@ -764,7 +711,6 @@ public class ServeurHTTP
 		}
 	}
 
-	/** POST /semaine-suivante/sauvegarder */
 	class SauvSemaineSuivanteHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -787,7 +733,6 @@ public class ServeurHTTP
 		}
 	}
 
-	/** POST /semaine-suivante/basculer — écrase la semaine courante */
 	class BasculerSemaineSuivanteHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -797,8 +742,8 @@ public class ServeurHTTP
 			rwLock.writeLock().lock();
 			try {
 				basculerSemaneSuivante();
-				rep(ex, 200, "{\"ok\":true,"
-					+ "\"lots\":"    + JsonSerialiser.serialiserLots(metier.getLots())
+				rep(ex, 200, "{\"ok\":true,\"lots\":"
+					+ JsonSerialiser.serialiserLots(metier.getLots())
 					+ ",\"societes\":" + JsonSerialiser.serialiserSocietes(metier.getSocietes()) + "}");
 			} catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
@@ -812,8 +757,8 @@ public class ServeurHTTP
 	class FicheRouteHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			String nom = ex.getRequestURI().getPath().replace("/ficheroute/", "");
-			Societe s = findSociete(nom);
+			String  nom = ex.getRequestURI().getPath().replace("/ficheroute/", "");
+			Societe s   = findSociete(nom);
 			if (s == null) { rep(ex, 404, "{\"err\":\"société introuvable\"}"); return; }
 			rwLock.readLock().lock();
 			try { rep(ex, 200, JsonSerialiser.serialiserFicheRoute(metier.genererFicheRoute(s))); }
@@ -866,12 +811,12 @@ public class ServeurHTTP
 			try {
 				String c = lire(ex);
 				String nomSoc = JsonSerialiser.extraireString(c, "societe");
-				if (nomSoc != null && !nomSoc.isEmpty()) {
+				if (!nomSoc.isEmpty()) {
 					Societe s = findSociete(nomSoc);
-					if (s != null)
-						s.setTotalHeuresCE(s.getTotalHeuresCE() + JsonSerialiser.extraireInt(c, "heures"));
+					if (s != null) s.setTotalHeuresCE(s.getTotalHeuresCE() + JsonSerialiser.extraireInt(c, "heures"));
 				}
-				save(); rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
+				save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, JsonSerialiser.serialiserSocietes(metier.getSocietes()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
@@ -881,7 +826,8 @@ public class ServeurHTTP
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
 			rwLock.writeLock().lock();
-			try { metier.setestHeureSup(); save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots())); }
+			try { metier.setestHeureSup(); save(); versionDonnees = System.currentTimeMillis();
+				rep(ex, 200, "{\"heureSup\":" + PlanningGlobal.estHeureSup + "}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
 	}
@@ -889,23 +835,21 @@ public class ServeurHTTP
 	class AutoSaveLotsHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			rwLock.writeLock().lock();
+			rwLock.readLock().lock();
 			try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); rep(ex, 200, "{\"ok\":true}"); }
 			catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			finally { rwLock.writeLock().unlock(); }
+			finally { rwLock.readLock().unlock(); }
 		}
 	}
 
 	class AutoSaveSocietesHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			rwLock.writeLock().lock();
-			try {
-				savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson);
-				rep(ex, 200, "{\"ok\":true}");
-			}
+			rwLock.readLock().lock();
+			try { savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson);
+				rep(ex, 200, "{\"ok\":true}"); }
 			catch (Exception e) { rep(ex, 500, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			finally { rwLock.writeLock().unlock(); }
+			finally { rwLock.readLock().unlock(); }
 		}
 	}
 
@@ -913,19 +857,17 @@ public class ServeurHTTP
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
 			enregistrerClient(ex);
-			int nbDemandes = gestionComptes.getDemandesEnAttente().size();
 			rwLock.readLock().lock();
-			try {
-				rep(ex, 200, "{\"v\":\"" + versionDonnees + "\",\"heureSup\":"
-					+ PlanningGlobal.estHeureSup + ",\"semaine\":"
-					+ JsonSerialiser.esc(semaineActive)
-					+ ",\"nbDemandes\":" + nbDemandes + "}");
-			} finally { rwLock.readLock().unlock(); }
+			try { rep(ex, 200, "{\"v\":\"" + versionDonnees
+				+ "\",\"heureSup\":" + PlanningGlobal.estHeureSup
+				+ ",\"semaine\":" + JsonSerialiser.esc(semaineActive)
+				+ ",\"nbDemandes\":" + gestionComptes.getDemandesEnAttente().size() + "}"); }
+			finally { rwLock.readLock().unlock(); }
 		}
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  API PUBLIQUE (appelée depuis FenetreServeur et PanelSemaineSuivante)
+	//  API PUBLIQUE (FenetreServeur + PanelSemaineSuivante)
 	// ══════════════════════════════════════════════════════════════════════
 
 	public void chargerSemaine(String chemin) throws Exception
@@ -949,17 +891,15 @@ public class ServeurHTTP
 			Files.createDirectories(Paths.get(dossier));
 			savDonnees.sauvegarderLots(metier.getLots(), dossier + "/lots.json");
 			savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), dossier + "/societes.json");
-			cheminLotsJson     = dossier + "/lots.json";
-			cheminSocietesJson = dossier + "/societes.json";
-			semaineActive      = numSemaine;
+			cheminLotsJson = dossier + "/lots.json"; cheminSocietesJson = dossier + "/societes.json";
+			semaineActive  = numSemaine;
 		} finally { rwLock.writeLock().unlock(); }
 	}
 
 	public void nouvelleSemaine(Component parent) throws Exception
 	{
 		JFileChooser fc = new JFileChooser();
-		fc.setFileFilter(new FileNameExtensionFilter(
-			"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+		fc.setFileFilter(new FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
 		fc.setDialogTitle("Sélectionner le fichier de planning (lots)");
 		if (fc.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) return;
 		String cheminXlsx = fc.getSelectedFile().getAbsolutePath();
@@ -982,9 +922,8 @@ public class ServeurHTTP
 				semaine, cheminHeurs);
 			cheminLotsJson     = CheminApp.resoudre("app/data/courutilisation/lots.json");
 			cheminSocietesJson = CheminApp.resoudre("app/data/courutilisation/societes.json");
-			save();
-			detecterSemaineActive();
-			log("[Serveur] Nouvelle semaine chargée depuis : " + cheminXlsx);
+			save(); detecterSemaineActive();
+			log("[Serveur] Nouvelle semaine chargée depuis Excel.");
 		} finally { rwLock.writeLock().unlock(); }
 	}
 
@@ -996,57 +935,36 @@ public class ServeurHTTP
 		log("[Serveur] Heures sup : " + PlanningGlobal.estHeureSup);
 	}
 
-	/** Retourne les lots de la semaine suivante (lecture fichier JSON brut). */
 	public ArrayList<Lot> getLotsSemaneSuivante()
 	{
 		try {
 			String chemin = CheminApp.resoudre(DIR_SUIV_LOTS);
 			if (!new File(chemin).exists()) return null;
-
-			// ── CORRECTIF : lire via savDonnees pour déchiffrer si AES actif ──
-			// Avant : Files.readAllBytes() lisait le Base64 chiffré sans déchiffrer
-			// → JsonSerialiser.deserialiserLots() recevait du Base64 → retournait null silencieusement
 			String dossier = Paths.get(chemin).getParent().toString();
-			String nomFichier = Paths.get(chemin).getFileName().toString().replace(".json", "");
-			// Utiliser un PlanningGlobal temporaire pour lire juste les lots
-			app.metier.PlanningGlobal temp = new app.metier.PlanningGlobal();
+			PlanningGlobal temp = new PlanningGlobal();
 			savDonnees.charger(temp, dossier);
 			ArrayList<Lot> lots = temp.getLots();
 			log("[Serveur] Semaine suivante : " + lots.size() + " lots chargés.");
 			return lots.isEmpty() ? null : lots;
-		} catch (Exception e) {
-			log("[ERREUR] getLotsSemaneSuivante : " + e.getMessage());
-			return null;
-		}
+		} catch (Exception e) { log("[ERREUR] getLotsSemaneSuivante : " + e.getMessage()); return null; }
 	}
 
-	/** Retourne les sociétés de la semaine suivante. */
 	public ArrayList<Societe> getSocietesSemaneSuivante()
 	{
 		try {
 			String chemin = CheminApp.resoudre(DIR_SUIV_SOCS);
 			if (!new File(chemin).exists()) return null;
-
-			// ── CORRECTIF : lire via savDonnees pour déchiffrer si AES actif ──
 			String dossier = Paths.get(chemin).getParent().toString();
-			app.metier.PlanningGlobal temp = new app.metier.PlanningGlobal();
+			PlanningGlobal temp = new PlanningGlobal();
 			savDonnees.charger(temp, dossier);
 			ArrayList<Societe> socs = temp.getSocietes();
 			return socs.isEmpty() ? null : socs;
-		} catch (Exception e) {
-			log("[ERREUR] getSocietesSemaneSuivante : " + e.getMessage());
-			return null;
-		}
+		} catch (Exception e) { log("[ERREUR] getSocietesSemaneSuivante : " + e.getMessage()); return null; }
 	}
 
-	/** Lit un fichier Excel pour préparer la semaine suivante. */
 	public ArrayList<Lot> lireExcelPourSemaineSuivante(String chemin) throws Exception
-	{
-		// ExcelReader est 100% statique
-		return ExcelReader.lireLots(chemin);
-	}
+	{ return ExcelReader.lireLots(chemin); }
 
-	/** Sauvegarde les données de la semaine suivante (appelé par PanelSemaineSuivante). */
 	public void sauvegarderSemaneSuivante(ArrayList<Lot> lots, ArrayList<Societe> societes)
 	{
 		try {
@@ -1056,50 +974,27 @@ public class ServeurHTTP
 			savDonnees.sauvegarderLots(lots, cheminL);
 			savDonnees.sauvegarderSocietes(societes, lots, cheminS);
 			log("[Serveur] Semaine suivante sauvegardée : " + lots.size() + " lots.");
-		} catch (Exception e) {
-			log("[Serveur] Erreur sauvegarde semaine suivante : " + e.getMessage());
-		}
+		} catch (Exception e) { log("[Serveur] Erreur sauvegarde semaine suivante : " + e.getMessage()); }
 	}
 
-	// Surcharge List → ArrayList pour PanelSemaineSuivante (compatibilité)
 	public void sauvegarderSemaneSuivante(List<Lot> lots, List<Societe> societes)
-	{
-		sauvegarderSemaneSuivante(new ArrayList<>(lots), new ArrayList<>(societes));
-	}
+	{ sauvegarderSemaneSuivante(new ArrayList<>(lots), new ArrayList<>(societes)); }
 
-	/** Bascule la semaine suivante → semaine courante. */
 	public void basculerSemaneSuivante() throws Exception
 	{
 		String cheminL = CheminApp.resoudre(DIR_SUIV_LOTS);
 		if (!new File(cheminL).exists()) throw new Exception("Aucune semaine suivante préparée.");
-
 		ArrayList<Lot> nouveauxLots = getLotsSemaneSuivante();
 		ArrayList<Societe> nouvSocs = getSocietesSemaneSuivante();
-
-		// Remplacer la semaine courante
 		metier.setLots(nouveauxLots);
-		if (nouvSocs != null && !nouvSocs.isEmpty())
-		{
-			metier.setSocietes(nouvSocs);
-		}
-		else
-		{
-			for (Societe s : metier.getSocietes()) {
-				s.getLots().clear();
-				for (Ace a : s.getAces()) a.getLots().clear();
-			}
-		}
-
-		save();
-		detecterSemaineActive();
-
-		// Supprimer le dossier semaine_suivante
+		if (nouvSocs != null && !nouvSocs.isEmpty()) { metier.setSocietes(nouvSocs); }
+		else { for (Societe s : metier.getSocietes()) { s.getLots().clear(); for (Ace a : s.getAces()) a.getLots().clear(); } }
+		save(); detecterSemaineActive();
 		deleteDirectory(new File(CheminApp.resoudre("app/data/semaine_suivante")));
 		versionDonnees = System.currentTimeMillis();
 		log("[Serveur] Bascule semaine suivante effectuée.");
 	}
 
-	/** Getter sociétés pour PanelSemaineSuivante. */
 	public ArrayList<Societe> getSocietes()
 	{
 		rwLock.readLock().lock();
@@ -1107,7 +1002,7 @@ public class ServeurHTTP
 		finally { rwLock.readLock().unlock(); }
 	}
 
-	public String getSemaineActive()    { return semaineActive; }
+	public String getSemaineActive() { return semaineActive; }
 
 	public int getNbClientsConnectes()
 	{
@@ -1117,66 +1012,7 @@ public class ServeurHTTP
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  UTILITAIRES RÉSEAU
-	// ══════════════════════════════════════════════════════════════════════
-
-	private static void ajouterHeadersCORS(HttpExchange ex)
-	{
-		ex.getResponseHeaders().set("Access-Control-Allow-Origin",  "*");
-		ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-		ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, X-Auth-Token");
-	}
-
-	private void rep(HttpExchange ex, int code, String body) throws IOException
-	{
-		ajouterHeadersCORS(ex);
-		String path = ex.getRequestURI().getPath();
-		boolean routePublique = path.equals("/login") || path.equals("/cle")
-			|| path.equals("/creer-compte");
-		String contenu = body;
-		if (aes != null && !routePublique && code == 200) {
-			try {
-				contenu = aes.chiffrer(body);
-				ex.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
-			} catch (Exception e) {
-				ex.getResponseHeaders().set("X-Encrypted", "false");
-				ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-			}
-		} else {
-			ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-		}
-		byte[] bytes = contenu.getBytes(StandardCharsets.UTF_8);
-		ex.sendResponseHeaders(code, bytes.length);
-		try (OutputStream os = ex.getResponseBody()) { os.write(bytes); }
-	}
-
-	private String lire(HttpExchange ex) throws IOException
-	{
-		String brut = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-		if (aes == null || brut.isBlank()) return brut;
-		try { return aes.dechiffrer(brut); } catch (Exception e) { return brut; }
-	}
-
-	private static int extraireIntPref(String corps, String... keys)
-	{
-		for (String key : keys) {
-			try { return JsonSerialiser.extraireInt(corps, key); }
-			catch (Exception ignored) {}
-		}
-		return 0;
-	}
-
-	private static boolean extraireBoolPref(String corps, String... keys)
-	{
-		for (String key : keys) {
-			try { return JsonSerialiser.extraireBool(corps, key); }
-			catch (Exception ignored) {}
-		}
-		return false;
-	}
-
-	// ══════════════════════════════════════════════════════════════════════
-	//  SÉCURITÉ
+	//  SÉCURITÉ — Helpers
 	// ══════════════════════════════════════════════════════════════════════
 
 	private String genererToken()
@@ -1199,7 +1035,8 @@ public class ServeurHTTP
 	{
 		SessionInfo info = verifierToken(ex);
 		if (info == null) {
-			rep(ex, 401, "{\"err\":\"Non authentifié.\"}"); return false;
+			rep(ex, 401, "{\"err\":\"Non authentifié. Connectez-vous via /login.\"}");
+			return false;
 		}
 		enregistrerClient(ex);
 		return true;
@@ -1225,8 +1062,50 @@ public class ServeurHTTP
 
 	private void enregistrerClient(HttpExchange ex)
 	{
-		clientsActifs.put(ex.getRemoteAddress().getAddress().getHostAddress(),
+		clientsActifs.put(
+			ex.getRemoteAddress().getAddress().getHostAddress(),
 			System.currentTimeMillis());
+	}
+
+	// ══════════════════════════════════════════════════════════════════════
+	//  UTILITAIRES RÉSEAU
+	// ══════════════════════════════════════════════════════════════════════
+
+	private static void ajouterHeadersCORS(HttpExchange ex)
+	{
+		ex.getResponseHeaders().set("Access-Control-Allow-Origin",  "*");
+		ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+		ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, X-Auth-Token");
+	}
+
+	private void rep(HttpExchange ex, int code, String body) throws IOException
+	{
+		ajouterHeadersCORS(ex);
+		String path = ex.getRequestURI().getPath();
+		boolean publique = path.equals("/login") || path.equals("/cle")
+			|| path.equals("/creer-compte") || path.startsWith("/methode/");
+		String contenu = body;
+		if (aes != null && !publique && code == 200) {
+			try { contenu = aes.chiffrer(body);
+				ex.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
+			} catch (Exception e) {
+				ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+			}
+		} else {
+			ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+		}
+		byte[] bytes = contenu.getBytes(StandardCharsets.UTF_8);
+		ex.sendResponseHeaders(code, bytes.length);
+		try (OutputStream os = ex.getResponseBody()) { os.write(bytes); }
+	}
+
+	private String lire(HttpExchange ex) throws IOException
+	{
+		String raw = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		if (aes != null && !raw.startsWith("{") && !raw.isBlank()) {
+			try { return aes.dechiffrer(raw); } catch (Exception ignored) {}
+		}
+		return raw;
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -1234,44 +1113,45 @@ public class ServeurHTTP
 	// ══════════════════════════════════════════════════════════════════════
 
 	private Lot findLot(int numCDE)
-	{
-		return metier.getLots().stream()
-			.filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null);
-	}
+	{ return metier.getLots().stream().filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null); }
 
 	private Societe findSociete(String nom)
 	{
 		if (nom == null) return null;
-		return metier.getSocietes().stream()
-			.filter(s -> nom.equals(s.getNom())).findFirst().orElse(null);
+		return metier.getSocietes().stream().filter(s -> nom.equals(s.getNom())).findFirst().orElse(null);
 	}
 
 	private void save()
 	{
 		try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); }
-		catch (Exception e) { log("[ERREUR] Sauvegarde lots échouée : " + e.getMessage()); }
+		catch (Exception e) { log("[ERREUR] save lots : " + e.getMessage()); }
 		try { savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson); }
-		catch (Exception e) { log("[ERREUR] Sauvegarde sociétés échouée : " + e.getMessage()); }
+		catch (Exception e) { log("[ERREUR] save societes : " + e.getMessage()); }
 		versionDonnees = System.currentTimeMillis();
 	}
-
 
 	private void detecterSemaineActive()
 	{
 		if (!metier.getLots().isEmpty()) {
 			String sem = metier.getLots().get(0).getSemaine();
 			if (sem != null && sem.length() >= 2)
-				semaineActive = sem.length() == 6 ?
-					"S" + sem.substring(4) + " / " + sem.substring(0, 4) : sem;
+				semaineActive = sem.length() == 6
+					? "S" + sem.substring(4) + " / " + sem.substring(0, 4) : sem;
 		}
 	}
 
-	private static String nowFmt()
+	/** Extrait un booléen en testant deux clés (préfixe long puis court). */
+	private static boolean extraireBoolPref(String json, String cle1, String cle2)
 	{
-		LocalDateTime n = LocalDateTime.now();
-		return String.format("%02d/%02d/%04d %02d:%02d:%02d",
-			n.getDayOfMonth(), n.getMonthValue(), n.getYear(),
-			n.getHour(), n.getMinute(), n.getSecond());
+		boolean v = JsonSerialiser.extraireBool(json, cle1);
+		return v || JsonSerialiser.extraireBool(json, cle2);
+	}
+
+	/** Extrait un entier en testant deux clés. */
+	private static int extraireIntPref(String json, String cle1, String cle2)
+	{
+		int v = JsonSerialiser.extraireInt(json, cle1);
+		return v != 0 ? v : JsonSerialiser.extraireInt(json, cle2);
 	}
 
 	private static void deleteDirectory(File dir)
