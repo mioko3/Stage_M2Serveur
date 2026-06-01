@@ -42,6 +42,7 @@ public class PanelSemaineSuivante extends JPanel
 	private ArrayList<Societe> socsPrepCopy = null;
 	private Lot                lotSel       = null;
 	private ArrayList<Lot>     lotsImportTemp = null; // lots lus depuis Excel, avant confirmation
+	private String             cheminExcelTemp = null; // chemin du fichier Excel pour lire sociétés
 
 	// ── Composants header ────────────────────────────────────────────────
 	private JLabel   lblEtat;
@@ -230,6 +231,7 @@ public class PanelSemaineSuivante extends JPanel
 		lblFichier.setForeground(C_TEXT);
 		panelPreview.setVisible(false);
 		lotsImportTemp = null;
+		cheminExcelTemp = f.getAbsolutePath(); // Sauvegarder le chemin
 
 		btnImport.setEnabled(false);
 		new Thread(() ->
@@ -263,8 +265,19 @@ public class PanelSemaineSuivante extends JPanel
 		if (lotsImportTemp == null) return;
 		int nbLots = lotsImportTemp.size();
 
-		ArrayList<Societe> socsVides = copierSocietesVides();
-		serveur.sauvegarderSemaneSuivante(lotsImportTemp, socsVides);
+		ArrayList<Societe> socsPourSauv = null;
+
+		// Charger les sociétés depuis le template pastouche
+		try {
+			String cheminPastouche = app.CheminApp.resoudre("app/data/pastouche/societes.json");
+			socsPourSauv = app.metier.collecte.JsonSerialiser.deserialiserSocietes(cheminPastouche, lotsImportTemp);
+			if (socsPourSauv == null) socsPourSauv = new ArrayList<>();
+		} catch (Exception ex) {
+			// Dernier recours : Societe vides
+			socsPourSauv = copierSocietesVides();
+		}
+
+		serveur.sauvegarderSemaneSuivante(lotsImportTemp, socsPourSauv);
 
 		// annulerImport() remet lotsImportTemp = null → appeler APRÈS avoir sauvegardé la taille
 		annulerImport();
@@ -278,6 +291,7 @@ public class PanelSemaineSuivante extends JPanel
 	private void annulerImport()
 	{
 		lotsImportTemp = null;
+		cheminExcelTemp = null;
 		lblFichier.setText("Aucun fichier sélectionné");
 		lblFichier.setForeground(C_MUTED);
 		panelPreview.setVisible(false);

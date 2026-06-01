@@ -972,7 +972,7 @@ public class ServeurHTTP
 		rwLock.writeLock().lock();
 		try {
 			metier.chargerDepuisExcel(cheminXlsx,
-				CheminApp.resoudre("app/data/courutilisation/societes.json"),
+				CheminApp.resoudre("app/data/pastouche/societes.json"),
 				semaine, cheminHeurs);
 			cheminLotsJson     = CheminApp.resoudre("app/data/courutilisation/lots.json");
 			cheminSocietesJson = CheminApp.resoudre("app/data/courutilisation/societes.json");
