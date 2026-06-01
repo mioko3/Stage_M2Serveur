@@ -27,6 +27,11 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Dialogue modal pour éditer les informations d’une société.
+ *
+ * Comprend la gestion des heures, des effectifs et des ACE associés.
+ */
 public class DialogEditSociete extends JDialog
 {
 	private final FenetrePrincipale fenetre;

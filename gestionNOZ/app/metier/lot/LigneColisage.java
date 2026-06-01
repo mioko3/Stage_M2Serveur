@@ -1,5 +1,11 @@
 package app.metier.lot;
 
+/**
+ * Représente une ligne de colisage pour un lot.
+ *
+ * Contient les informations sur le format, la quantité et le temps
+ * de production associés à une étape de colisage.
+ */
 public class LigneColisage
 {
 	private int    pcs;

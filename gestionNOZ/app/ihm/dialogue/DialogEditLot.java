@@ -33,6 +33,12 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+/**
+ * Dialogue modal pour modifier un lot existant.
+ *
+ * Interface de mise à jour des champs d’un lot et de validation
+ * des changements dans le planning global.
+ */
 public class DialogEditLot extends JDialog
 {
 	private final IControleur       ctrl;
@@ -188,6 +194,9 @@ public class DialogEditLot extends JDialog
 		return p;
 	}
 
+	/**
+	 * Pré-remplit le formulaire avec les valeurs du lot à modifier.
+	 */
 	private void preRemplir()
 	{
 		fTypologie  .setText(s(lot.getTypologie()));
@@ -210,6 +219,9 @@ public class DialogEditLot extends JDialog
 		calculerHeures();
 	}
 
+	/**
+	 * Décompose l’emplacement en composantes lettre et numéro.
+	 */
 	private void decouperEmplacement(String empl)
 	{
 		if (empl == null || empl.isEmpty())
@@ -235,6 +247,9 @@ public class DialogEditLot extends JDialog
 		fEmplacementNumero.setEnabled(true);
 	}
 
+	/**
+	 * Concatène l’emplacement sélectionné pour l’enregistrer.
+	 */
 	private String getEmplacementCombine()
 	{
 		String lettre = s((String) fEmplacementLettre.getSelectedItem());
@@ -243,6 +258,9 @@ public class DialogEditLot extends JDialog
 		return lettre + fEmplacementNumero.getText().trim();
 	}
 
+	/**
+	 * Sélectionne la valeur fournie dans une JComboBox si elle existe.
+	 */
 	private void selectCombo(JComboBox<String> combo, String valeur)
 	{
 		if (valeur == null) return;
@@ -250,6 +268,9 @@ public class DialogEditLot extends JDialog
 			if (combo.getItemAt(i).equals(valeur)) { combo.setSelectedIndex(i); return; }
 	}
 
+	/**
+	 * Met à jour l’affichage des heures estimées et ACE.
+	 */
 	void calculerHeures()
 	{
 		try
@@ -269,6 +290,9 @@ public class DialogEditLot extends JDialog
 		}
 	}
 
+	/**
+	 * Valide les modifications et met à jour le lot existant via le contrôleur.
+	 */
 	private void valider()
 	{
 		try
@@ -311,5 +335,8 @@ public class DialogEditLot extends JDialog
 		this.fenetre.rafraichirTout();
 	}
 
+	/**
+	 * Retourne une chaîne vide pour éviter les valeurs nulles.
+	 */
 	private String s(String v) { return v != null ? v : ""; }
 }

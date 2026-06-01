@@ -3,6 +3,12 @@ package app.metier.ficheroute;
 import app.metier.lot.Lot;
 import app.metier.personelle.Societe;
 
+/**
+ * Données de synthèse d’une fiche de route pour une société.
+ *
+ * Calcule les totaux financiers et de production pour afficher
+ * un récapitulatif par société.
+ */
 public class FicheRoute
 {
 	// les lien

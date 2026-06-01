@@ -11,6 +11,12 @@ import java.util.*;
 import java.util.List;
 import javax.swing.*;
 
+/**
+ * Panneau de rendu du diagramme de Gantt pour les lots.
+ *
+ * Trace les lots sur une échelle de temps hebdomadaire et affiche
+ * l’avancement de chaque lot par ACE.
+ */
 public class PanelGantt extends JPanel
 {
 	private ArrayList<Lot> lots = new ArrayList<>();
@@ -40,6 +46,12 @@ public class PanelGantt extends JPanel
 
 	// ================= DATA =================
 
+	/**
+	 * Met à jour les lots à afficher dans le Gantt.
+	 *
+	 * Filtre les lots sans date de début et trie la liste avant
+	 * de redessiner le panneau.
+	 */
 	public void setLots(List<Lot> l)
 	{
 		lots = new ArrayList<>();
@@ -63,6 +75,9 @@ public class PanelGantt extends JPanel
 
 	// ================= PAINT =================
 
+	/**
+	 * Dessine le fond et les lots dans le panneau.
+	 */
 	@Override
 	protected void paintComponent(Graphics g)
 	{
@@ -78,6 +93,9 @@ public class PanelGantt extends JPanel
 
 	// ================= GRID =================
 
+	/**
+	 * Trace la grille de la semaine et les repères horaires.
+	 */
 	private void drawGrid(Graphics2D g2)
 	{
 		g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
@@ -107,6 +125,9 @@ public class PanelGantt extends JPanel
 
 	// ================= LOTS =================
 
+	/**
+	 * Affiche chaque lot sur la grille Gantt avec sa position et sa durée.
+	 */
 	private void drawLots(Graphics2D g2)
 	{
 		for (int i = 0; i < lots.size(); i++)
@@ -140,12 +161,11 @@ public class PanelGantt extends JPanel
 			g2.drawRoundRect(startX, y, width, 28, 10, 10);
 
 			String txt =
-				"["+nomAce+"] CDE " + l.getNumCDE() +
+				"[" + nomAce + "] CDE " + l.getNumCDE() +
 				" " +
 				String.format("%02d:%02d",
 					start.getHour(),
-					start.getMinute())
-				+
+					start.getMinute()) +
 				" → " +
 				String.format("%02d:%02d",
 					end.getHour(),
@@ -157,11 +177,15 @@ public class PanelGantt extends JPanel
 
 	// ================= TIME SYSTEM =================
 
+	/**
+	 * Convertit un instant en minutes depuis le début de la semaine de travail.
+	 *
+	 * Les heures sont ramenées sur la plage du lundi au vendredi.
+	 */
 	private int toWeekMinutes(LocalDateTime t)
 	{
 		int day = t.getDayOfWeek().getValue() - 1;
 
-		// 🔥 on force à rester dans 0–4 (Lun–Ven)
 		if (day < 0) day = 0;
 		if (day > 4) day = 4;
 
@@ -174,12 +198,14 @@ public class PanelGantt extends JPanel
 		return day * DAY_WIDTH + minutesSinceStart;
 	}
 
+	/**
+	 * Définit la taille préférée du panneau en fonction du nombre de lots.
+	 */
 	@Override
 	public Dimension getPreferredSize()
 	{
 		int width = LEFT + DAYS.length * DAY_WIDTH + 100;
 		int height = TOP + Math.max(1, lots.size()) * ROW + 100;
-
 		return new Dimension(width, height);
 	}
 

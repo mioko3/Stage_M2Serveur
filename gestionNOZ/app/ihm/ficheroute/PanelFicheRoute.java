@@ -14,6 +14,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.swing.*;
 
+/**
+ * Panneau de présentation des fiches de route.
+ *
+ * Offre une vue par société ou par ACE pour présenter les lots
+ * et statistiques logistiques.
+ */
 public class PanelFicheRoute extends JPanel
 {
 	private final IControleur       ctrl;
@@ -231,6 +237,9 @@ public class PanelFicheRoute extends JPanel
 
 	// ── Chargement société ────────────────────────────────────────────────
 
+	/**
+	 * Remplit la liste déroulante des sociétés avec le nombre de lots.
+	 */
 	public void remplirComboSocietes()
 	{
 		int sel = combSociete.getSelectedIndex();
@@ -242,6 +251,9 @@ public class PanelFicheRoute extends JPanel
 			combSociete.setSelectedIndex(sel);
 	}
 
+	/**
+	 * Change la société active et recharge la fiche de route correspondante.
+	 */
 	private void changerSociete()
 	{
 		int idx = combSociete.getSelectedIndex() - 1;
@@ -261,6 +273,9 @@ public class PanelFicheRoute extends JPanel
 		chargerFicheRouteSociete();
 	}
 
+	/**
+	 * Charge les totaux et les cartes de route pour la société sélectionnée.
+	 */
 	private void chargerFicheRouteSociete()
 	{
 		if (societeCourante == null) return;
@@ -329,6 +344,9 @@ public class PanelFicheRoute extends JPanel
 
 	// ── Chargement ACE ────────────────────────────────────────────────────
 
+	/**
+	 * Remplit la liste déroulante des ACE disponibles.
+	 */
 	public void remplirComboAces()
 	{
 		if (aceCourante != null) nomAceMemorise = aceCourante.getNom();
@@ -345,6 +363,9 @@ public class PanelFicheRoute extends JPanel
 		if (restore > 0) combAce.setSelectedIndex(restore);
 	}
 
+	/**
+	 * Change l’ACE active et recharge sa fiche de route.
+	 */
 	private void changerAce()
 	{
 		int idx = combAce.getSelectedIndex() - 1;
@@ -362,6 +383,9 @@ public class PanelFicheRoute extends JPanel
 		chargerFicheRouteAce();
 	}
 
+	/**
+	 * Charge les totaux et les cartes de route pour l’ACE sélectionnée.
+	 */
 	private void chargerFicheRouteAce()
 	{
 		if (aceCourante == null) return;
@@ -456,6 +480,9 @@ public class PanelFicheRoute extends JPanel
 
 	// ── Boutons méthode ───────────────────────────────────────────────────
 
+	/**
+	 * Ouvre la méthode associée à la société sélectionnée.
+	 */
 	private void ouvrirMeth_s()
 	{
 		if (societeCourante == null) return;
@@ -464,6 +491,9 @@ public class PanelFicheRoute extends JPanel
 			.distinct().collect(Collectors.toList()));
 	}
 
+	/**
+	 * Ouvre la méthode associée à l’ACE sélectionnée.
+	 */
 	private void ouvrirMeth_a()
 	{
 		if (aceCourante == null) return;
@@ -472,6 +502,9 @@ public class PanelFicheRoute extends JPanel
 			.distinct().collect(Collectors.toList()));
 	}
 
+	/**
+	 * Affiche un choix de méthode puis ouvre le PDF sélectionné.
+	 */
 	private void ouvrirMethode(List<Methode> methodes)
 	{
 		if (methodes.isEmpty())
@@ -545,6 +578,9 @@ public class PanelFicheRoute extends JPanel
 
 	// ── Rafraîchissement ──────────────────────────────────────────────────
 
+	/**
+	 * Rafraîchit tous les composants de la fiche de route.
+	 */
 	public void rafraichir()
 	{
 		Societe sv = societeCourante;

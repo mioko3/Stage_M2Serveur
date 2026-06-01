@@ -309,4 +309,4 @@ public class FenetrePrincipale extends JFrame
 	}
 
 	public PanelAffectation getPanelAffectation() { return panelAffectation; }
-}
+}	

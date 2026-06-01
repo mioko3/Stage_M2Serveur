@@ -30,6 +30,12 @@ import javax.swing.JTextField;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Panneau de la liste des lots.
+ *
+ * Permet le filtrage, la recherche, la modification et la suppression
+ * des lots présents dans le planning.
+ */
 public class PanelLots extends JPanel
 {
 	private final IControleur       ctrl;
@@ -157,6 +163,9 @@ public class PanelLots extends JPanel
 		return p;
 	}
 
+	/**
+	 * Ouvre la boîte de dialogue d’édition pour le lot sélectionné.
+	 */
 	private void ouvrirEdition()
 	{
 		Lot lot = getLotLigne(tbl.getSelectedRow());
@@ -164,6 +173,9 @@ public class PanelLots extends JPanel
 		new DialogEditLot(fenetre, ctrl, lot, null).setVisible(true);
 	}
 
+	/**
+	 * Supprime le lot sélectionné après vérification qu’il n’est pas affecté.
+	 */
 	private void supprimerLot()
 	{
 		Lot lot = getLotLigne(tbl.getSelectedRow());
@@ -185,6 +197,9 @@ public class PanelLots extends JPanel
 		}
 	}
 
+	/**
+	 * Retourne le lot correspondant à une ligne de tableau filtrée.
+	 */
 	private Lot getLotLigne(int row)
 	{
 		if (row < 0) return null;
@@ -203,6 +218,9 @@ public class PanelLots extends JPanel
 		return null;
 	}
 
+	/**
+	 * Vérifie qu’un lot passe les filtres de statut et de recherche.
+	 */
 	private boolean passFiltres(Lot l, String filtre, String recherche)
 	{
 		if (!filtre.isEmpty()
@@ -221,6 +239,9 @@ public class PanelLots extends JPanel
 
 	private String s(String v) { return v != null ? v : ""; }
 
+	/**
+	 * Recharge le tableau des lots en appliquant les filtres et la recherche.
+	 */
 	public void rafraichir()
 	{
 		modelLots.setRowCount(0);

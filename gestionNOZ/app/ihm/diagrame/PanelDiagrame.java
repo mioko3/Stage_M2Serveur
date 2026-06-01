@@ -7,6 +7,12 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
+/**
+ * Panneau principal du diagramme Gantt.
+ *
+ * Affiche le planning de production global et rafraîchit le contenu
+ * de la vue Gantt lorsque nécessaire.
+ */
 public class PanelDiagrame extends JPanel
 {
 	private IControleur       ctrl;
@@ -53,6 +59,9 @@ public class PanelDiagrame extends JPanel
 		actualiser();
 	}
 
+	/**
+	 * Rafraîchit le contenu du panneau Gantt avec les lots courants.
+	 */
 	public void actualiser()
 	{
 		panelGantt.setLots(ctrl.getLots());

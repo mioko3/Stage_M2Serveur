@@ -11,6 +11,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
+/**
+ * Modèle métier central du planning.
+ *
+ * Contient les listes de sociétés, lots et fiches de route, ainsi que
+ * les méthodes de chargement et de mise à jour des données.
+ */
 public class PlanningGlobal
 {
 	public static boolean estHeureSup;

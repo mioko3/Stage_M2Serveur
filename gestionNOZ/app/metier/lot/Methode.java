@@ -5,6 +5,11 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Représente la méthode de production ou de conditionnement d’un lot.
+ *
+ * Contient les paramètres qui influencent les temps et les ressources.
+ */
 public class Methode {
 
 	private static final String LIEN_DOSIER = "app/data/pastouche/methodes/";

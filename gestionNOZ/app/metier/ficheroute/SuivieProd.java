@@ -2,6 +2,12 @@ package app.metier.ficheroute;
 
 import app.metier.lot.Lot;
 
+/**
+ * Suivi de production d’un lot.
+ *
+ * Calcule le pourcentage d’avancement et les heures restantes
+ * pour l’étiquetage et la répartition.
+ */
 public class SuivieProd
 {
 	private int    nbPieceEtiq;

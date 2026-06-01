@@ -32,6 +32,12 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 
+/**
+ * Dialogue modal pour ajouter un nouveau lot.
+ *
+ * Permet de saisir les informations administratives et logistiques
+ * pour créer une nouvelle commande dans le planning.
+ */
 public class DialogAjoutLot extends JDialog
 {
 	private final IControleur       ctrl;
@@ -162,6 +168,9 @@ public class DialogAjoutLot extends JDialog
 		return new JScrollPane(form);
 	}
 
+	/**
+	 * Crée la barre de boutons en bas du dialogue.
+	 */
 	private JPanel creerBas()
 	{
 		lblErreur = new JLabel(" ");
@@ -179,6 +188,9 @@ public class DialogAjoutLot extends JDialog
 		return p;
 	}
 
+	/**
+	 * Calcule et affiche le temps de production estimé du lot.
+	 */
 	private void calculerHeures()
 	{
 		try
@@ -196,6 +208,9 @@ public class DialogAjoutLot extends JDialog
 		}
 	}
 
+	/**
+	 * Concatène l’emplacement lettre et numéro pour le lot.
+	 */
 	private String getEmplacementCombine()
 	{
 		String lettre = s((String) fEmplacementLettre.getSelectedItem());
@@ -204,6 +219,9 @@ public class DialogAjoutLot extends JDialog
 		return lettre + fEmplacementNumero.getText().trim();
 	}
 
+	/**
+	 * Valide les champs saisis et crée le lot via le contrôleur.
+	 */
 	private void valider()
 	{
 		try
@@ -247,5 +265,8 @@ public class DialogAjoutLot extends JDialog
 		}
 	}
 
+	/**
+	 * Retourne une chaîne vide si la valeur est nulle.
+	 */
 	private static String s(String v) { return v != null ? v : ""; }
 }

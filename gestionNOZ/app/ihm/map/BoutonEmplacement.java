@@ -5,6 +5,11 @@ import java.awt.*;
 import java.util.List;
 import javax.swing.*;
 
+/**
+ * Bouton personnalisé représentant un emplacement sur la carte.
+ *
+ * Dessine une représentation colorée des lots présents dans l’emplacement.
+ */
 public class BoutonEmplacement extends JButton
 {
 	private List<Lot> lots;

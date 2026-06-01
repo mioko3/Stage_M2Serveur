@@ -25,6 +25,12 @@ import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Panneau de gestion des sociétés.
+ *
+ * Affiche les sociétés, leurs heures disponibles et les ACE associés
+ * pour faciliter l’affectation des lots.
+ */
 public class PanelSocietes extends JPanel
 {
 	private final IControleur       ctrl;
@@ -127,6 +133,9 @@ public class PanelSocietes extends JPanel
 		return p;
 	}
 
+	/**
+	 * Ouvre le dialogue d’édition pour la société sélectionnée.
+	 */
 	private void ouvrirEdition()
 	{
 		int row = tbl.getSelectedRow();
@@ -134,6 +143,9 @@ public class PanelSocietes extends JPanel
 		new DialogEditSociete(fenetre, ctrl, ctrl.getSocietes().get(row), this).setVisible(true);
 	}
 
+	/**
+	 * Demande une nouvelle semaine et applique l’ajout d’heures à la société.
+	 */
 	private void ouvrirNouvelleHeure()
 	{
 		String input = JOptionPane.showInputDialog(
@@ -157,6 +169,9 @@ public class PanelSocietes extends JPanel
 		this.fenetre.rafraichirTout();
 	}
 
+	/**
+	 * Construit le texte détaillé d’une société et de ses ACE.
+	 */
 	private String buildDetail(Societe soc)
 	{
 		StringBuilder sb = new StringBuilder();
@@ -189,6 +204,9 @@ public class PanelSocietes extends JPanel
 		return sb.toString();
 	}
 
+	/**
+	 * Recharge la liste des sociétés et met à jour le panneau de détails.
+	 */
 	public void rafraichir()
 	{
 		int sel = tbl.getSelectedRow();

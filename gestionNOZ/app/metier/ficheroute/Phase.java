@@ -1,5 +1,10 @@
 package app.metier.ficheroute;
 
+/**
+ * Représente l’avancement des phases de production pour un lot.
+ *
+ * Stocke l’état de chaque étape du processus (pré-tri, tri, étiquetage, etc.).
+ */
 public class Phase
 {
 	private boolean preTri;
