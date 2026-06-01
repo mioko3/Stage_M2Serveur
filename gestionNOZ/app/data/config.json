@@ -1,11 +1,11 @@
 {
   "utilisateurs": [
     {"identifiant":"PAM","motDePasse":"pam2026","accesPAM":true},
-    {"identifiant":"R-ONE","motDePasse":"erwan","accesPAM":false},
-    {"identifiant":"EUP","motDePasse":"eup2026","accesPAM":false}
+    {"identifiant":"EUP","motDePasse":"eup2026","accesPAM":true},
+    {"identifiant":"CFP","motDePasse":"cfp2026","accesPAM":true},
+    {"identifiant":"PA","motDePasse":"pa2026","accesPAM":true},
+    {"identifiant":"R-ONE","motDePasse":"erwan","accesPAM":false}
   ],
   "demandesCompte": [
-    {"identifiant":"R-ONE","motDePasse":"erwan","date":"01/06/2026 09:09:45","statut":"approuve"},
-    {"identifiant":"EUP","motDePasse":"eup2026","date":"01/06/2026 12:02:03","statut":"approuve"}
   ]
 }
