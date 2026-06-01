@@ -513,8 +513,8 @@ public class ServeurHTTP
 				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
 				Lot lot = findLot(numCDE);
 				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				lot.getSuivieProd().setNbPieceEtiq  (JsonSerialiser.extraireInt(c, "nbPieceEtiq"));
-				lot.getSuivieProd().setNbPieceRepart(JsonSerialiser.extraireInt(c, "nbPieceRepart"));
+				lot.getSuivieProd().setNbPieceEtiq  (extraireIntPref(c, "nbPieceEtiq", "sp_nbPieceEtiq"));
+				lot.getSuivieProd().setNbPieceRepart(extraireIntPref(c, "nbPieceRepart", "sp_nbPieceRepart"));
 				lot.recalculerHeures();
 				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
@@ -588,11 +588,11 @@ public class ServeurHTTP
 				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
 				// PlanningGlobal.modifierPhase() — signature exacte
 				metier.modifierPhase(lot,
-					JsonSerialiser.extraireBool(c, "phase_preTri"),
-					JsonSerialiser.extraireBool(c, "phase_surPiste"),
-					JsonSerialiser.extraireBool(c, "phase_sortieEtiq"),
-					JsonSerialiser.extraireBool(c, "phase_tri"),
-					JsonSerialiser.extraireBool(c, "phase_finit"));
+					extraireBoolPref(c, "phase_preTri", "preTri"),
+					extraireBoolPref(c, "phase_surPiste", "surPiste"),
+					extraireBoolPref(c, "phase_sortieEtiq", "sortieEtiq"),
+					extraireBoolPref(c, "phase_tri", "tri"),
+					extraireBoolPref(c, "phase_finit", "finit"));
 				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
@@ -1135,6 +1135,24 @@ public class ServeurHTTP
 		String brut = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 		if (aes == null || brut.isBlank()) return brut;
 		try { return aes.dechiffrer(brut); } catch (Exception e) { return brut; }
+	}
+
+	private static int extraireIntPref(String corps, String... keys)
+	{
+		for (String key : keys) {
+			try { return JsonSerialiser.extraireInt(corps, key); }
+			catch (Exception ignored) {}
+		}
+		return 0;
+	}
+
+	private static boolean extraireBoolPref(String corps, String... keys)
+	{
+		for (String key : keys) {
+			try { return JsonSerialiser.extraireBool(corps, key); }
+			catch (Exception ignored) {}
+		}
+		return false;
 	}
 
 	// ══════════════════════════════════════════════════════════════════════

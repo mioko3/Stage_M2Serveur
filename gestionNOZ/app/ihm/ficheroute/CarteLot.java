@@ -591,6 +591,9 @@ public class CarteLot extends JPanel implements ActionListener
 					if (v < 0 || v > lot.getNbPieces()) throw new NumberFormatException();
 					lot.getSuivieProd().setNbPieceEtiq(v);
 					textPcsEtiq.setBackground(Color.WHITE);
+					if (ctrl != null) {
+						ctrl.mettreAJourSuiviProd(lot, v, lot.getSuivieProd().getNbPieceRepart());
+					}
 					break;
 				}
 				case "PCS_PART":
@@ -599,6 +602,9 @@ public class CarteLot extends JPanel implements ActionListener
 					if (v < 0 || v > lot.getNbPieces()) throw new NumberFormatException();
 					lot.getSuivieProd().setNbPieceRepart(v);
 					textPcsPart.setBackground(Color.WHITE);
+					if (ctrl != null) {
+						ctrl.mettreAJourSuiviProd(lot, lot.getSuivieProd().getNbPieceEtiq(), v);
+					}
 					break;
 				}
 				case "DISTRI":
@@ -707,6 +713,12 @@ public class CarteLot extends JPanel implements ActionListener
 		t.setFont(new Font("SansSerif", Font.PLAIN, 12));
 		t.setActionCommand(action);
 		t.addActionListener(listener);
+		t.addFocusListener(new FocusAdapter() {
+			@Override public void focusLost(FocusEvent e) {
+				if (t.isEnabled()) listener.actionPerformed(
+					new ActionEvent(t, ActionEvent.ACTION_PERFORMED, action));
+			}
+		});
 		p.add(l);
 		p.add(t);
 		return p;

@@ -523,11 +523,11 @@ public class ControleurClient implements IControleur
 		if (fenetre != null) fenetre.rafraichirTout();
 		// 3. Synchroniser avec le serveur en arrière-plan
 		String c = "{\"numCDE\":"    + lot.getNumCDE()
-			+ ",\"preTri\":"     + preTri
-			+ ",\"surPiste\":"   + surPiste
-			+ ",\"sortieEtiq\":" + sortieEtiq
-			+ ",\"tri\":"        + tri
-			+ ",\"finit\":"      + finit + "}";
+			+ ",\"phase_preTri\":"     + preTri
+			+ ",\"phase_surPiste\":"   + surPiste
+			+ ",\"phase_sortieEtiq\":" + sortieEtiq
+			+ ",\"phase_tri\":"        + tri
+			+ ",\"phase_finit\":"      + finit + "}";
 		new Thread(() -> {
 			try {
 				this.lots = JsonSerialiser.deserialiserLots(post("/lots/phase", c));
@@ -995,12 +995,23 @@ public class ControleurClient implements IControleur
 			.header("Content-Type", "application/json");
 		if (tokenSession != null && !tokenSession.isBlank())
 			b.header("X-Auth-Token", tokenSession);
-		b.POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8));
+		String bodyToSend = json;
+		if (aes != null) {
+			try { bodyToSend = aes.chiffrer(json); }
+			catch (Exception ignored) { bodyToSend = json; }
+		}
+		b.POST(HttpRequest.BodyPublishers.ofString(bodyToSend, StandardCharsets.UTF_8));
 		HttpResponse<String> resp = http.send(
 			b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 		if (resp.statusCode() == 401) { gererDeconnexion(); throw new Exception("Session expirée"); }
 		if (resp.statusCode() >= 400) throw new Exception("HTTP " + resp.statusCode() + ": " + resp.body());
-		return resp.body();
+		String body = resp.body();
+		if (aes != null && body != null && !body.isBlank()
+			&& !body.startsWith("{") && !body.startsWith("[")) {
+			try { body = aes.dechiffrer(body); }
+			catch (Exception ignored) { }
+		}
+		return body;
 	}
 
 	// ══════════════════════════════════════════════════════════════════════

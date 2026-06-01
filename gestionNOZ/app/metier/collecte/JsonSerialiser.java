@@ -80,7 +80,7 @@ import java.util.ArrayList;
  * ──────────────────
  * • ArrayList<Lot> dans Societe → sérialisée comme [numCDE1, numCDE2, ...]
  * • ArrayList<Ace> dans Societe → sérialisée comme [ { ace1 }, { ace2 } ]
- * • SuivieProd et Phase → sérialises avec flags (sp_nbPieceEtiq, ph_preTri, etc.)
+ * • SuivieProd et Phase → sérialises avec flags (sp_nbPieceEtiq, phase_preTri, etc.)
  * • Methode → stockée en tant que nom (String)
  *
  * LIMITES :
@@ -172,11 +172,11 @@ public class JsonSerialiser
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
 			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
 			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? sp.getNbHeureRepartRestant() : 0) + ","
-			+ "\"ph_preTri\":"               + (ph != null && ph.isPreTri())                + ","
-			+ "\"ph_surPiste\":"             + (ph != null && ph.isSurPiste())              + ","
-			+ "\"ph_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())            + ","
-			+ "\"ph_tri\":"                  + (ph != null && ph.isTri())                   + ","
-			+ "\"ph_finit\":"                + (ph != null && ph.isFinit())
+			+ "\"phase_preTri\":"               + (ph != null && ph.isPreTri())                + ","
+			+ "\"phase_surPiste\":"             + (ph != null && ph.isSurPiste())              + ","
+			+ "\"phase_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())            + ","
+			+ "\"phase_tri\":"                  + (ph != null && ph.isTri())                   + ","
+			+ "\"phase_finit\":"                + (ph != null && ph.isFinit())
 			+ "}";
 	}
 
@@ -330,11 +330,11 @@ public class JsonSerialiser
 		lot.setSuivieProd(sp);
 
 		Phase ph = new Phase();
-		ph.setPreTri    (getBool(obj, "ph_preTri"));
-		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
-		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
-		ph.setTri       (getBool(obj, "ph_tri"));
-		ph.setFinit     (getBool(obj, "ph_finit"));
+		ph.setPreTri    (getBool(obj, "ph_preTri")      || getBool(obj, "phase_preTri"));
+		ph.setSurPiste  (getBool(obj, "ph_surPiste")    || getBool(obj, "phase_surPiste"));
+		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq")  || getBool(obj, "phase_sortieEtiq"));
+		ph.setTri       (getBool(obj, "ph_tri")         || getBool(obj, "phase_tri"));
+		ph.setFinit     (getBool(obj, "ph_finit")       || getBool(obj, "phase_finit"));
 		lot.setPhase(ph);
 
 		return lot;
