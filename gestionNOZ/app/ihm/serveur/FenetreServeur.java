@@ -336,7 +336,7 @@ public class FenetreServeur extends JFrame
 		root.add(Box.createRigidArea(new Dimension(0, 10)));
 
 		// Grille 2 colonnes
-		JPanel grille = new JPanel(new GridLayout(1, 2, 14, 0));
+		JPanel grille = new JPanel(new GridLayout(4, 1, 14, 0));
 		grille.setOpaque(false);
 		grille.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
 		grille.setAlignmentX(Component.LEFT_ALIGNMENT);
