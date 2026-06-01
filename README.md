@@ -24,10 +24,10 @@
 
 L'application fonctionne en **deux programmes distincts** :
 
-| Programme | Fichier de lancement | Rôle |
-|---|---|---|
-| **ServeurHTTP** | `run_SERVEUR.bat` | Tourne sur un PC central, gère les données, répond aux clients |
-| **ControleurClient** | `run_CLIENT.bat` | Tourne sur chaque poste utilisateur, se connecte au serveur |
+|      Programme       | Fichier de lancement |                           Rôle                                 |
+|----------------------|----------------------|----------------------------------------------------------------|
+|   **ServeurHTTP**    |   `run_SERVEUR.bat`  | Tourne sur un PC central, gère les données, répond aux clients |
+| **ControleurClient** |   `run_CLIENT.bat`   |  Tourne sur chaque poste utilisateur, se connecte au serveur   |
 
 ```
 [PC Serveur]  ←──réseau local──→  [Poste PAM]
