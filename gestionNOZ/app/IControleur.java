@@ -67,6 +67,8 @@ public interface IControleur
 	void    supprimerLot(Lot lot);
 	void    exportNewLot();
 
+	boolean isAccesPAM();
+
 	// ── Modification lots — signature DE BASE (DialogEditLot, inchangée) ──
 	/**
 	 * Modifie les champs administratifs d'un lot.
