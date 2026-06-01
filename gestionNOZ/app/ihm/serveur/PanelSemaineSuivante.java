@@ -36,17 +36,17 @@ import javax.swing.table.*;
  */
 public class PanelSemaineSuivante extends JPanel
 {
-	// ── Palette ───────────────────────────────────────────────────────────
-	private static final Color C_BG      = new Color(15, 17, 26);
-	private static final Color C_SURFACE = new Color(24, 27, 40);
-	private static final Color C_CARD    = new Color(30, 34, 50);
-	private static final Color C_BORDER  = new Color(50, 55, 78);
-	private static final Color C_TEXT    = new Color(215, 220, 235);
-	private static final Color C_MUTED   = new Color(120, 128, 155);
-	private static final Color C_BLUE    = new Color(64, 128, 230);
-	private static final Color C_GREEN   = new Color(38, 168, 90);
-	private static final Color C_RED     = new Color(210, 65, 65);
-	private static final Color C_ACCENT  = new Color(100, 160, 255);
+	// ── Palette light moderne (cohérente avec FenetreServeur) ────────────
+	private static final Color C_BG      = new Color(246, 248, 251);  // fond général
+	private static final Color C_SURFACE = Color.WHITE;                // cards
+	private static final Color C_CARD    = new Color(246, 248, 251);  // fond tableau alterné
+	private static final Color C_BORDER  = new Color(220, 226, 235);  // bordures légères
+	private static final Color C_TEXT    = new Color(26,  32,  44);   // texte principal
+	private static final Color C_MUTED   = new Color(100, 112, 132);  // texte secondaire
+	private static final Color C_BLUE    = new Color(37,  99,  235);  // primaire
+	private static final Color C_GREEN   = new Color(22,  163,  74);  // succès
+	private static final Color C_RED     = new Color(220,  38,  38);  // danger
+	private static final Color C_ACCENT  = new Color(37,  99,  235);  // accent = bleu
 
 	private final ServeurHTTP serveur;
 
@@ -90,7 +90,7 @@ public class PanelSemaineSuivante extends JPanel
 		JScrollPane scroll = new JScrollPane(construireContenu());
 		scroll.setBorder(null);
 		scroll.getViewport().setBackground(C_BG);
-		scroll.getVerticalScrollBar().setUnitIncrement(16);
+		scroll.getVerticalScrollBar().setUnitIncrement(20);
 		add(scroll, BorderLayout.CENTER);
 	}
 
@@ -103,7 +103,7 @@ public class PanelSemaineSuivante extends JPanel
 		JPanel root = new JPanel();
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(C_BG);
-		root.setBorder(new EmptyBorder(14, 16, 14, 16));
+		root.setBorder(new EmptyBorder(20, 24, 20, 24));
 
 		// ── En-tête ───────────────────────────────────────────────────────
 		root.add(construireHeader());
@@ -112,8 +112,10 @@ public class PanelSemaineSuivante extends JPanel
 		// ── Carte import Excel ────────────────────────────────────────────
 		JPanel carteImport = buildCarte();
 
-		JLabel titreSec = buildLabel("Import Excel — semaine suivante");
+		JLabel titreSec = new JLabel("Import Excel — semaine suivante");
 		titreSec.setFont(new Font("SansSerif", Font.BOLD, 13));
+		titreSec.setForeground(C_TEXT);
+		titreSec.setAlignmentX(Component.LEFT_ALIGNMENT);
 		carteImport.add(titreSec);
 		carteImport.add(Box.createRigidArea(new Dimension(0, 8)));
 
@@ -174,7 +176,7 @@ public class PanelSemaineSuivante extends JPanel
 
 		lblEtat = new JLabel("Chargement…");
 		lblEtat.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		lblEtat.setForeground(C_MUTED);
+		lblEtat.setForeground(C_TEXT);
 
 		btnBasculer = buildBtn("⚡ Basculer vers la semaine suivante", new Color(180, 100, 20));
 		btnBasculer.setVisible(false);
@@ -209,8 +211,10 @@ public class PanelSemaineSuivante extends JPanel
 			btnBasculer.setVisible(true);
 
 			construireZoneAffectation();
-			// Repeuplement explicite APRÈS construction (combSoc/combAce sont maintenant créés)
+			// Repeuplement explicite APRÈS construction :
+			// mdlDisp/mdlAff sont créés dans construireZoneAffectation(), ils sont donc prêts ici.
 			remplirCombSoc();
+			rafraichirTableaux(); // ← CORRECTIF : remplit les tableaux avec lotsPrep
 			panelAff.setVisible(true);
 
 			SwingUtilities.invokeLater(() -> {
@@ -366,10 +370,10 @@ public class PanelSemaineSuivante extends JPanel
 			new EmptyBorder(10, 14, 10, 14)));
 		titreCarte.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
 		titreCarte.setAlignmentX(Component.LEFT_ALIGNMENT);
-		JLabel tAff = new JLabel("🔗 Pré-affectation de la semaine suivante");
+		JLabel tAff = new JLabel("Pré-affectation des lots");
 		tAff.setFont(new Font("SansSerif", Font.BOLD, 14));
 		tAff.setForeground(C_TEXT);
-		JLabel tSub = new JLabel("(les affectations seront actives après la bascule)");
+		JLabel tSub = new JLabel("Les affectations seront actives après la bascule");
 		tSub.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		tSub.setForeground(C_MUTED);
 		titreCarte.add(tAff, BorderLayout.WEST);
@@ -380,8 +384,8 @@ public class PanelSemaineSuivante extends JPanel
 		// Zone 3 colonnes — hauteur fixe
 		JPanel zone = new JPanel(new GridLayout(1, 3, 10, 0));
 		zone.setBackground(C_BG);
-		zone.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
-		zone.setPreferredSize(new Dimension(0, 400));
+		zone.setMaximumSize(new Dimension(Integer.MAX_VALUE, 450));
+		zone.setPreferredSize(new Dimension(0, 450));
 		zone.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		zone.add(construireColDisponibles());
@@ -395,17 +399,17 @@ public class PanelSemaineSuivante extends JPanel
 	{
 		JPanel col = new JPanel(new BorderLayout(0, 0));
 		col.setBackground(C_SURFACE);
-		col.setBorder(BorderFactory.createLineBorder(C_BORDER));
+		col.setBorder(BorderFactory.createLineBorder(C_BORDER, 1));
 
 		JLabel titre = new JLabel("  Lots disponibles");
 		titre.setFont(new Font("SansSerif", Font.BOLD, 12));
-		titre.setForeground(C_TEXT);
-		titre.setBackground(C_CARD);
+		titre.setForeground(C_MUTED);
+		titre.setBackground(new Color(236, 239, 245));
 		titre.setOpaque(true);
-		titre.setBorder(new EmptyBorder(8, 8, 8, 8));
+		titre.setBorder(new EmptyBorder(10, 12, 10, 12));
 		col.add(titre, BorderLayout.NORTH);
 
-		String[] cols = {"N°CDE", "Affaire", "Heures"};
+		String[] cols = {"N°CDE", "Nb Pieces", "Heures"};
 		mdlDisp = new DefaultTableModel(cols, 0)
 		{
 			@Override public boolean isCellEditable(int r, int c) { return false; }
@@ -424,22 +428,22 @@ public class PanelSemaineSuivante extends JPanel
 		col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
 		col.setBackground(C_SURFACE);
 		col.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER),
-			new EmptyBorder(10, 10, 10, 10)));
+			BorderFactory.createLineBorder(C_BORDER, 1),
+			new EmptyBorder(14, 14, 14, 14)));
 
 		JLabel titre = new JLabel("Détail & affectation");
-		titre.setFont(new Font("SansSerif", Font.BOLD, 12));
+		titre.setFont(new Font("SansSerif", Font.BOLD, 13));
 		titre.setForeground(C_TEXT);
 		titre.setAlignmentX(Component.LEFT_ALIGNMENT);
 		col.add(titre);
 		col.add(Box.createRigidArea(new Dimension(0, 8)));
 
-		txtInfoLot = new JTextArea("Sélectionnez un lot");
+		txtInfoLot = new JTextArea("Sélectionnez un lot…");
 		txtInfoLot.setEditable(false);
-		txtInfoLot.setFont(new Font("Monospaced", Font.PLAIN, 11));
-		txtInfoLot.setBackground(C_CARD);
+		txtInfoLot.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		txtInfoLot.setBackground(new Color(246, 248, 251));
 		txtInfoLot.setForeground(C_TEXT);
-		txtInfoLot.setBorder(new EmptyBorder(6, 6, 6, 6));
+		txtInfoLot.setBorder(new EmptyBorder(8, 10, 8, 10));
 		txtInfoLot.setLineWrap(true);
 		txtInfoLot.setWrapStyleWord(true);
 		JScrollPane scrollInfo = new JScrollPane(txtInfoLot);
@@ -453,8 +457,9 @@ public class PanelSemaineSuivante extends JPanel
 		col.add(buildLabel("Société"));
 		col.add(Box.createRigidArea(new Dimension(0, 4)));
 		combSoc = new JComboBox<>();
-		combSoc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		combSoc.setBackground(C_CARD);
+		combSoc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+		combSoc.setBackground(Color.WHITE);
+		combSoc.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		// Note : remplirCombSoc() est appelé depuis chargerEtat() après construction
 		combSoc.addActionListener(e -> remplirCombAce());
 		col.add(combSoc);
@@ -463,8 +468,9 @@ public class PanelSemaineSuivante extends JPanel
 		col.add(buildLabel("ACE (optionnel)"));
 		col.add(Box.createRigidArea(new Dimension(0, 4)));
 		combAce = new JComboBox<>();
-		combAce.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		combAce.setBackground(C_CARD);
+		combAce.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+		combAce.setBackground(Color.WHITE);
+		combAce.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		col.add(combAce);
 		col.add(Box.createRigidArea(new Dimension(0, 12)));
 
@@ -492,10 +498,10 @@ public class PanelSemaineSuivante extends JPanel
 
 		JLabel titre = new JLabel("  Lots pré-affectés");
 		titre.setFont(new Font("SansSerif", Font.BOLD, 12));
-		titre.setForeground(C_TEXT);
-		titre.setBackground(C_CARD);
+		titre.setForeground(C_MUTED);
+		titre.setBackground(new Color(220, 252, 231));
 		titre.setOpaque(true);
-		titre.setBorder(new EmptyBorder(8, 8, 8, 8));
+		titre.setBorder(new EmptyBorder(10, 12, 10, 12));
 		col.add(titre, BorderLayout.NORTH);
 
 		String[] cols = {"N°CDE", "Affaire", "Société / ACE"};
@@ -640,7 +646,7 @@ public class PanelSemaineSuivante extends JPanel
 			if (!estAffecte)
 				mdlDisp.addRow(new Object[]{
 					l.getNumCDE(),
-					trunc(l.getAffaire(), 24),
+					l.getNbPieces(),
 					String.format("%.1f", l.getHeures())
 				});
 		}
@@ -773,8 +779,8 @@ public class PanelSemaineSuivante extends JPanel
 		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 		p.setBackground(C_SURFACE);
 		p.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER),
-			new EmptyBorder(12, 14, 12, 14)));
+			BorderFactory.createLineBorder(C_BORDER, 1),
+			new EmptyBorder(16, 18, 16, 18)));
 		p.setAlignmentX(Component.LEFT_ALIGNMENT);
 		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 		return p;
@@ -784,35 +790,66 @@ public class PanelSemaineSuivante extends JPanel
 	{
 		JLabel l = new JLabel(texte);
 		l.setForeground(C_MUTED);
-		l.setFont(new Font("SansSerif", Font.PLAIN, 11));
+		l.setFont(new Font("SansSerif", Font.BOLD, 11));
 		l.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return l;
 	}
 
 	private JButton buildBtn(String texte, Color fond)
 	{
-		JButton b = new JButton(texte);
-		b.setBackground(fond);
+		JButton b = new JButton(texte)
+		{
+			@Override protected void paintComponent(Graphics g)
+			{
+				Graphics2D g2 = (Graphics2D) g.create();
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+					RenderingHints.VALUE_ANTIALIAS_ON);
+				g2.setColor(getModel().isRollover() ? fond.darker() : fond);
+				g2.fill(new java.awt.geom.RoundRectangle2D.Float(
+					0, 0, getWidth(), getHeight(), 8, 8));
+				g2.dispose();
+				super.paintComponent(g);
+			}
+		};
 		b.setForeground(Color.WHITE);
-		b.setFocusPainted(false);
-		b.setBorder(new EmptyBorder(6, 14, 6, 14));
 		b.setFont(new Font("SansSerif", Font.BOLD, 12));
+		b.setFocusPainted(false);
+		b.setBorderPainted(false);
+		b.setContentAreaFilled(false);
+		b.setOpaque(false);
+		b.setBorder(new EmptyBorder(8, 18, 8, 18));
 		b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		return b;
 	}
 
 	private JTable buildTable(DefaultTableModel model)
 	{
-		JTable t = new JTable(model);
-		t.setBackground(C_CARD);
+		JTable t = new JTable(model)
+		{
+			@Override public Component prepareRenderer(
+					javax.swing.table.TableCellRenderer r, int row, int col)
+			{
+				Component c = super.prepareRenderer(r, row, col);
+				if (!isRowSelected(row))
+					c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(246, 248, 251));
+				return c;
+			}
+		};
+		t.setBackground(Color.WHITE);
 		t.setForeground(C_TEXT);
 		t.setGridColor(C_BORDER);
-		t.setRowHeight(22);
-		t.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		t.getTableHeader().setBackground(C_SURFACE);
+		t.setShowVerticalLines(false);
+		t.setShowHorizontalLines(true);
+		t.setRowHeight(28);
+		t.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		t.setIntercellSpacing(new java.awt.Dimension(10, 0));
+		t.getTableHeader().setBackground(new Color(236, 239, 245));
 		t.getTableHeader().setForeground(C_MUTED);
-		t.setSelectionBackground(C_BLUE);
-		t.setSelectionForeground(Color.WHITE);
+		t.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
+		t.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, C_BORDER));
+		t.getTableHeader().setPreferredSize(new java.awt.Dimension(0, 32));
+		t.setSelectionBackground(new Color(219, 234, 254));
+		t.setSelectionForeground(C_TEXT);
 		t.setFillsViewportHeight(true);
 		return t;
 	}
