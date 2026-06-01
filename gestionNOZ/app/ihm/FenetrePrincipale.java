@@ -15,17 +15,11 @@ import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 /**
@@ -54,16 +48,6 @@ public class FenetrePrincipale extends JFrame
 	private PanelDiagrame    panelAuto;
 	private JLabel           lblInfo;
 
-	// Bandeau d'état en haut (visible en mode client)
-	private JPanel  bandeauEtat;
-	private JLabel  lblBandeauTexte;
-	private JButton btnDesync;
-	private JButton btnResync;
-
-	// Items de menu contrôlés
-	private JMenuItem itemOuvrir;
-	private JMenuItem itemNouveaux;
-
 	// ── Constructeur ─────────────────────────────────────────────────────
 
 	public FenetrePrincipale(IControleur ctrl)
@@ -77,7 +61,6 @@ public class FenetrePrincipale extends JFrame
 		setLayout(new BorderLayout());
 		getContentPane().setBackground(IhmUtils.FOND);
 
-		setJMenuBar(creerMenuBar());
 		add(creerEntete(), BorderLayout.NORTH);
 
 		this.panelAffectation = new PanelAffectation(ctrl, this);
@@ -111,88 +94,6 @@ public class FenetrePrincipale extends JFrame
 
 		rafraichirTout();
 		setVisible(true);
-	}
-
-// ── Menu Fichier ──────────────────────────────────────────────────────
-
-	private JMenuBar creerMenuBar()
-	{
-		JMenuBar bar = new JMenuBar();
-		JMenu menuFichier = new JMenu("Fichier");
-		menuFichier.setFont(new Font("SansSerif", Font.PLAIN, 13));
-
-		itemOuvrir      = new JMenuItem("📂  Charger une sauvegarde…");
-		JMenuItem itemSauvegarder = new JMenuItem("💾  Sauvegarder      Ctrl+S");
-		itemNouveaux    = new JMenuItem("🆕  Nouveaux fichiers JSON…");
-
-		itemOuvrir     .addActionListener(e -> ouvrirSauvegarde());
-		itemSauvegarder.addActionListener(e -> sauvegarder());
-		itemNouveaux   .addActionListener(e -> nouveaux());
-
-		itemOuvrir     .setAccelerator(KeyStroke.getKeyStroke("ctrl O"));
-		itemSauvegarder.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
-		itemNouveaux   .setAccelerator(KeyStroke.getKeyStroke("ctrl N"));
-
-		menuFichier.add(itemOuvrir);
-		menuFichier.addSeparator();
-		menuFichier.add(itemSauvegarder);
-		menuFichier.addSeparator();
-		menuFichier.add(itemNouveaux);
-		bar.add(menuFichier);
-		return bar;
-	}
-
-// ── Actions menu ──────────────────────────────────────────────────────
-
-	private void ouvrirSauvegarde()
-	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Ouvrir une sauvegarde JSON");
-		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-		String dossier = fc.getSelectedFile().getAbsolutePath();
-		try
-		{
-			ctrl.chargerDonnees(dossier);
-			if (panelAffectation != null) panelAffectation.remplirComboSocietes();
-			panelFicheRoute.remplirComboSocietes();
-			JOptionPane.showMessageDialog(this,
-				"Sauvegarde chargée : " + fc.getSelectedFile().getName(),
-				"Chargement OK", JOptionPane.INFORMATION_MESSAGE);
-		}
-		catch (Exception ex)
-		{
-			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	private void sauvegarder()
-	{
-		JFileChooser fc = new JFileChooser();
-		fc.setDialogTitle("Copier les fichiers JSON vers…");
-		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		fc.setAcceptAllFileFilterUsed(false);
-		if (fc.showDialog(this, "Copier") != JFileChooser.APPROVE_OPTION) return;
-
-		String dossier = fc.getSelectedFile().getAbsolutePath();
-		String numSemaine = JOptionPane.showInputDialog(
-			this, "Numéro de semaine :", "Sauvegarde — semaine", JOptionPane.PLAIN_MESSAGE);
-		if (numSemaine == null || numSemaine.isBlank()) return;
-
-		try
-		{
-			ctrl.sauvegarderDonnees(dossier, numSemaine.trim());
-			JOptionPane.showMessageDialog(this,
-				"Fichiers copiés vers : " + fc.getSelectedFile().getName(),
-				"Sauvegarde OK", JOptionPane.INFORMATION_MESSAGE);
-		}
-		catch (Exception ex)
-		{
-			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
-		}
 	}
 
 	public void nouveaux()
