@@ -52,7 +52,7 @@ L'application fonctionne en **deux programmes distincts** :
 4. La fenêtre de contrôle du serveur (FenetreServeur) apparaît automatiquement.
 5. Le serveur est prêt dès que vous voyez la ligne :
    ```
-   [Serveur] Démarré sur le port 8080
+   [Serveur] Démarré sur le port 8082
    ```
 
 > 💡 Le serveur **recharge automatiquement les données** de la dernière session au démarrage. Aucune manipulation n'est nécessaire — vous reprenez exactement là où vous vous étiez arrêté.
@@ -99,7 +99,7 @@ Cette fenêtre s'ouvre automatiquement sur le PC serveur. Elle affiche :
 | **Clients connectés** | Nombre de postes clients actuellement actifs |
 | **Heures sup** | Indique si le mode heures supplémentaires est activé |
 | **IP : xxx.xxx.x.xx** | Adresse IP à communiquer aux clients pour se connecter |
-| **● Serveur actif — Port 8080** | Confirmation que le serveur tourne correctement |
+| **● Serveur actif — Port 8082** | Confirmation que le serveur tourne correctement |
 
 ### Boutons disponibles
 
@@ -188,8 +188,8 @@ Pour consulter ou reprendre les données d'une semaine archivée :
 
 ### Port réseau
 
-- Le serveur écoute sur le **port 8080**.
-- Si un pare-feu Windows est actif sur le PC serveur, autorisez le port 8080 en entrée.
+- Le serveur écoute sur le **port 8082**.
+- Si un pare-feu Windows est actif sur le PC serveur, autorisez le port 8082 en entrée.
 
 ### Logs
 
@@ -203,7 +203,7 @@ Tous les événements (connexions, modifications, erreurs) sont affichés dans l
 → Vérifiez que Java est installé (`java -version` dans une invite de commandes). Lisez le message d'erreur dans la console noire.
 
 **Un client ne peut pas se connecter.**
-→ Vérifiez que le serveur est bien démarré et que l'IP saisie est correcte. Sur le PC serveur, ouvrez une invite de commandes et tapez `ipconfig` — utilisez la valeur "Adresse IPv4" de la carte réseau active. Vérifiez aussi que le port 8080 n'est pas bloqué par le pare-feu.
+→ Vérifiez que le serveur est bien démarré et que l'IP saisie est correcte. Sur le PC serveur, ouvrez une invite de commandes et tapez `ipconfig` — utilisez la valeur "Adresse IPv4" de la carte réseau active. Vérifiez aussi que le port 8082 n'est pas bloqué par le pare-feu.
 
 **Le client affiche "Session expirée".**
 → Les tokens durent 4 heures. Relancez le client et reconnectez-vous normalement.

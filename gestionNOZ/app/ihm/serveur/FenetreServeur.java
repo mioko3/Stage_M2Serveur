@@ -410,7 +410,7 @@ public class FenetreServeur extends JFrame
 		JLabel dot = new JLabel("●");
 		dot.setFont(new Font("SansSerif", Font.PLAIN, 10));
 		dot.setForeground(C_GREEN);
-		JLabel txtServeur = new JLabel("Serveur actif — Port 8053");
+		JLabel txtServeur = new JLabel("Serveur actif — Port 8082");
 		txtServeur.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		txtServeur.setForeground(C_MUTED);
 		left.add(dot);
