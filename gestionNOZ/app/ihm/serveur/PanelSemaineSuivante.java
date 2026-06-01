@@ -4,11 +4,9 @@ import app.ServeurHTTP;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
-import app.ihm.IhmUtils;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
@@ -44,9 +42,9 @@ public class PanelSemaineSuivante extends JPanel
 	private final ServeurHTTP serveur;
 
 	// ── État ──────────────────────────────────────────────────────────────
-	private List<Lot>     lotsPrep     = null; // lots de la semaine suivante
-	private List<Societe> socsPrepCopy = null; // sociétés avec pré-affectations
-	private Lot           lotSel       = null; // lot sélectionné dans la liste dispo
+	private ArrayList<Lot>     lotsPrep     = null;
+	private ArrayList<Societe> socsPrepCopy = null;
+	private Lot                lotSel       = null;
 
 	// ── Composants ────────────────────────────────────────────────────────
 	private JLabel          lblEtat;
@@ -69,7 +67,7 @@ public class PanelSemaineSuivante extends JPanel
 	private JTextArea       txtInfoLot;
 
 	// Données temporaires pour l'import avant confirmation
-	private List<Lot>     lotsImportTemp = null;
+	private ArrayList<Lot> lotsImportTemp = null;
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  CONSTRUCTEUR
@@ -184,8 +182,8 @@ public class PanelSemaineSuivante extends JPanel
 	/** Charge l'état depuis le serveur et met à jour l'UI. */
 	public void chargerEtat()
 	{
-		List<Lot>     ls = serveur.getLotsSemaneSuivante();
-		List<Societe> ss = serveur.getSocietesSemaneSuivante();
+		ArrayList<Lot>     ls = serveur.getLotsSemaneSuivante();
+		ArrayList<Societe> ss = serveur.getSocietesSemaneSuivante();
 
 		if (ls != null && !ls.isEmpty())
 		{
@@ -230,7 +228,8 @@ public class PanelSemaineSuivante extends JPanel
 		{
 			try
 			{
-				List<Lot> lots = serveur.lireExcelPourSemaineSuivante(f.getAbsolutePath());
+				// ExcelReader est statique, serveur.lireExcelPourSemaineSuivante retourne ArrayList
+				ArrayList<Lot> lots = serveur.lireExcelPourSemaineSuivante(f.getAbsolutePath());
 				SwingUtilities.invokeLater(() -> {
 					lotsImportTemp = lots;
 					lblPreviewRes.setText("✓ " + lots.size() + " lots lus");
@@ -255,7 +254,7 @@ public class PanelSemaineSuivante extends JPanel
 		if (lotsImportTemp == null) return;
 
 		// Initialiser les sociétés de la semaine suivante (affectations vides)
-		List<Societe> socsVides = copierSocietesVides();
+		ArrayList<Societe> socsVides = copierSocietesVides();
 
 		serveur.sauvegarderSemaneSuivante(lotsImportTemp, socsVides);
 		annulerImport();
@@ -572,7 +571,7 @@ public class PanelSemaineSuivante extends JPanel
 	{
 		combSoc.removeAllItems();
 		combSoc.addItem("");
-		List<Societe> socs = serveur.getSocietes();
+		ArrayList<Societe> socs = serveur.getSocietes();
 		if (socs != null) for (Societe s : socs) combSoc.addItem(s.getNom());
 	}
 
@@ -582,7 +581,7 @@ public class PanelSemaineSuivante extends JPanel
 		combAce.addItem("");
 		String nomSoc = (String) combSoc.getSelectedItem();
 		if (nomSoc == null || nomSoc.isEmpty()) return;
-		List<Societe> socs = serveur.getSocietes();
+		ArrayList<Societe> socs = serveur.getSocietes();
 		if (socs == null) return;
 		for (Societe s : socs)
 			if (s.getNom().equals(nomSoc))
@@ -601,10 +600,10 @@ public class PanelSemaineSuivante extends JPanel
 	//  HELPERS MÉTIER
 	// ══════════════════════════════════════════════════════════════════════
 
-	private List<Societe> copierSocietesVides()
+	private ArrayList<Societe> copierSocietesVides()
 	{
-		List<Societe> socs = serveur.getSocietes();
-		List<Societe> copie = new ArrayList<>();
+		ArrayList<Societe> socs = serveur.getSocietes();
+		ArrayList<Societe> copie = new ArrayList<>();
 		if (socs == null) return copie;
 		for (Societe s : socs)
 		{
@@ -637,7 +636,7 @@ public class PanelSemaineSuivante extends JPanel
 		return null;
 	}
 
-	private int compterAffectes(List<Societe> socs)
+	private int compterAffectes(ArrayList<Societe> socs)
 	{
 		if (socs == null) return 0;
 		int n = 0;

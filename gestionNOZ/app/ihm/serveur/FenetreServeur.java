@@ -82,8 +82,8 @@ public class FenetreServeur extends JFrame
 		add(buildTabs(),   BorderLayout.CENTER);
 		add(buildFooter(), BorderLayout.SOUTH);
 
-		// Timer de rafraîchissement toutes les 2s
-		Timer t = new Timer(2000, e -> refresh());
+		// Timer de rafraîchissement toutes les 2s — javax.swing.Timer explicite
+		javax.swing.Timer t = new javax.swing.Timer(2000, e -> refresh());
 		t.setRepeats(true);
 		t.start();
 
