@@ -1000,9 +1000,22 @@ public class ServeurHTTP
 		try {
 			String chemin = CheminApp.resoudre(DIR_SUIV_LOTS);
 			if (!new File(chemin).exists()) return null;
-			String json = new String(Files.readAllBytes(Paths.get(chemin)), StandardCharsets.UTF_8);
-			return JsonSerialiser.deserialiserLots(json);
-		} catch (Exception e) { return null; }
+
+			// ── CORRECTIF : lire via savDonnees pour déchiffrer si AES actif ──
+			// Avant : Files.readAllBytes() lisait le Base64 chiffré sans déchiffrer
+			// → JsonSerialiser.deserialiserLots() recevait du Base64 → retournait null silencieusement
+			String dossier = Paths.get(chemin).getParent().toString();
+			String nomFichier = Paths.get(chemin).getFileName().toString().replace(".json", "");
+			// Utiliser un PlanningGlobal temporaire pour lire juste les lots
+			app.metier.PlanningGlobal temp = new app.metier.PlanningGlobal();
+			savDonnees.charger(temp, dossier);
+			ArrayList<Lot> lots = temp.getLots();
+			log("[Serveur] Semaine suivante : " + lots.size() + " lots chargés.");
+			return lots.isEmpty() ? null : lots;
+		} catch (Exception e) {
+			log("[ERREUR] getLotsSemaneSuivante : " + e.getMessage());
+			return null;
+		}
 	}
 
 	/** Retourne les sociétés de la semaine suivante. */
@@ -1011,12 +1024,17 @@ public class ServeurHTTP
 		try {
 			String chemin = CheminApp.resoudre(DIR_SUIV_SOCS);
 			if (!new File(chemin).exists()) return null;
-			String json = new String(Files.readAllBytes(Paths.get(chemin)), StandardCharsets.UTF_8);
-			ArrayList<Lot> lotsPrep = getLotsSemaneSuivante();
-			if (lotsPrep == null) lotsPrep = new ArrayList<>();
-			// deserialiserSocietes attend ArrayList
-			return JsonSerialiser.deserialiserSocietes(json, lotsPrep);
-		} catch (Exception e) { return null; }
+
+			// ── CORRECTIF : lire via savDonnees pour déchiffrer si AES actif ──
+			String dossier = Paths.get(chemin).getParent().toString();
+			app.metier.PlanningGlobal temp = new app.metier.PlanningGlobal();
+			savDonnees.charger(temp, dossier);
+			ArrayList<Societe> socs = temp.getSocietes();
+			return socs.isEmpty() ? null : socs;
+		} catch (Exception e) {
+			log("[ERREUR] getSocietesSemaneSuivante : " + e.getMessage());
+			return null;
+		}
 	}
 
 	/** Lit un fichier Excel pour préparer la semaine suivante. */
@@ -1229,11 +1247,12 @@ public class ServeurHTTP
 	private void save()
 	{
 		try { savDonnees.sauvegarderLots(metier.getLots(), cheminLotsJson); }
-		catch (Exception ignored) {}
+		catch (Exception e) { log("[ERREUR] Sauvegarde lots échouée : " + e.getMessage()); }
 		try { savDonnees.sauvegarderSocietes(metier.getSocietes(), metier.getLots(), cheminSocietesJson); }
-		catch (Exception ignored) {}
+		catch (Exception e) { log("[ERREUR] Sauvegarde sociétés échouée : " + e.getMessage()); }
 		versionDonnees = System.currentTimeMillis();
 	}
+
 
 	private void detecterSemaineActive()
 	{
