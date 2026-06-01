@@ -1049,21 +1049,22 @@ public class ServeurHTTP
 		String cheminL = CheminApp.resoudre(DIR_SUIV_LOTS);
 		if (!new File(cheminL).exists()) throw new Exception("Aucune semaine suivante préparée.");
 
-		ArrayList<Lot> nouveauxLots = ExcelReader.lireLots(cheminL);
-		ArrayList<Societe> nouvSocs = null;
-		String cheminS = CheminApp.resoudre(DIR_SUIV_SOCS);
-		if (new File(cheminS).exists())
-			nouvSocs = ExcelReader.lireSocietes(cheminS, nouveauxLots);
+		ArrayList<Lot> nouveauxLots = getLotsSemaneSuivante();
+		ArrayList<Societe> nouvSocs = getSocietesSemaneSuivante();
 
 		// Remplacer la semaine courante
 		metier.setLots(nouveauxLots);
-		if (nouvSocs != null)
+		if (nouvSocs != null && !nouvSocs.isEmpty())
+		{
 			metier.setSocietes(nouvSocs);
+		}
 		else
+		{
 			for (Societe s : metier.getSocietes()) {
 				s.getLots().clear();
 				for (Ace a : s.getAces()) a.getLots().clear();
 			}
+		}
 
 		save();
 		detecterSemaineActive();

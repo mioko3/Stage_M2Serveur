@@ -93,22 +93,22 @@ Les données sont **sauvegardées automatiquement en permanence** — vous pouve
 
 Cette fenêtre s'ouvre automatiquement sur le PC serveur. Elle affiche :
 
-| Indicateur | Signification |
-|---|---|
-| **Semaine active** | Numéro de la semaine en cours de travail |
-| **Clients connectés** | Nombre de postes clients actuellement actifs |
-| **Heures sup** | Indique si le mode heures supplémentaires est activé |
-| **IP : xxx.xxx.x.xx** | Adresse IP à communiquer aux clients pour se connecter |
-| **● Serveur actif — Port 8082** | Confirmation que le serveur tourne correctement |
+|            Indicateur           |                    Signification                       |
+|---------------------------------|--------------------------------------------------------|
+|        **Semaine active**       |         Numéro de la semaine en cours de travail       |
+|      **Clients connectés**      |        Nombre de postes clients actuellement actifs    |
+|          **Heures sup**         |  Indique si le mode heures supplémentaires est activé  |
+|       **IP : xxx.xxx.x.xx**     | Adresse IP à communiquer aux clients pour se connecter |
+| **● Serveur actif — Port 8082** |     Confirmation que le serveur tourne correctement    |
 
 ### Boutons disponibles
 
-| Bouton | Action |
-|---|---|
-| **Charger une semaine** | Charge les données d'une semaine archivée (dossier `S17/`, `S18/`…) |
-| **Nouvelle semaine** | Importe un nouveau fichier Excel de planning |
-| **Sauvegarder** | Archive les données de la semaine dans un sous-dossier par numéro |
-| **Heures sup** | Active ou désactive le mode heures supplémentaires |
+|          Bouton         |                                 Action                              |
+|-------------------------|---------------------------------------------------------------------|
+| **Charger une semaine** | Charge les données d'une semaine archivée (dossier `S17/`, `S18 `…) |
+|  **Nouvelle semaine**   |            Importe un nouveau fichier Excel de planning             |
+|     **Sauvegarder**     |  Archive les données de la semaine dans un sous-dossier par numéro  |
+|      **Heures sup**     |          Active ou désactive le mode heures supplémentaires         |
 
 ---
 

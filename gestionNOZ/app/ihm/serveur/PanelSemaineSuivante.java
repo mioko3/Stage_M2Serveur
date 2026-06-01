@@ -195,6 +195,12 @@ public class PanelSemaineSuivante extends JPanel
 
 			construireZoneAffectation();
 			panelAff.setVisible(true);
+			
+			// Forcer le repaint du parent (ScrollPane)
+			SwingUtilities.invokeLater(() -> {
+				PanelSemaineSuivante.this.revalidate();
+				PanelSemaineSuivante.this.repaint();
+			});
 		}
 		else
 		{
@@ -578,8 +584,8 @@ public class PanelSemaineSuivante extends JPanel
 	{
 		combSoc.removeAllItems();
 		combSoc.addItem("");
-		ArrayList<Societe> socs = serveur.getSocietes();
-		if (socs != null) for (Societe s : socs) combSoc.addItem(s.getNom());
+		if (socsPrepCopy != null)
+			for (Societe s : socsPrepCopy) combSoc.addItem(s.getNom());
 	}
 
 	private void remplirCombAce()
@@ -588,9 +594,8 @@ public class PanelSemaineSuivante extends JPanel
 		combAce.addItem("");
 		String nomSoc = (String) combSoc.getSelectedItem();
 		if (nomSoc == null || nomSoc.isEmpty()) return;
-		ArrayList<Societe> socs = serveur.getSocietes();
-		if (socs == null) return;
-		for (Societe s : socs)
+		if (socsPrepCopy == null) return;
+		for (Societe s : socsPrepCopy)
 			if (s.getNom().equals(nomSoc))
 				for (Ace a : s.getAces()) combAce.addItem(a.getNom());
 	}
