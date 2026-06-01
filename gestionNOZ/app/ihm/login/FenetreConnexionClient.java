@@ -2,31 +2,30 @@ package app.ihm.login;
 
 import app.ControleurClient;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 /**
- * Fenêtre de connexion RÉSEAU — SÉCURISÉE v3.
+ * ══════════════════════════════════════════════════════════════
+ *  FenetreConnexionClient — v4 avec mot de passe + création compte
  *
- * Changements de sécurité vs v2 :
- *   - N'expose plus /societes pour valider l'identifiant côté client
- *   - Appelle POST /login sur le serveur → validation CÔTÉ SERVEUR
- *   - Reçoit un token de session opaque
- *   - Transmet le token au ControleurClient (jamais stocké sur disque)
- *   - Affiche un message générique en cas d'échec (pas d'info sur l'existence de l'identifiant)
+ *  Identique au panneau web :
+ *   - Champ identifiant
+ *   - Champ mot de passe (masqué)
+ *   - Bouton SE CONNECTER
+ *   - Lien "Créer un compte" → FenetreCreationCompte
+ * ══════════════════════════════════════════════════════════════
  */
 public class FenetreConnexionClient extends JFrame implements ActionListener
 {
 	private JTextField     txtIP;
 	private JTextField     txtIdentifiant;
+	private JPasswordField txtMdp;
 	private JButton        btnConnecter;
 	private JLabel         lblStatut;
 
@@ -34,13 +33,16 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 	{
 		setTitle("Planning Global Futura — Connexion Réseau");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(440, 380);
+		setSize(440, 420);
 		setLocationRelativeTo(null);
 		setResizable(false);
 		setLayout(new BorderLayout());
 		getContentPane().setBackground(new Color(18, 18, 28));
 		add(construireCarte(), BorderLayout.CENTER);
 		setVisible(true);
+
+		// Focus sur identifiant au démarrage
+		SwingUtilities.invokeLater(() -> txtIdentifiant.requestFocusInWindow());
 	}
 
 	private JPanel construireCarte()
@@ -49,7 +51,7 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		fond.setBackground(new Color(18, 18, 28));
 
 		JPanel carte = new JPanel();
-		carte.setPreferredSize(new Dimension(390, 340));
+		carte.setPreferredSize(new Dimension(390, 390));
 		carte.setBackground(new Color(28, 28, 40));
 		carte.setLayout(new BoxLayout(carte, BoxLayout.Y_AXIS));
 		carte.setBorder(new EmptyBorder(28, 40, 28, 40));
@@ -63,12 +65,20 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		carte.add(Box.createRigidArea(new Dimension(0, 22)));
 
 		// Identifiant
-		carte.add(champLabel("Identifiant (PAM ou nom de société) :"));
+		carte.add(champLabel("Identifiant :"));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
 		txtIdentifiant = champTexte("");
 		txtIdentifiant.addActionListener(this);
 		carte.add(txtIdentifiant);
-		carte.add(Box.createRigidArea(new Dimension(0, 14)));
+		carte.add(Box.createRigidArea(new Dimension(0, 12)));
+
+		// Mot de passe
+		carte.add(champLabel("Mot de passe :"));
+		carte.add(Box.createRigidArea(new Dimension(0, 6)));
+		txtMdp = champPassword();
+		txtMdp.addActionListener(this);
+		carte.add(txtMdp);
+		carte.add(Box.createRigidArea(new Dimension(0, 12)));
 
 		// IP
 		carte.add(champLabel("IP du serveur (ex: 192.168.1.10) :"));
@@ -76,9 +86,9 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		txtIP = champTexte("localhost");
 		txtIP.addActionListener(this);
 		carte.add(txtIP);
-		carte.add(Box.createRigidArea(new Dimension(0, 14)));
+		carte.add(Box.createRigidArea(new Dimension(0, 16)));
 
-		// Bouton
+		// Bouton connexion
 		btnConnecter = new JButton("SE CONNECTER");
 		btnConnecter.setAlignmentX(Component.CENTER_ALIGNMENT);
 		btnConnecter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
@@ -97,6 +107,31 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		lblStatut.setForeground(new Color(255, 120, 120));
 		lblStatut.setFont(new Font("SansSerif", Font.ITALIC, 12));
 		carte.add(lblStatut);
+		carte.add(Box.createRigidArea(new Dimension(0, 12)));
+
+		// Séparateur
+		JSeparator sep = new JSeparator();
+		sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+		sep.setForeground(new Color(60, 60, 80));
+		carte.add(sep);
+		carte.add(Box.createRigidArea(new Dimension(0, 10)));
+
+		// Lien création compte
+		JLabel lienCreer = new JLabel("<html>Pas encore de compte ? <u style='color:#7aa4ff'>Créer un compte</u></html>");
+		lienCreer.setAlignmentX(Component.CENTER_ALIGNMENT);
+		lienCreer.setForeground(new Color(150, 150, 180));
+		lienCreer.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		lienCreer.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		lienCreer.addMouseListener(new MouseAdapter()
+		{
+			@Override public void mouseClicked(MouseEvent e)
+			{
+				String ip = txtIP.getText().trim();
+				if (ip.isEmpty()) ip = "localhost";
+				new FenetreCreationCompte(FenetreConnexionClient.this, ip);
+			}
+		});
+		carte.add(lienCreer);
 
 		fond.add(carte);
 		return fond;
@@ -109,18 +144,21 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 	{
 		String ip          = txtIP.getText().trim();
 		String identifiant = txtIdentifiant.getText().trim().toUpperCase();
+		String mdp         = new String(txtMdp.getPassword());
 
-		if (ip.isEmpty())          { lblStatut.setText("Entrez une adresse IP.");  return; }
-		if (identifiant.isEmpty()) { lblStatut.setText("Entrez un identifiant."); return; }
+		if (ip.isEmpty())          { setStatut("Entrez une adresse IP.", true);  return; }
+		if (identifiant.isEmpty()) { setStatut("Entrez un identifiant.", true);  return; }
+		if (mdp.isEmpty())         { setStatut("Entrez un mot de passe.", true); return; }
 
-		lblStatut.setText("Connexion en cours…");
-		lblStatut.setForeground(new Color(180, 180, 100));
+		setStatut("Connexion en cours…", false);
 		btnConnecter.setEnabled(false);
 		txtIP.setEnabled(false);
 		txtIdentifiant.setEnabled(false);
+		txtMdp.setEnabled(false);
 
 		final String ipFinal  = ip;
 		final String idFinal  = identifiant;
+		final String mdpFinal = mdp;
 
 		new Thread(() ->
 		{
@@ -129,10 +167,9 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 				HttpClient http = HttpClient.newBuilder()
 					.connectTimeout(Duration.ofSeconds(5)).build();
 
-				// ── SÉCURITÉ : appel /login côté SERVEUR ───────────────────
-				// Le serveur valide l'identifiant et retourne un token de session.
-				// Aucune donnée métier n'est exposée avant authentification.
-				String corpsLogin = "{\"identifiant\":" + escJson(idFinal) + "}";
+				// POST /login avec identifiant + motDePasse
+				String corpsLogin = "{\"identifiant\":" + escJson(idFinal)
+					+ ",\"motDePasse\":" + escJson(mdpFinal) + "}";
 
 				HttpRequest reqLogin = HttpRequest.newBuilder()
 					.uri(URI.create("http://" + ipFinal + ":8082/login"))
@@ -143,16 +180,19 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 
 				HttpResponse<String> resp = http.send(reqLogin, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
-				// Gestion des erreurs de connexion
 				if (resp.statusCode() == 429)
 				{
 					setStatut("Trop de tentatives. Réessayez dans 5 minutes.", true);
 					return;
 				}
+				if (resp.statusCode() == 403)
+				{
+					setStatut("Compte en attente de validation par un admin.", true);
+					return;
+				}
 				if (resp.statusCode() == 401)
 				{
-					// Message générique : ne révèle pas si l'identifiant existe ou non
-					setStatut("Identifiant non reconnu.", true);
+					setStatut("Identifiant ou mot de passe incorrect.", true);
 					return;
 				}
 				if (resp.statusCode() != 200)
@@ -161,10 +201,9 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 					return;
 				}
 
-				// ── Extraction du token et des droits ──────────────────────
-				String corps      = resp.body();
-				String token      = extraireChaine(corps, "token");
-				boolean accesPAM  = corps.contains("\"accesPAM\":true");
+				String corps     = resp.body();
+				String token     = extraireChaine(corps, "token");
+				boolean accesPAM = corps.contains("\"accesPAM\":true");
 
 				if (token == null || token.isBlank())
 				{
@@ -172,9 +211,8 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 					return;
 				}
 
-				// ── Lancer l'application avec le token ─────────────────────
-				final String  tokenFinal     = token;
-				final boolean accesPAMFinal  = accesPAM;
+				final String  tokenFinal    = token;
+				final boolean accesPAMFinal = accesPAM;
 
 				SwingUtilities.invokeLater(() -> {
 					dispose();
@@ -200,39 +238,32 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 			btnConnecter.setEnabled(true);
 			txtIP.setEnabled(true);
 			txtIdentifiant.setEnabled(true);
+			txtMdp.setEnabled(true);
 		});
 	}
 
-	/**
-	 * Extrait la valeur d'une clé JSON simple (chaîne de caractères).
-	 * Ex: {"token":"abc123"} avec clé "token" → "abc123"
-	 */
-	private String extraireChaine(String json, String cle)
+	// ── Helpers ───────────────────────────────────────────────────────────
+
+	private static String extraireChaine(String json, String cle)
 	{
-		String pattern = "\"" + cle + "\":\"";
-		int pos = json.indexOf(pattern);
+		String p = "\"" + cle + "\":\"";
+		int pos = json.indexOf(p);
 		if (pos < 0) return null;
-		pos += pattern.length();
+		pos += p.length();
 		int end = json.indexOf('"', pos);
-		if (end < 0) return null;
-		return json.substring(pos, end);
+		return end < 0 ? null : json.substring(pos, end);
 	}
 
-	/**
-	 * Échappe une chaîne pour l'inclure dans du JSON.
-	 */
-	private String escJson(String s)
+	private static String escJson(String s)
 	{
 		if (s == null) return "\"\"";
 		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
 	}
 
-	// ── Helpers UI ────────────────────────────────────────────────────────
-
 	private JLabel champLabel(String texte)
 	{
 		JLabel l = new JLabel(texte);
-		l.setAlignmentX(Component.CENTER_ALIGNMENT);
+		l.setAlignmentX(Component.LEFT_ALIGNMENT);
 		l.setForeground(Color.WHITE);
 		l.setFont(new Font("SansSerif", Font.BOLD, 12));
 		return l;
@@ -242,14 +273,30 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 	{
 		JTextField tf = new JTextField(defaut);
 		tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+		tf.setAlignmentX(Component.LEFT_ALIGNMENT);
 		tf.setBackground(new Color(40, 40, 55));
 		tf.setForeground(Color.WHITE);
 		tf.setCaretColor(Color.WHITE);
-		tf.setHorizontalAlignment(JTextField.CENTER);
-		tf.setFont(new Font("SansSerif", Font.PLAIN, 14));
+		tf.setHorizontalAlignment(JTextField.LEFT);
+		tf.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		tf.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(new Color(70, 70, 100), 2),
-			new EmptyBorder(5, 10, 5, 10)));
+			BorderFactory.createLineBorder(new Color(70, 70, 100), 1),
+			new EmptyBorder(4, 8, 4, 8)));
 		return tf;
+	}
+
+	private JPasswordField champPassword()
+	{
+		JPasswordField pf = new JPasswordField();
+		pf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+		pf.setAlignmentX(Component.LEFT_ALIGNMENT);
+		pf.setBackground(new Color(40, 40, 55));
+		pf.setForeground(Color.WHITE);
+		pf.setCaretColor(Color.WHITE);
+		pf.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		pf.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(new Color(70, 70, 100), 1),
+			new EmptyBorder(4, 8, 4, 8)));
+		return pf;
 	}
 }

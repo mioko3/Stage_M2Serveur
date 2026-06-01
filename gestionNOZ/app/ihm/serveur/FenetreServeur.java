@@ -1,56 +1,68 @@
 package app.ihm.serveur;
 
 import app.ServeurHTTP;
+import app.securite.GestionComptes;
 import java.awt.*;
+import java.awt.event.*;
 import java.io.File;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Enumeration;
+import java.net.*;
+import java.util.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  FenetreServeur — IHM de contrôle côté SERVEUR uniquement.
+ *  FenetreServeur — v4 avec demandes de comptes + semaine suivante
  *
- *  Design : tableau de bord industriel sombre, cartes aérées,
- *  indicateurs visuels colorés, hiérarchie claire.
+ *  Nouveautés :
+ *   - Onglet "Demandes" : approuver / refuser les comptes en attente
+ *     (badge rouge si demandes présentes — identique au web)
+ *   - Bouton "Semaine suivante" → ouvre PanelSemaineSuivante
+ *   - Port affiché corrigé : 8082 partout
  * ══════════════════════════════════════════════════════════════
  */
 public class FenetreServeur extends JFrame
 {
 	private final ServeurHTTP serveur;
 
-	// Labels dynamiques
+	// ── Labels dynamiques ─────────────────────────────────────────────────
 	private JLabel lblSemaine;
 	private JLabel lblHeureSup;
 	private JLabel lblClients;
 	private JLabel lblIP;
 
-	// ── Palette ──────────────────────────────────────────────
-	private static final Color C_BG         = new Color(15, 17, 26);
-	private static final Color C_SURFACE    = new Color(24, 27, 40);
-	private static final Color C_CARD       = new Color(30, 34, 50);
-	private static final Color C_BORDER     = new Color(50, 55, 78);
-	private static final Color C_BLUE       = new Color(64, 128, 230);
-	private static final Color C_GREEN      = new Color(38, 168, 90);
-	private static final Color C_ORANGE     = new Color(210, 140, 30);
-	private static final Color C_RED        = new Color(210, 65, 65);
-	private static final Color C_TEXT       = new Color(215, 220, 235);
-	private static final Color C_MUTED      = new Color(120, 128, 155);
-	private static final Color C_ACCENT     = new Color(100, 160, 255);
+	// ── Palette ───────────────────────────────────────────────────────────
+	private static final Color C_BG      = new Color(15, 17, 26);
+	private static final Color C_SURFACE = new Color(24, 27, 40);
+	private static final Color C_CARD    = new Color(30, 34, 50);
+	private static final Color C_BORDER  = new Color(50, 55, 78);
+	private static final Color C_BLUE    = new Color(64, 128, 230);
+	private static final Color C_GREEN   = new Color(38, 168, 90);
+	private static final Color C_ORANGE  = new Color(210, 140, 30);
+	private static final Color C_RED     = new Color(210, 65, 65);
+	private static final Color C_TEXT    = new Color(215, 220, 235);
+	private static final Color C_MUTED   = new Color(120, 128, 155);
+	private static final Color C_ACCENT  = new Color(100, 160, 255);
 
-	// ── Constructeur ─────────────────────────────────────────
+	// ── Onglets ───────────────────────────────────────────────────────────
+	private JTabbedPane tabs;
+	private JPanel      panelDemandesContenu;
+	private JLabel      lblBadgeDemandes;
+	private PanelSemaineSuivante panelSemSuiv;
+
+	// ══════════════════════════════════════════════════════════════════════
+	//  CONSTRUCTEUR
+	// ══════════════════════════════════════════════════════════════════════
+
 	public FenetreServeur(ServeurHTTP serveur)
 	{
 		this.serveur = serveur;
 
-		setTitle("Serveur gestionNOZ — Panneau de contrôle");
+		setTitle("Serveur Planning Global Futura — Panneau de contrôle");
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		addWindowListener(new java.awt.event.WindowAdapter()
+		addWindowListener(new WindowAdapter()
 		{
-			@Override public void windowClosing(java.awt.event.WindowEvent e)
+			@Override public void windowClosing(WindowEvent e)
 			{
 				int r = JOptionPane.showConfirmDialog(FenetreServeur.this,
 					"Arrêter le serveur ?\nTous les clients seront déconnectés.",
@@ -59,17 +71,18 @@ public class FenetreServeur extends JFrame
 			}
 		});
 
-		setSize(780, 600);
-		setMinimumSize(new Dimension(520, 500));
+		setSize(820, 650);
+		setMinimumSize(new Dimension(600, 500));
 		setLocationRelativeTo(null);
 		setResizable(true);
 		getContentPane().setBackground(C_BG);
 		setLayout(new BorderLayout(0, 0));
 
-		add(buildHeader(),  BorderLayout.NORTH);
-		add(buildScroll(),  BorderLayout.CENTER);
-		add(buildFooter(),  BorderLayout.SOUTH);
+		add(buildHeader(), BorderLayout.NORTH);
+		add(buildTabs(),   BorderLayout.CENTER);
+		add(buildFooter(), BorderLayout.SOUTH);
 
+		// Timer de rafraîchissement toutes les 2s
 		Timer t = new Timer(2000, e -> refresh());
 		t.setRepeats(true);
 		t.start();
@@ -78,9 +91,9 @@ public class FenetreServeur extends JFrame
 		refresh();
 	}
 
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 	//  HEADER
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 
 	private JPanel buildHeader()
 	{
@@ -90,188 +103,149 @@ public class FenetreServeur extends JFrame
 			BorderFactory.createMatteBorder(0, 0, 1, 0, C_BORDER),
 			new EmptyBorder(18, 24, 18, 24)));
 
-		// Titre + sous-titre
+		// Titre
 		JPanel left = new JPanel();
 		left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
 		left.setOpaque(false);
-
 		JLabel titre = new JLabel("Panneau de contrôle");
 		titre.setFont(new Font("SansSerif", Font.BOLD, 20));
 		titre.setForeground(C_TEXT);
-
-		JLabel sous = new JLabel("Serveur gestionNOZ — Planning Global Futura");
+		JLabel sous = new JLabel("Serveur Planning Global Futura");
 		sous.setFont(new Font("SansSerif", Font.PLAIN, 12));
 		sous.setForeground(C_MUTED);
-
 		left.add(titre);
 		left.add(Box.createVerticalStrut(3));
 		left.add(sous);
 
-		// Indicateur live
-		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+		// Indicateurs
+		JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 0));
+		right.setOpaque(false);
+
+		// Semaine
+		JPanel cardSem = buildIndicateur("Semaine active", "");
+		lblSemaine = (JLabel) ((JPanel) cardSem.getComponent(1)).getComponent(0);
+		right.add(cardSem);
+
+		// Clients
+		JPanel cardCli = buildIndicateur("Clients connectés", "0");
+		lblClients = (JLabel) ((JPanel) cardCli.getComponent(1)).getComponent(0);
+		right.add(cardCli);
+
+		// Heures sup
+		JPanel cardHS = buildIndicateur("Heures sup", "non");
+		lblHeureSup = (JLabel) ((JPanel) cardHS.getComponent(1)).getComponent(0);
+		right.add(cardHS);
+
+		// Indicateur EN LIGNE
+		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
 		live.setOpaque(false);
 		JLabel dot = new JLabel("●");
 		dot.setFont(new Font("SansSerif", Font.PLAIN, 10));
 		dot.setForeground(C_GREEN);
-		JLabel liveLabel = new JLabel("EN LIGNE");
-		liveLabel.setFont(new Font("SansSerif", Font.BOLD, 11));
-		liveLabel.setForeground(C_GREEN);
-		live.add(dot);
-		live.add(liveLabel);
+		JLabel lbl = new JLabel("EN LIGNE");
+		lbl.setFont(new Font("SansSerif", Font.BOLD, 11));
+		lbl.setForeground(C_GREEN);
+		live.add(dot); live.add(lbl);
+		right.add(live);
 
-		p.add(left, BorderLayout.WEST);
-		p.add(live, BorderLayout.EAST);
+		p.add(left,  BorderLayout.WEST);
+		p.add(right, BorderLayout.EAST);
 		return p;
 	}
 
-	// ══════════════════════════════════════════════════════════
-	//  SCROLL PRINCIPAL
-	// ══════════════════════════════════════════════════════════
-
-	private JScrollPane buildScroll()
-	{
-		JPanel corps = new JPanel();
-		corps.setBackground(C_BG);
-		corps.setLayout(new BoxLayout(corps, BoxLayout.Y_AXIS));
-		corps.setBorder(new EmptyBorder(20, 20, 20, 20));
-
-		// ── Rangée de tuiles statut ───────────────────────────
-		corps.add(buildSectionLabel("ÉTAT ACTUEL"));
-		corps.add(Box.createVerticalStrut(10));
-		corps.add(buildTuiles());
-		corps.add(Box.createVerticalStrut(24));
-
-		// ── Semaine ───────────────────────────────────────────
-		corps.add(buildSectionLabel("SEMAINE DE TRAVAIL"));
-		corps.add(Box.createVerticalStrut(10));
-		corps.add(buildCardSemaine());
-		corps.add(Box.createVerticalStrut(24));
-
-		// ── Sauvegarde ────────────────────────────────────────
-		corps.add(buildSectionLabel("SAUVEGARDE"));
-		corps.add(Box.createVerticalStrut(10));
-		corps.add(buildCardSauvegarde());
-		corps.add(Box.createVerticalStrut(24));
-
-		// ── Heures sup ────────────────────────────────────────
-		corps.add(buildSectionLabel("HEURES SUPPLÉMENTAIRES"));
-		corps.add(Box.createVerticalStrut(10));
-		corps.add(buildCardHeuresSup());
-		corps.add(Box.createVerticalGlue());
-
-		JScrollPane scroll = new JScrollPane(corps,
-			JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-			JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		scroll.getVerticalScrollBar().setUnitIncrement(20);
-		scroll.setBorder(BorderFactory.createEmptyBorder());
-		scroll.getViewport().setBackground(C_BG);
-		// Style scrollbar
-		scroll.getVerticalScrollBar().setBackground(C_BG);
-		return scroll;
-	}
-
-	// ── Label de section ──────────────────────────────────────
-	private JLabel buildSectionLabel(String texte)
-	{
-		JLabel l = new JLabel(texte);
-		l.setFont(new Font("SansSerif", Font.BOLD, 10));
-		l.setForeground(C_MUTED);
-		l.setAlignmentX(Component.LEFT_ALIGNMENT);
-		// Lettre espacée style "CAPS LABEL"
-		return l;
-	}
-
-	// ══════════════════════════════════════════════════════════
-	//  TUILES STATUT (rangée du haut)
-	// ══════════════════════════════════════════════════════════
-
-	private JPanel buildTuiles()
-	{
-		JPanel row = new JPanel(new GridLayout(1, 3, 12, 0));
-		row.setOpaque(false);
-		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-		row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		// Semaine active
-		JPanel tSemaine = buildTuile("SEMAINE", "—", C_ACCENT);
-		lblSemaine = getTuileValeur(tSemaine);
-		row.add(tSemaine);
-
-		// Clients connectés
-		JPanel tClients = buildTuile("CLIENTS", "0", C_GREEN);
-		lblClients = getTuileValeur(tClients);
-		row.add(tClients);
-
-		// Heures sup
-		JPanel tHS = buildTuile("HEURES SUP", "non", C_ORANGE);
-		lblHeureSup = getTuileValeur(tHS);
-		row.add(tHS);
-
-		return row;
-	}
-
-	private JPanel buildTuile(String label, String valeurInit, Color accent)
+	private JPanel buildIndicateur(String label, String valeur)
 	{
 		JPanel p = new JPanel();
 		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 		p.setBackground(C_CARD);
 		p.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 3, 0, 0, accent),
-				BorderFactory.createLineBorder(C_BORDER, 1)),
-			new EmptyBorder(12, 14, 12, 14)));
+			BorderFactory.createLineBorder(C_BORDER),
+			new EmptyBorder(6, 12, 6, 12)));
 
 		JLabel lbl = new JLabel(label);
-		lbl.setFont(new Font("SansSerif", Font.BOLD, 10));
+		lbl.setFont(new Font("SansSerif", Font.PLAIN, 10));
 		lbl.setForeground(C_MUTED);
-		lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+		lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-		JLabel val = new JLabel(valeurInit);
+		JPanel valPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+		valPanel.setOpaque(false);
+		JLabel val = new JLabel(valeur);
 		val.setFont(new Font("SansSerif", Font.BOLD, 18));
-		val.setForeground(accent);
-		val.setAlignmentX(Component.LEFT_ALIGNMENT);
-		val.setName("valeur"); // pour récupération via getTuileValeur
+		val.setForeground(C_ACCENT);
+		valPanel.add(val);
 
 		p.add(lbl);
-		p.add(Box.createVerticalStrut(6));
-		p.add(val);
+		p.add(valPanel);
 		return p;
 	}
 
-	/** Récupère le JLabel "valeur" d'une tuile par son nom. */
-	private JLabel getTuileValeur(JPanel tuile)
+	// ══════════════════════════════════════════════════════════════════════
+	//  ONGLETS
+	// ══════════════════════════════════════════════════════════════════════
+
+	private JTabbedPane buildTabs()
 	{
-		for (Component c : tuile.getComponents())
-			if (c instanceof JLabel && "valeur".equals(c.getName()))
-				return (JLabel) c;
-		return new JLabel(); // fallback
+		tabs = new JTabbedPane();
+		tabs.setBackground(C_BG);
+		tabs.setForeground(C_TEXT);
+		tabs.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+		// Onglet Opérations
+		tabs.addTab("⚙ Opérations", buildPanelOperations());
+
+		// Onglet Semaine suivante
+		panelSemSuiv = new PanelSemaineSuivante(serveur);
+		tabs.addTab("📅 Semaine suivante", panelSemSuiv);
+
+		// Onglet Demandes de comptes (avec badge)
+		tabs.addTab("👤 Demandes", buildPanelDemandes());
+
+		// Rafraîchir le panel semaine quand on clique dessus
+		tabs.addChangeListener(e -> {
+			if (tabs.getSelectedIndex() == 1 && panelSemSuiv != null)
+				panelSemSuiv.chargerEtat();
+			if (tabs.getSelectedIndex() == 2)
+				rafraichirDemandes();
+		});
+
+		return tabs;
 	}
 
-	// ══════════════════════════════════════════════════════════
-	//  CARDS ACTIONS
-	// ══════════════════════════════════════════════════════════
+	// ── Onglet Opérations ─────────────────────────────────────────────────
 
-	private JPanel buildCardSemaine()
+	private JScrollPane buildPanelOperations()
+	{
+		JPanel root = new JPanel();
+		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
+		root.setBackground(C_BG);
+		root.setBorder(new EmptyBorder(14, 16, 14, 16));
+
+		root.add(buildCardGestion());
+		root.add(Box.createRigidArea(new Dimension(0, 12)));
+		root.add(buildCardSauvegarde());
+		root.add(Box.createRigidArea(new Dimension(0, 12)));
+		root.add(buildCardHeuresSup());
+
+		JScrollPane scroll = new JScrollPane(root);
+		scroll.setBorder(null);
+		scroll.getViewport().setBackground(C_BG);
+		return scroll;
+	}
+
+	private JPanel buildCardGestion()
 	{
 		JPanel card = buildCard();
 
-		// Bouton charger
-		JPanel rowCharger = buildActionRow(
-			"📂", "Charger une semaine sauvegardée",
-			"Bascule tous les clients sur les données du dossier choisi.",
-			"Charger…", C_BLUE,
-			e -> chargerSemaine());
-		card.add(rowCharger);
-
+		// Charger semaine
+		card.add(buildActionRow("📂", "Charger une semaine archivée",
+			"Recharge les données d'une semaine précédente (dossier S17/, S18/…).",
+			"Charger…", C_BLUE, e -> chargerSemaine()));
 		card.add(buildSeparateur());
 
-		// Bouton nouvelle semaine
-		JPanel rowNouveau = buildActionRow(
-			"🆕", "Nouvelle semaine (import Excel)",
+		// Nouvelle semaine
+		card.add(buildActionRow("🆕", "Nouvelle semaine (import Excel)",
 			"Importe un fichier XLSX et réinitialise les données serveur.",
-			"Importer…", C_ORANGE,
-			e -> nouvelleSemaine());
-		card.add(rowNouveau);
+			"Importer…", C_ORANGE, e -> nouvelleSemaine()));
 
 		return card;
 	}
@@ -279,144 +253,201 @@ public class FenetreServeur extends JFrame
 	private JPanel buildCardSauvegarde()
 	{
 		JPanel card = buildCard();
-
-		JPanel row = buildActionRow(
-			"💾", "Sauvegarder la semaine courante",
+		card.add(buildActionRow("💾", "Sauvegarder la semaine courante",
 			"Crée un snapshot dans app/data/enregistrementparsemaine/.",
-			"Sauvegarder…", C_GREEN,
-			e -> sauvegarder());
-		card.add(row);
-
+			"Sauvegarder…", C_GREEN, e -> sauvegarder()));
 		return card;
 	}
 
 	private JPanel buildCardHeuresSup()
 	{
 		JPanel card = buildCard();
-
-		JPanel row = buildActionRow(
-			"⏱", "Activer / Désactiver les heures supplémentaires",
-			"Tous les clients se synchronisent automatiquement dans les 3 secondes.",
-			"Basculer", C_ORANGE,
-			e -> toggleHeuresSup());
-		card.add(row);
-
+		card.add(buildActionRow("⏱", "Activer / Désactiver les heures supplémentaires",
+			"Tous les clients se synchronisent dans les 3 secondes.",
+			"Basculer", C_ORANGE, e -> toggleHeuresSup()));
 		return card;
 	}
 
-	// ── Conteneur carte ───────────────────────────────────────
-	private JPanel buildCard()
+	// ── Onglet Demandes ───────────────────────────────────────────────────
+
+	private JPanel buildPanelDemandes()
 	{
-		JPanel p = new JPanel();
-		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-		p.setBackground(C_CARD);
+		JPanel root = new JPanel(new BorderLayout());
+		root.setBackground(C_BG);
+		root.setBorder(new EmptyBorder(14, 16, 14, 16));
+
+		// Titre + badge
+		JPanel titreRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+		titreRow.setOpaque(false);
+		JLabel titreLbl = new JLabel("🔔 Demandes de compte en attente");
+		titreLbl.setFont(new Font("SansSerif", Font.BOLD, 14));
+		titreLbl.setForeground(C_TEXT);
+		lblBadgeDemandes = new JLabel("");
+		lblBadgeDemandes.setFont(new Font("SansSerif", Font.BOLD, 11));
+		lblBadgeDemandes.setForeground(Color.WHITE);
+		lblBadgeDemandes.setOpaque(true);
+		lblBadgeDemandes.setBackground(C_RED);
+		lblBadgeDemandes.setBorder(new EmptyBorder(2, 7, 2, 7));
+		lblBadgeDemandes.setVisible(false);
+		titreRow.add(titreLbl);
+		titreRow.add(lblBadgeDemandes);
+
+		JLabel descLbl = new JLabel("<html><span style='color:#78809b'>"
+			+ "Approuvez ou refusez chaque demande. "
+			+ "Une fois approuvé, le compte peut se connecter immédiatement.</span></html>");
+		descLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+		JPanel top = new JPanel();
+		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+		top.setOpaque(false);
+		top.add(titreRow);
+		top.add(Box.createRigidArea(new Dimension(0, 6)));
+		top.add(descLbl);
+		top.add(Box.createRigidArea(new Dimension(0, 14)));
+		root.add(top, BorderLayout.NORTH);
+
+		// Zone des demandes
+		panelDemandesContenu = new JPanel();
+		panelDemandesContenu.setLayout(new BoxLayout(panelDemandesContenu, BoxLayout.Y_AXIS));
+		panelDemandesContenu.setBackground(C_BG);
+
+		JScrollPane scroll = new JScrollPane(panelDemandesContenu);
+		scroll.setBorder(null);
+		scroll.getViewport().setBackground(C_BG);
+		root.add(scroll, BorderLayout.CENTER);
+
+		rafraichirDemandes();
+		return root;
+	}
+
+	private void rafraichirDemandes()
+	{
+		if (panelDemandesContenu == null) return;
+		panelDemandesContenu.removeAll();
+
+		java.util.List<GestionComptes.DemandeCompte> demandes =
+			GestionComptes.getInstance().getDemandesEnAttente();
+
+		int nb = demandes.size();
+
+		// Badge sur l'onglet
+		if (lblBadgeDemandes != null)
+		{
+			lblBadgeDemandes.setText(nb > 0 ? String.valueOf(nb) : "");
+			lblBadgeDemandes.setVisible(nb > 0);
+		}
+
+		// Badge sur le titre de l'onglet
+		String titreOnglet = nb > 0 ? "👤 Demandes (" + nb + ")" : "👤 Demandes";
+		if (tabs != null && tabs.getTabCount() > 2)
+			tabs.setTitleAt(2, titreOnglet);
+
+		if (nb == 0)
+		{
+			JLabel vide = new JLabel("Aucune demande en attente.");
+			vide.setForeground(C_MUTED);
+			vide.setFont(new Font("SansSerif", Font.PLAIN, 13));
+			vide.setBorder(new EmptyBorder(10, 0, 0, 0));
+			panelDemandesContenu.add(vide);
+		}
+		else
+		{
+			for (GestionComptes.DemandeCompte d : demandes)
+			{
+				panelDemandesContenu.add(buildLigneDemande(d));
+				panelDemandesContenu.add(Box.createRigidArea(new Dimension(0, 6)));
+			}
+		}
+
+		panelDemandesContenu.revalidate();
+		panelDemandesContenu.repaint();
+	}
+
+	private JPanel buildLigneDemande(GestionComptes.DemandeCompte dem)
+	{
+		JPanel p = new JPanel(new BorderLayout(12, 0));
+		p.setBackground(C_SURFACE);
 		p.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER, 1),
-			new EmptyBorder(0, 0, 0, 0)));
-		p.setAlignmentX(Component.LEFT_ALIGNMENT);
-		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 600));
+			BorderFactory.createLineBorder(C_BORDER),
+			new EmptyBorder(10, 14, 10, 14)));
+		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
+		// Info identifiant + date
+		JPanel info = new JPanel();
+		info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+		info.setOpaque(false);
+		JLabel lblId = new JLabel(dem.identifiant);
+		lblId.setFont(new Font("SansSerif", Font.BOLD, 14));
+		lblId.setForeground(C_TEXT);
+		JLabel lblDate = new JLabel(dem.date);
+		lblDate.setFont(new Font("SansSerif", Font.PLAIN, 11));
+		lblDate.setForeground(C_MUTED);
+		info.add(lblId);
+		info.add(lblDate);
+		p.add(info, BorderLayout.CENTER);
+
+		// Boutons
+		JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+		btns.setOpaque(false);
+
+		JButton btnApprouver = new JButton("✓ Approuver");
+		btnApprouver.setBackground(C_GREEN);
+		btnApprouver.setForeground(Color.WHITE);
+		btnApprouver.setFocusPainted(false);
+		btnApprouver.setFont(new Font("SansSerif", Font.BOLD, 12));
+		btnApprouver.setBorder(new EmptyBorder(6, 12, 6, 12));
+		btnApprouver.addActionListener(e -> {
+			GestionComptes.getInstance().approuver(dem.identifiant);
+			JOptionPane.showMessageDialog(this,
+				dem.identifiant + " est maintenant autorisé à se connecter.",
+				"Compte approuvé", JOptionPane.INFORMATION_MESSAGE);
+			rafraichirDemandes();
+		});
+
+		JButton btnRefuser = new JButton("✕ Refuser");
+		btnRefuser.setBackground(new Color(60, 30, 30));
+		btnRefuser.setForeground(new Color(230, 100, 100));
+		btnRefuser.setFocusPainted(false);
+		btnRefuser.setFont(new Font("SansSerif", Font.BOLD, 12));
+		btnRefuser.setBorder(new EmptyBorder(6, 12, 6, 12));
+		btnRefuser.addActionListener(e -> {
+			int r = JOptionPane.showConfirmDialog(this,
+				"Refuser la demande de \"" + dem.identifiant + "\" ?",
+				"Confirmer", JOptionPane.YES_NO_OPTION);
+			if (r != JOptionPane.YES_OPTION) return;
+			GestionComptes.getInstance().refuser(dem.identifiant);
+			rafraichirDemandes();
+		});
+
+		btns.add(btnApprouver);
+		btns.add(btnRefuser);
+		p.add(btns, BorderLayout.EAST);
 		return p;
 	}
 
-	// ── Ligne d'action (icône + texte + bouton) ───────────────
-	private JPanel buildActionRow(String icone, String titre, String description,
-								  String labelBtn, Color couleurBtn,
-								  java.awt.event.ActionListener action)
-	{
-		JPanel row = new JPanel(new BorderLayout(16, 0));
-		row.setOpaque(false);
-		row.setBorder(new EmptyBorder(16, 18, 16, 18));
-		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-
-		// Gauche : icône + textes
-		JPanel left = new JPanel();
-		left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-		left.setOpaque(false);
-
-		JPanel titreRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-		titreRow.setOpaque(false);
-
-		JLabel ico = new JLabel(icone);
-		ico.setFont(new Font("SansSerif", Font.PLAIN, 16));
-
-		JLabel lblTitre = new JLabel(titre);
-		lblTitre.setFont(new Font("SansSerif", Font.BOLD, 13));
-		lblTitre.setForeground(C_TEXT);
-
-		titreRow.add(ico);
-		titreRow.add(lblTitre);
-
-		JLabel lblDesc = new JLabel(description);
-		lblDesc.setFont(new Font("SansSerif", Font.PLAIN, 11));
-		lblDesc.setForeground(C_MUTED);
-		lblDesc.setBorder(new EmptyBorder(0, 6, 0, 0));
-
-		left.add(titreRow);
-		left.add(Box.createVerticalStrut(4));
-		left.add(lblDesc);
-
-		// Droite : bouton
-		JButton btn = new JButton(labelBtn);
-		btn.setFont(new Font("SansSerif", Font.BOLD, 12));
-		btn.setBackground(couleurBtn);
-		btn.setForeground(Color.WHITE);
-		btn.setFocusPainted(false);
-		btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-		btn.setBorder(new EmptyBorder(9, 18, 9, 18));
-		btn.setOpaque(true);
-		btn.addActionListener(action);
-		// Hover effect
-		Color hoverColor = couleurBtn.darker();
-		btn.addMouseListener(new java.awt.event.MouseAdapter()
-		{
-			public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(hoverColor); }
-			public void mouseExited (java.awt.event.MouseEvent e) { btn.setBackground(couleurBtn); }
-		});
-
-		JPanel btnWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-		btnWrapper.setOpaque(false);
-		btnWrapper.add(btn);
-
-		row.add(left,       BorderLayout.CENTER);
-		row.add(btnWrapper, BorderLayout.EAST);
-		return row;
-	}
-
-	// ── Séparateur fin ────────────────────────────────────────
-	private JPanel buildSeparateur()
-	{
-		JPanel sep = new JPanel();
-		sep.setBackground(C_BORDER);
-		sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-		sep.setPreferredSize(new Dimension(0, 1));
-		return sep;
-	}
-
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 	//  FOOTER
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 
 	private JPanel buildFooter()
 	{
-		JPanel p = new JPanel(new BorderLayout(0, 0));
+		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(C_SURFACE);
 		p.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(1, 0, 0, 0, C_BORDER),
 			new EmptyBorder(10, 24, 10, 24)));
 
-		// Indicateur serveur actif
 		JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
 		left.setOpaque(false);
 		JLabel dot = new JLabel("●");
 		dot.setFont(new Font("SansSerif", Font.PLAIN, 10));
 		dot.setForeground(C_GREEN);
+		// Port corrigé : 8082
 		JLabel txtServeur = new JLabel("Serveur actif — Port 8082");
 		txtServeur.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		txtServeur.setForeground(C_MUTED);
-		left.add(dot);
-		left.add(txtServeur);
+		left.add(dot); left.add(txtServeur);
 
-		// IP à droite
 		lblIP = new JLabel("IP : " + detecterIP());
 		lblIP.setFont(new Font("SansSerif", Font.BOLD, 11));
 		lblIP.setForeground(C_ACCENT);
@@ -426,9 +457,9 @@ public class FenetreServeur extends JFrame
 		return p;
 	}
 
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 	//  ACTIONS
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 
 	private void chargerSemaine()
 	{
@@ -439,25 +470,22 @@ public class FenetreServeur extends JFrame
 		if (def.exists()) fc.setCurrentDirectory(def);
 		if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
 
-		String chemin = fc.getSelectedFile().getAbsolutePath();
 		int confirm = JOptionPane.showConfirmDialog(this,
-			"Charger la semaine depuis :\n" + chemin
+			"Charger la semaine depuis :\n" + fc.getSelectedFile().getAbsolutePath()
 				+ "\n\nTous les clients basculeront sur ces données.",
 			"Confirmer le chargement", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 		if (confirm != JOptionPane.YES_OPTION) return;
 
 		try
 		{
-			serveur.chargerSemaine(chemin);
+			serveur.chargerSemaine(fc.getSelectedFile().getAbsolutePath());
 			refresh();
-			JOptionPane.showMessageDialog(this,
-				"Semaine chargée. Les clients se synchroniseront dans les 3 secondes.",
+			JOptionPane.showMessageDialog(this, "Semaine chargée. Les clients se synchroniseront dans les 3 secondes.",
 				"Chargement OK", JOptionPane.INFORMATION_MESSAGE);
 		}
 		catch (Exception ex)
 		{
-			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -475,8 +503,7 @@ public class FenetreServeur extends JFrame
 		}
 		catch (Exception ex)
 		{
-			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -489,8 +516,7 @@ public class FenetreServeur extends JFrame
 		if (def.exists()) fc.setCurrentDirectory(def);
 		if (fc.showDialog(this, "Sauvegarder ici") != JFileChooser.APPROVE_OPTION) return;
 
-		String numSemaine = JOptionPane.showInputDialog(
-			this, "Numéro de semaine :", "Sauvegarde", JOptionPane.PLAIN_MESSAGE);
+		String numSemaine = JOptionPane.showInputDialog(this, "Numéro de semaine :", "Sauvegarde", JOptionPane.PLAIN_MESSAGE);
 		if (numSemaine == null || numSemaine.isBlank()) return;
 
 		try
@@ -501,8 +527,7 @@ public class FenetreServeur extends JFrame
 		}
 		catch (Exception ex)
 		{
-			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -516,16 +541,15 @@ public class FenetreServeur extends JFrame
 			"Heures sup", JOptionPane.INFORMATION_MESSAGE);
 	}
 
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 	//  RAFRAÎCHISSEMENT
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
 
 	private void refresh()
 	{
 		// Semaine
 		String sem = serveur.getSemaineActive();
-		String semTxt = (sem != null && !sem.isBlank()) ? sem : "—";
-		lblSemaine.setText(semTxt);
+		lblSemaine.setText((sem != null && !sem.isBlank()) ? sem : "—");
 
 		// Clients
 		int nb = serveur.getNbClientsConnectes();
@@ -536,30 +560,102 @@ public class FenetreServeur extends JFrame
 		boolean hs = app.metier.PlanningGlobal.estHeureSup;
 		lblHeureSup.setText(hs ? "OUI" : "non");
 		lblHeureSup.setForeground(hs ? C_ORANGE : C_MUTED);
+
+		// Badge demandes (mis à jour en arrière-plan)
+		SwingUtilities.invokeLater(() -> {
+			int nbDem = GestionComptes.getInstance().getDemandesEnAttente().size();
+			if (lblBadgeDemandes != null)
+			{
+				lblBadgeDemandes.setText(nbDem > 0 ? String.valueOf(nbDem) : "");
+				lblBadgeDemandes.setVisible(nbDem > 0);
+			}
+			if (tabs != null && tabs.getTabCount() > 2)
+				tabs.setTitleAt(2, nbDem > 0 ? "👤 Demandes (" + nbDem + ")" : "👤 Demandes");
+		});
 	}
 
-	// ══════════════════════════════════════════════════════════
-	//  UTILITAIRES
-	// ══════════════════════════════════════════════════════════
+	// ══════════════════════════════════════════════════════════════════════
+	//  HELPERS UI
+	// ══════════════════════════════════════════════════════════════════════
+
+	private JPanel buildCard()
+	{
+		JPanel p = new JPanel();
+		p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+		p.setBackground(C_CARD);
+		p.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(C_BORDER, 1),
+			new EmptyBorder(0, 0, 0, 0)));
+		p.setAlignmentX(Component.LEFT_ALIGNMENT);
+		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 600));
+		return p;
+	}
+
+	private JPanel buildSeparateur()
+	{
+		JPanel sep = new JPanel();
+		sep.setBackground(C_BORDER);
+		sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+		sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return sep;
+	}
+
+	private JPanel buildActionRow(String icone, String titre, String desc, String labelBtn, Color couleurBtn, ActionListener action)
+	{
+		JPanel row = new JPanel(new BorderLayout(16, 0));
+		row.setOpaque(false);
+		row.setBorder(new EmptyBorder(16, 18, 16, 18));
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+
+		JPanel left = new JPanel();
+		left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+		left.setOpaque(false);
+		JPanel titreRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+		titreRow.setOpaque(false);
+		JLabel ico = new JLabel(icone);
+		ico.setFont(new Font("SansSerif", Font.PLAIN, 16));
+		JLabel lblTitre = new JLabel(titre);
+		lblTitre.setFont(new Font("SansSerif", Font.BOLD, 13));
+		lblTitre.setForeground(C_TEXT);
+		titreRow.add(ico); titreRow.add(lblTitre);
+		JLabel lblDesc = new JLabel("<html><span style='color:#78809b'>" + desc + "</span></html>");
+		lblDesc.setFont(new Font("SansSerif", Font.PLAIN, 11));
+		left.add(titreRow);
+		left.add(Box.createVerticalStrut(3));
+		left.add(lblDesc);
+
+		JButton btn = new JButton(labelBtn);
+		btn.setBackground(couleurBtn);
+		btn.setForeground(Color.WHITE);
+		btn.setFocusPainted(false);
+		btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+		btn.setBorder(new EmptyBorder(8, 16, 8, 16));
+		btn.addActionListener(action);
+
+		row.add(left, BorderLayout.CENTER);
+		row.add(btn,  BorderLayout.EAST);
+		return row;
+	}
 
 	private String detecterIP()
 	{
 		try
 		{
-			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-			while (interfaces.hasMoreElements())
+			Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+			while (ifaces.hasMoreElements())
 			{
-				NetworkInterface ni = interfaces.nextElement();
-				Enumeration<InetAddress> adresses = ni.getInetAddresses();
-				while (adresses.hasMoreElements())
+				NetworkInterface ni = ifaces.nextElement();
+				if (ni.isLoopback() || !ni.isUp()) continue;
+				Enumeration<InetAddress> addrs = ni.getInetAddresses();
+				while (addrs.hasMoreElements())
 				{
-					InetAddress addr = adresses.nextElement();
-					if (!addr.isLoopbackAddress() && addr instanceof Inet4Address)
+					InetAddress addr = addrs.nextElement();
+					if (addr instanceof Inet4Address && !addr.isLoopbackAddress())
 						return addr.getHostAddress();
 				}
 			}
 		}
 		catch (Exception ignored) {}
-		return "inconnue";
+		return "127.0.0.1";
 	}
 }

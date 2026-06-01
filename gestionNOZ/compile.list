@@ -1,6 +1,10 @@
 # ── Aide ──────────────────────────────────────────────
 app/CheminApp.java
 
+# ── Sécurité / Chiffrement ────────────────────────────────────
+app/securite/ChiffrementAES.java
+app/securite/GestionComptes.java
+
 # ── Métier ───────────────────────────────────────────────────
 app/metier/lot/Lot.java
 app/metier/lot/Methode.java
@@ -26,6 +30,7 @@ app/ihm/IhmUtils.java
 app/ihm/FenetrePrincipale.java
 
 app/ihm/login/FenetreConnexionClient.java
+app/ihm/login/FenetreCreationCompte.java
 
 app/ihm/diagrame/Paneldiagrame.java
 app/ihm/diagrame/PanelGantt.java
@@ -44,15 +49,10 @@ app/ihm/gestionlot/PanelAffectation.java
 app/ihm/gestionlot/PanelLots.java
 app/ihm/gestionlot/PanelSocietes.java
 
-# ── IHM Serveur uniquement ────────────────────────────────────
-#  FenetreServeur est gardée car utile sur un PC Windows avec écran.
-#  En mode headless (Linux sans affichage), elle n'est jamais instanciée
-#  grâce au correctif #4 dans ServeurHTTP.java.
+# ── IHM Serveur ────────────────────────────────────────────────
 app/ihm/serveur/FenetreServeur.java
+app/ihm/serveur/PanelSemaineSuivante.java
 
 # ── Interfaces et point d'entrée ──────────────────────────────
 app/IControleur.java
 app/ServeurHTTP.java
-
-# ── Sécurité / Chiffrement ────────────────────────────────────
-app/securite/ChiffrementAES.java
