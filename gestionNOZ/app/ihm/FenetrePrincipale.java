@@ -227,21 +227,22 @@ public class FenetrePrincipale extends JFrame
 		btnRafraichir.setForeground(new Color(255, 255, 180));
 		btnRafraichir.addActionListener(e -> this.rafraichirTout());
 
-		// Bouton Heures Sup : visible seulement en mode solo
-		Button btnSup = new Button("Heures Sup");
-		btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		btnSup.setBackground(IhmUtils.HEADER);
-		btnSup.setForeground(new Color(255, 255, 180));
-		btnSup.setEnabled(true);
-		btnSup.addActionListener(e -> this.SemaineSup());
-
 		lblInfo = new JLabel(buildInfo());
 		lblInfo.setForeground(new Color(180, 180, 180));
 		lblInfo.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
 		JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		panelBtn.setBackground(IhmUtils.HEADER);
-		panelBtn.add(btnSup);
+		if (!ctrl.isAccesPAM())
+		{
+			Button btnSup = new Button("Heures Sup");
+			btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
+			btnSup.setBackground(IhmUtils.HEADER);
+			btnSup.setForeground(new Color(255, 255, 180));
+			btnSup.setEnabled(true);
+			btnSup.addActionListener(e -> this.SemaineSup());
+			panelBtn.add(btnSup);
+		}
 		panelBtn.add(btnRafraichir);
 
 		p.add(titre,    BorderLayout.WEST);

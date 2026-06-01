@@ -13,20 +13,17 @@ import javax.swing.table.*;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  PanelSemaineSuivante — Portage exact de l'onglet web
+ *  PanelSemaineSuivante
  *
- *  Fonctionnalités :
- *   1. Import Excel → prévisualiser les lots de la semaine suivante
- *   2. Enregistrer les lots préparés (sans écraser la semaine courante)
- *   3. Interface de pré-affectation : 3 colonnes (dispo / action / affectés)
- *   4. Bascule : écrase la semaine courante + affectations préparées
- *
- *  Identique à l'onglet "Sem. suivante" du client web.
+ *  1. Import Excel → prévisualiser les lots de la semaine suivante
+ *  2. Enregistrer les lots préparés (sans écraser la semaine courante)
+ *  3. Interface de pré-affectation : 3 colonnes (dispo / action / affectés)
+ *  4. Bascule : écrase la semaine courante + affectations préparées
  * ══════════════════════════════════════════════════════════════
  */
 public class PanelSemaineSuivante extends JPanel
 {
-	// ── Couleurs ──────────────────────────────────────────────────────────
+	// ── Palette ───────────────────────────────────────────────────────────
 	private static final Color C_BG      = new Color(15, 17, 26);
 	private static final Color C_SURFACE = new Color(24, 27, 40);
 	private static final Color C_CARD    = new Color(30, 34, 50);
@@ -35,7 +32,6 @@ public class PanelSemaineSuivante extends JPanel
 	private static final Color C_MUTED   = new Color(120, 128, 155);
 	private static final Color C_BLUE    = new Color(64, 128, 230);
 	private static final Color C_GREEN   = new Color(38, 168, 90);
-	private static final Color C_ORANGE  = new Color(210, 140, 30);
 	private static final Color C_RED     = new Color(210, 65, 65);
 	private static final Color C_ACCENT  = new Color(100, 160, 255);
 
@@ -45,29 +41,27 @@ public class PanelSemaineSuivante extends JPanel
 	private ArrayList<Lot>     lotsPrep     = null;
 	private ArrayList<Societe> socsPrepCopy = null;
 	private Lot                lotSel       = null;
+	private ArrayList<Lot>     lotsImportTemp = null; // lots lus depuis Excel, avant confirmation
 
-	// ── Composants ────────────────────────────────────────────────────────
-	private JLabel          lblEtat;
-	private JButton         btnBasculer;
-	private JButton         btnImport;
-	private JLabel          lblFichier;
-	private JPanel          panelPreview;
-	private JLabel          lblPreviewRes;
-	private JButton         btnConfirmer;
-	private JButton         btnAnnuler;
+	// ── Composants header ────────────────────────────────────────────────
+	private JLabel   lblEtat;
+	private JButton  btnBasculer;
 
-	// Zone pré-affectation (visible après import confirmé)
-	private JPanel          panelAff;
-	private JTable          tblDisp;
+	// ── Composants import ────────────────────────────────────────────────
+	private JButton  btnImport;
+	private JLabel   lblFichier;
+	private JPanel   panelPreview;
+	private JLabel   lblPreviewRes;
+
+	// ── Composants pré-affectation ────────────────────────────────────────
+	private JPanel            panelAff;
+	private JTable            tblDisp;
 	private DefaultTableModel mdlDisp;
-	private JTable          tblAff;
+	private JTable            tblAff;
 	private DefaultTableModel mdlAff;
 	private JComboBox<String> combSoc;
 	private JComboBox<String> combAce;
-	private JTextArea       txtInfoLot;
-
-	// Données temporaires pour l'import avant confirmation
-	private ArrayList<Lot> lotsImportTemp = null;
+	private JTextArea         txtInfoLot;
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  CONSTRUCTEUR
@@ -76,7 +70,7 @@ public class PanelSemaineSuivante extends JPanel
 	public PanelSemaineSuivante(ServeurHTTP serveur)
 	{
 		this.serveur = serveur;
-		setLayout(new BorderLayout(0, 0));
+		setLayout(new BorderLayout());
 		setBackground(C_BG);
 		setBorder(new EmptyBorder(14, 16, 14, 16));
 
@@ -86,7 +80,6 @@ public class PanelSemaineSuivante extends JPanel
 		scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		add(scroll, BorderLayout.CENTER);
 
-		// Charger l'état initial
 		chargerEtat();
 	}
 
@@ -100,46 +93,49 @@ public class PanelSemaineSuivante extends JPanel
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(C_BG);
 
-		// ── Carte état global ─────────────────────────────────────────────
+		// ── Carte état ────────────────────────────────────────────────────
 		JPanel carteEtat = buildCard();
-		JLabel titreEtat = buildTitre("📅 Préparer la semaine suivante");
-		JLabel descEtat  = buildDesc("Importez le fichier Excel puis pré-affectez les lots."
-			+ " À la bascule, tout le contenu actuel est remplacé.");
+		carteEtat.add(buildTitre("📅 Préparer la semaine suivante"));
+		carteEtat.add(Box.createRigidArea(new Dimension(0, 4)));
+		carteEtat.add(buildDesc(
+			"Importez le fichier Excel puis pré-affectez les lots. "
+			+ "À la bascule, tout le contenu actuel est remplacé."));
+		carteEtat.add(Box.createRigidArea(new Dimension(0, 10)));
+
 		lblEtat = new JLabel("Aucune semaine préparée.");
 		lblEtat.setForeground(C_MUTED);
 		lblEtat.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		btnBasculer = buildBtn("⚡ Basculer tous les clients", C_RED);
-		btnBasculer.setVisible(false);
-		btnBasculer.addActionListener(e -> basculerSemaine());
-		carteEtat.add(titreEtat);
-		carteEtat.add(Box.createRigidArea(new Dimension(0, 4)));
-		carteEtat.add(descEtat);
-		carteEtat.add(Box.createRigidArea(new Dimension(0, 10)));
+		lblEtat.setAlignmentX(Component.LEFT_ALIGNMENT);
 		carteEtat.add(lblEtat);
 		carteEtat.add(Box.createRigidArea(new Dimension(0, 10)));
+
+		btnBasculer = buildBtn("⚡ Basculer tous les clients sur cette semaine", C_RED);
+		btnBasculer.setVisible(false);
+		btnBasculer.addActionListener(e -> basculerSemaine());
 		carteEtat.add(btnBasculer);
+
 		root.add(carteEtat);
 		root.add(Box.createRigidArea(new Dimension(0, 12)));
 
 		// ── Carte import ──────────────────────────────────────────────────
 		JPanel carteImport = buildCard();
-		carteImport.add(buildTitre("📊 Importer fichier lots"));
+		carteImport.add(buildTitre("📊 Importer un fichier Excel de lots"));
 		carteImport.add(Box.createRigidArea(new Dimension(0, 8)));
 
-		JPanel rowFichier = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-		rowFichier.setOpaque(false);
-		rowFichier.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-		btnImport = buildBtn("📁 Choisir fichier Excel…", C_BLUE);
+		JPanel rowF = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+		rowF.setOpaque(false);
+		rowF.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+		btnImport = buildBtn("📁 Choisir…", C_BLUE);
 		btnImport.addActionListener(e -> choisirFichier());
-		lblFichier = new JLabel("Aucun fichier");
+		lblFichier = new JLabel("Aucun fichier sélectionné");
 		lblFichier.setForeground(C_MUTED);
 		lblFichier.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		rowFichier.add(btnImport);
-		rowFichier.add(lblFichier);
-		carteImport.add(rowFichier);
-		carteImport.add(Box.createRigidArea(new Dimension(0, 10)));
+		rowF.add(btnImport);
+		rowF.add(lblFichier);
+		carteImport.add(rowF);
+		carteImport.add(Box.createRigidArea(new Dimension(0, 8)));
 
-		// Panneau de prévisualisation (caché initialement)
+		// Panneau de prévisualisation (caché jusqu'à la lecture)
 		panelPreview = new JPanel();
 		panelPreview.setLayout(new BoxLayout(panelPreview, BoxLayout.Y_AXIS));
 		panelPreview.setOpaque(false);
@@ -148,12 +144,13 @@ public class PanelSemaineSuivante extends JPanel
 		lblPreviewRes = new JLabel();
 		lblPreviewRes.setForeground(C_GREEN);
 		lblPreviewRes.setFont(new Font("SansSerif", Font.BOLD, 13));
+		lblPreviewRes.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		JPanel rowBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
 		rowBtns.setOpaque(false);
-		btnConfirmer = buildBtn("✓ Enregistrer et préparer", C_GREEN);
+		JButton btnConfirmer = buildBtn("✓ Enregistrer et préparer", C_GREEN);
 		btnConfirmer.addActionListener(e -> confirmerImport());
-		btnAnnuler = buildBtn("Annuler", C_CARD);
+		JButton btnAnnuler = buildBtn("✕ Annuler", C_SURFACE);
 		btnAnnuler.addActionListener(e -> annulerImport());
 		rowBtns.add(btnConfirmer);
 		rowBtns.add(btnAnnuler);
@@ -162,10 +159,11 @@ public class PanelSemaineSuivante extends JPanel
 		panelPreview.add(Box.createRigidArea(new Dimension(0, 8)));
 		panelPreview.add(rowBtns);
 		carteImport.add(panelPreview);
+
 		root.add(carteImport);
 		root.add(Box.createRigidArea(new Dimension(0, 12)));
 
-		// ── Zone pré-affectation (construite plus tard, si lots préparés) ─
+		// ── Zone pré-affectation (ajoutée dynamiquement après import) ─────
 		panelAff = new JPanel();
 		panelAff.setLayout(new BoxLayout(panelAff, BoxLayout.Y_AXIS));
 		panelAff.setOpaque(false);
@@ -176,10 +174,9 @@ public class PanelSemaineSuivante extends JPanel
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  LOGIQUE MÉTIER
+	//  LOGIQUE — ÉTAT
 	// ══════════════════════════════════════════════════════════════════════
 
-	/** Charge l'état depuis le serveur et met à jour l'UI. */
 	public void chargerEtat()
 	{
 		ArrayList<Lot>     ls = serveur.getLotsSemaneSuivante();
@@ -188,11 +185,12 @@ public class PanelSemaineSuivante extends JPanel
 		if (ls != null && !ls.isEmpty())
 		{
 			lotsPrep     = ls;
-			socsPrepCopy = ss != null ? ss : copierSocietesVides();
+			socsPrepCopy = (ss != null) ? ss : copierSocietesVides();
 			int nbAff    = compterAffectes(socsPrepCopy);
 
 			lblEtat.setText("<html><span style='color:#26a85a'>✓ "
-				+ lotsPrep.size() + " lots préparés — " + nbAff + " pré-affectés.</span></html>");
+				+ lotsPrep.size() + " lots préparés — " + nbAff
+				+ " pré-affectés.</span></html>");
 			btnBasculer.setVisible(true);
 
 			construireZoneAffectation();
@@ -208,12 +206,15 @@ public class PanelSemaineSuivante extends JPanel
 		}
 	}
 
-	// ── Import ────────────────────────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════════
+	//  LOGIQUE — IMPORT
+	// ══════════════════════════════════════════════════════════════════════
 
 	private void choisirFichier()
 	{
 		javax.swing.filechooser.FileNameExtensionFilter filtre =
-			new javax.swing.filechooser.FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm");
+			new javax.swing.filechooser.FileNameExtensionFilter(
+				"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm");
 		JFileChooser fc = new JFileChooser();
 		fc.setFileFilter(filtre);
 		if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
@@ -221,18 +222,18 @@ public class PanelSemaineSuivante extends JPanel
 		java.io.File f = fc.getSelectedFile();
 		lblFichier.setText(f.getName());
 		lblFichier.setForeground(C_TEXT);
+		panelPreview.setVisible(false);
+		lotsImportTemp = null;
 
-		// Lecture en arrière-plan
 		btnImport.setEnabled(false);
 		new Thread(() ->
 		{
 			try
 			{
-				// ExcelReader est statique, serveur.lireExcelPourSemaineSuivante retourne ArrayList
 				ArrayList<Lot> lots = serveur.lireExcelPourSemaineSuivante(f.getAbsolutePath());
 				SwingUtilities.invokeLater(() -> {
 					lotsImportTemp = lots;
-					lblPreviewRes.setText("✓ " + lots.size() + " lots lus");
+					lblPreviewRes.setText("✓ " + lots.size() + " lots lus depuis " + f.getName());
 					panelPreview.setVisible(true);
 					btnImport.setEnabled(true);
 					revalidate(); repaint();
@@ -241,7 +242,8 @@ public class PanelSemaineSuivante extends JPanel
 			catch (Exception ex)
 			{
 				SwingUtilities.invokeLater(() -> {
-					JOptionPane.showMessageDialog(this, "Erreur lecture : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(PanelSemaineSuivante.this,
+						"Erreur lecture : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
 					annulerImport();
 					btnImport.setEnabled(true);
 				});
@@ -251,36 +253,40 @@ public class PanelSemaineSuivante extends JPanel
 
 	private void confirmerImport()
 	{
+		// CORRECTION BUG : garder la taille AVANT d'appeler annulerImport()
 		if (lotsImportTemp == null) return;
+		int nbLots = lotsImportTemp.size();
 
-		// Initialiser les sociétés de la semaine suivante (affectations vides)
 		ArrayList<Societe> socsVides = copierSocietesVides();
-
 		serveur.sauvegarderSemaneSuivante(lotsImportTemp, socsVides);
+
+		// annulerImport() remet lotsImportTemp = null → appeler APRÈS avoir sauvegardé la taille
 		annulerImport();
 		chargerEtat();
 
 		JOptionPane.showMessageDialog(this,
-			lotsImportTemp.size() + " lots préparés pour la semaine suivante.",
+			nbLots + " lots préparés pour la semaine suivante.",
 			"Semaine préparée", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private void annulerImport()
 	{
 		lotsImportTemp = null;
-		lblFichier.setText("Aucun fichier");
+		lblFichier.setText("Aucun fichier sélectionné");
 		lblFichier.setForeground(C_MUTED);
 		panelPreview.setVisible(false);
 		lblPreviewRes.setText("");
 	}
 
-	// ── Bascule ───────────────────────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════════
+	//  LOGIQUE — BASCULE
+	// ══════════════════════════════════════════════════════════════════════
 
 	private void basculerSemaine()
 	{
 		int r = JOptionPane.showConfirmDialog(this,
 			"Basculer tous les clients sur la semaine suivante ?\n"
-			+ "Les données courantes (lots ET affectations) seront remplacées.",
+			+ "⚠ Les données courantes (lots ET affectations) seront remplacées.",
 			"Confirmer la bascule", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 		if (r != JOptionPane.YES_OPTION) return;
 
@@ -288,45 +294,56 @@ public class PanelSemaineSuivante extends JPanel
 		{
 			serveur.basculerSemaneSuivante();
 			chargerEtat();
-			JOptionPane.showMessageDialog(this, "Bascule effectuée. Tous les clients se synchroniseront dans les 3 secondes.",
+			JOptionPane.showMessageDialog(this,
+				"Bascule effectuée. Tous les clients se synchroniseront dans les 3 secondes.",
 				"Bascule OK", JOptionPane.INFORMATION_MESSAGE);
 		}
 		catch (Exception ex)
 		{
-			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Erreur : " + ex.getMessage(),
+				"Erreur", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  ZONE PRÉ-AFFECTATION (3 colonnes comme le web)
+	//  ZONE PRÉ-AFFECTATION (3 colonnes)
 	// ══════════════════════════════════════════════════════════════════════
 
 	private void construireZoneAffectation()
 	{
 		panelAff.removeAll();
 
-		// Titre
-		JLabel titreAff = buildTitre("🔗 Pré-affectation de la semaine suivante");
-		titreAff.setAlignmentX(Component.LEFT_ALIGNMENT);
-		panelAff.add(buildCard2(titreAff));
+		// Titre de la zone
+		JPanel titreCarte = new JPanel(new BorderLayout());
+		titreCarte.setBackground(C_SURFACE);
+		titreCarte.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(C_BORDER),
+			new EmptyBorder(10, 14, 10, 14)));
+		titreCarte.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+		titreCarte.setAlignmentX(Component.LEFT_ALIGNMENT);
+		JLabel tAff = new JLabel("🔗 Pré-affectation de la semaine suivante");
+		tAff.setFont(new Font("SansSerif", Font.BOLD, 14));
+		tAff.setForeground(C_TEXT);
+		JLabel tSub = new JLabel("(les affectations seront actives après la bascule)");
+		tSub.setFont(new Font("SansSerif", Font.PLAIN, 11));
+		tSub.setForeground(C_MUTED);
+		titreCarte.add(tAff, BorderLayout.WEST);
+		titreCarte.add(tSub, BorderLayout.EAST);
+		panelAff.add(titreCarte);
 		panelAff.add(Box.createRigidArea(new Dimension(0, 8)));
 
-		// Zone 3 colonnes
-		JPanel zone3col = new JPanel(new GridLayout(1, 3, 10, 0));
-		zone3col.setBackground(C_BG);
-		zone3col.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
-		zone3col.setAlignmentX(Component.LEFT_ALIGNMENT);
+		// Zone 3 colonnes — hauteur fixe
+		JPanel zone = new JPanel(new GridLayout(1, 3, 10, 0));
+		zone.setBackground(C_BG);
+		zone.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
+		zone.setPreferredSize(new Dimension(0, 400));
+		zone.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		// Colonne gauche : lots disponibles
-		zone3col.add(construireColDisponibles());
+		zone.add(construireColDisponibles());
+		zone.add(construireColActions());
+		zone.add(construireColAffectes());
 
-		// Colonne centre : actions
-		zone3col.add(construireColActions());
-
-		// Colonne droite : lots pré-affectés
-		zone3col.add(construireColAffectes());
-
-		panelAff.add(zone3col);
+		panelAff.add(zone);
 		panelAff.revalidate();
 		panelAff.repaint();
 
@@ -335,22 +352,23 @@ public class PanelSemaineSuivante extends JPanel
 
 	private JPanel construireColDisponibles()
 	{
-		JPanel col = new JPanel(new BorderLayout(0, 4));
+		JPanel col = new JPanel(new BorderLayout(0, 0));
 		col.setBackground(C_SURFACE);
-		col.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER),
-			new EmptyBorder(0, 0, 0, 0)));
+		col.setBorder(BorderFactory.createLineBorder(C_BORDER));
 
-		JLabel titre = new JLabel("Lots disponibles");
+		JLabel titre = new JLabel("  Lots disponibles");
 		titre.setFont(new Font("SansSerif", Font.BOLD, 12));
 		titre.setForeground(C_TEXT);
 		titre.setBackground(C_CARD);
 		titre.setOpaque(true);
-		titre.setBorder(new EmptyBorder(8, 10, 8, 10));
+		titre.setBorder(new EmptyBorder(8, 8, 8, 8));
 		col.add(titre, BorderLayout.NORTH);
 
 		String[] cols = {"N°CDE", "Affaire", "H"};
-		mdlDisp = new DefaultTableModel(cols, 0) { @Override public boolean isCellEditable(int r, int c) { return false; } };
+		mdlDisp = new DefaultTableModel(cols, 0)
+		{
+			@Override public boolean isCellEditable(int r, int c) { return false; }
+		};
 		tblDisp = buildTable(mdlDisp);
 		tblDisp.getSelectionModel().addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) selectionnerLot();
@@ -378,35 +396,31 @@ public class PanelSemaineSuivante extends JPanel
 		txtInfoLot.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		txtInfoLot.setBorder(new EmptyBorder(6, 6, 6, 6));
 		JScrollPane scrollInfo = new JScrollPane(txtInfoLot);
-		scrollInfo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
-		scrollInfo.setPreferredSize(new Dimension(0, 110));
+		scrollInfo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+		scrollInfo.setPreferredSize(new Dimension(0, 100));
 		scrollInfo.setBorder(BorderFactory.createLineBorder(C_BORDER));
+		scrollInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
 		col.add(scrollInfo);
-		col.add(Box.createRigidArea(new Dimension(0, 8)));
+		col.add(Box.createRigidArea(new Dimension(0, 10)));
 
-		// Société
 		col.add(buildLabel("Société"));
 		col.add(Box.createRigidArea(new Dimension(0, 4)));
 		combSoc = new JComboBox<>();
 		combSoc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		combSoc.setBackground(C_CARD);
-		combSoc.setForeground(C_TEXT);
 		remplirCombSoc();
 		combSoc.addActionListener(e -> remplirCombAce());
 		col.add(combSoc);
 		col.add(Box.createRigidArea(new Dimension(0, 8)));
 
-		// ACE
-		col.add(buildLabel("ACE"));
+		col.add(buildLabel("ACE (optionnel)"));
 		col.add(Box.createRigidArea(new Dimension(0, 4)));
 		combAce = new JComboBox<>();
 		combAce.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		combAce.setBackground(C_CARD);
-		combAce.setForeground(C_TEXT);
 		col.add(combAce);
-		col.add(Box.createRigidArea(new Dimension(0, 10)));
+		col.add(Box.createRigidArea(new Dimension(0, 12)));
 
-		// Boutons affecter / retirer
 		JButton btnAff = buildBtn("➜ Affecter", C_BLUE);
 		btnAff.setAlignmentX(Component.LEFT_ALIGNMENT);
 		btnAff.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -420,28 +434,28 @@ public class PanelSemaineSuivante extends JPanel
 		btnRet.addActionListener(e -> retirerLot());
 		col.add(btnRet);
 		col.add(Box.createGlue());
-
 		return col;
 	}
 
 	private JPanel construireColAffectes()
 	{
-		JPanel col = new JPanel(new BorderLayout(0, 4));
+		JPanel col = new JPanel(new BorderLayout(0, 0));
 		col.setBackground(C_SURFACE);
-		col.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER),
-			new EmptyBorder(0, 0, 0, 0)));
+		col.setBorder(BorderFactory.createLineBorder(C_BORDER));
 
-		JLabel titre = new JLabel("Lots pré-affectés");
+		JLabel titre = new JLabel("  Lots pré-affectés");
 		titre.setFont(new Font("SansSerif", Font.BOLD, 12));
 		titre.setForeground(C_TEXT);
 		titre.setBackground(C_CARD);
 		titre.setOpaque(true);
-		titre.setBorder(new EmptyBorder(8, 10, 8, 10));
+		titre.setBorder(new EmptyBorder(8, 8, 8, 8));
 		col.add(titre, BorderLayout.NORTH);
 
 		String[] cols = {"N°CDE", "Affaire", "Société / ACE"};
-		mdlAff = new DefaultTableModel(cols, 0) { @Override public boolean isCellEditable(int r, int c) { return false; } };
+		mdlAff = new DefaultTableModel(cols, 0)
+		{
+			@Override public boolean isCellEditable(int r, int c) { return false; }
+		};
 		tblAff = buildTable(mdlAff);
 		tblAff.getSelectionModel().addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) selectionnerDepuisAff();
@@ -450,15 +464,17 @@ public class PanelSemaineSuivante extends JPanel
 		return col;
 	}
 
-	// ── Actions affectation ───────────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════════
+	//  AFFECTATION
+	// ══════════════════════════════════════════════════════════════════════
 
 	private void selectionnerLot()
 	{
 		int row = tblDisp.getSelectedRow();
 		if (row < 0 || lotsPrep == null) { lotSel = null; majInfoLot(); return; }
-		// Retrouver le lot via le numCDE affiché (col 0)
 		int numCDE = (Integer) mdlDisp.getValueAt(row, 0);
-		lotSel = lotsPrep.stream().filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null);
+		lotSel = lotsPrep.stream()
+			.filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null);
 		majInfoLot();
 	}
 
@@ -467,50 +483,49 @@ public class PanelSemaineSuivante extends JPanel
 		int row = tblAff.getSelectedRow();
 		if (row < 0 || lotsPrep == null) return;
 		int numCDE = (Integer) mdlAff.getValueAt(row, 0);
-		lotSel = lotsPrep.stream().filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null);
+		lotSel = lotsPrep.stream()
+			.filter(l -> l.getNumCDE() == numCDE).findFirst().orElse(null);
 		majInfoLot();
-		// Sélectionner aussi dans le tableau dispo
 		for (int i = 0; i < mdlDisp.getRowCount(); i++)
-			if ((Integer) mdlDisp.getValueAt(i, 0) == numCDE) { tblDisp.setRowSelectionInterval(i, i); break; }
+			if ((Integer) mdlDisp.getValueAt(i, 0) == numCDE)
+			{ tblDisp.setRowSelectionInterval(i, i); break; }
 	}
 
 	private void majInfoLot()
 	{
+		if (txtInfoLot == null) return;
 		if (lotSel == null) { txtInfoLot.setText("Sélectionnez un lot"); return; }
 		Societe soc = getSocDuLot(lotSel);
 		Ace     ace = getAceDuLot(lotSel);
-		String affectation = soc != null ? soc.getNom() + (ace != null ? " / " + ace.getNom() : "") : "Non affecté";
+		String aff = soc != null
+			? soc.getNom() + (ace != null ? " / " + ace.getNom() : "")
+			: "Non affecté";
 		txtInfoLot.setText(
-			"N° " + lotSel.getNumCDE() + "\n" +
-			truncate(lotSel.getAffaire(), 40) + "\n" +
-			"Pièces : " + lotSel.getNbPieces() + "\n" +
-			"Heures : " + String.format("%.1f", lotSel.getHeures()) + " h\n" +
-			"Société : " + affectation);
+			"N° " + lotSel.getNumCDE() + "\n"
+			+ trunc(lotSel.getAffaire(), 40) + "\n"
+			+ "Pièces : " + lotSel.getNbPieces() + "\n"
+			+ "Heures : " + String.format("%.1f", lotSel.getHeures()) + " h\n"
+			+ "→ " + aff);
 	}
 
 	private void affecterLot()
 	{
 		if (lotSel == null)
-		{ JOptionPane.showMessageDialog(this, "Sélectionnez un lot.", "Info", JOptionPane.INFORMATION_MESSAGE); return; }
+		{ msg("Sélectionnez d'abord un lot."); return; }
 		String nomSoc = (String) combSoc.getSelectedItem();
 		if (nomSoc == null || nomSoc.isEmpty())
-		{ JOptionPane.showMessageDialog(this, "Choisissez une société.", "Info", JOptionPane.INFORMATION_MESSAGE); return; }
-		String nomAce = (String) combAce.getSelectedItem();
+		{ msg("Choisissez une société."); return; }
 
-		// Retirer de toute affectation existante
 		retirerDeToutes(lotSel);
-
-		// Affecter dans la copie
-		Societe soc = socsPrepCopy.stream().filter(s -> s.getNom().equals(nomSoc)).findFirst().orElse(null);
+		Societe soc = socsPrepCopy.stream()
+			.filter(s -> s.getNom().equals(nomSoc)).findFirst().orElse(null);
 		if (soc == null) return;
 		soc.getLots().add(lotSel);
+		String nomAce = (String) combAce.getSelectedItem();
 		if (nomAce != null && !nomAce.isEmpty())
-		{
 			for (Ace a : soc.getAces())
 				if (a.getNom().equals(nomAce)) { a.getLots().add(lotSel); break; }
-		}
 
-		// Sauvegarder
 		serveur.sauvegarderSemaneSuivante(lotsPrep, socsPrepCopy);
 		rafraichirTableaux();
 		majInfoLot();
@@ -520,7 +535,7 @@ public class PanelSemaineSuivante extends JPanel
 	private void retirerLot()
 	{
 		if (lotSel == null)
-		{ JOptionPane.showMessageDialog(this, "Sélectionnez un lot.", "Info", JOptionPane.INFORMATION_MESSAGE); return; }
+		{ msg("Sélectionnez d'abord un lot."); return; }
 		retirerDeToutes(lotSel);
 		serveur.sauvegarderSemaneSuivante(lotsPrep, socsPrepCopy);
 		rafraichirTableaux();
@@ -531,8 +546,7 @@ public class PanelSemaineSuivante extends JPanel
 	private void retirerDeToutes(Lot lot)
 	{
 		if (socsPrepCopy == null) return;
-		for (Societe s : socsPrepCopy)
-		{
+		for (Societe s : socsPrepCopy) {
 			s.getLots().remove(lot);
 			for (Ace a : s.getAces()) a.getLots().remove(lot);
 		}
@@ -541,30 +555,23 @@ public class PanelSemaineSuivante extends JPanel
 	private void rafraichirTableaux()
 	{
 		if (lotsPrep == null || socsPrepCopy == null) return;
-
-		// Tableau disponibles
 		mdlDisp.setRowCount(0);
 		for (Lot l : lotsPrep)
 			mdlDisp.addRow(new Object[]{
 				l.getNumCDE(),
-				truncate(l.getAffaire(), 22),
+				trunc(l.getAffaire(), 24),
 				String.format("%.1f", l.getHeures())
 			});
-
-		// Tableau affectés
 		mdlAff.setRowCount(0);
 		for (Societe s : socsPrepCopy)
-		{
-			for (Lot l : s.getLots())
-			{
+			for (Lot l : s.getLots()) {
 				Ace ace = getAceDuLotDansSoc(l, s);
 				mdlAff.addRow(new Object[]{
 					l.getNumCDE(),
-					truncate(l.getAffaire(), 18),
+					trunc(l.getAffaire(), 18),
 					s.getNom() + (ace != null ? " / " + ace.getNom() : "")
 				});
 			}
-		}
 	}
 
 	private void remplirCombSoc()
@@ -591,9 +598,9 @@ public class PanelSemaineSuivante extends JPanel
 	private void majEtat()
 	{
 		if (lotsPrep == null) return;
-		int nbAff = compterAffectes(socsPrepCopy);
+		int n = compterAffectes(socsPrepCopy);
 		lblEtat.setText("<html><span style='color:#26a85a'>✓ "
-			+ lotsPrep.size() + " lots préparés — " + nbAff + " pré-affectés.</span></html>");
+			+ lotsPrep.size() + " lots préparés — " + n + " pré-affectés.</span></html>");
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -605,8 +612,7 @@ public class PanelSemaineSuivante extends JPanel
 		ArrayList<Societe> socs = serveur.getSocietes();
 		ArrayList<Societe> copie = new ArrayList<>();
 		if (socs == null) return copie;
-		for (Societe s : socs)
-		{
+		for (Societe s : socs) {
 			Societe c = new Societe(s.getNom(), s.getCe(), new ArrayList<>(), s.getTotalHeuresCE());
 			for (Ace a : s.getAces())
 				c.getAces().add(new Ace(a.getNom(), a.getNbPers(), a.getEffectifActuel(), 0));
@@ -644,10 +650,15 @@ public class PanelSemaineSuivante extends JPanel
 		return n;
 	}
 
-	private static String truncate(String s, int max)
+	private static String trunc(String s, int max)
 	{
 		if (s == null) return "—";
 		return s.length() <= max ? s : s.substring(0, max) + "…";
+	}
+
+	private void msg(String texte)
+	{
+		JOptionPane.showMessageDialog(this, texte, "Info", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -663,43 +674,30 @@ public class PanelSemaineSuivante extends JPanel
 			BorderFactory.createLineBorder(C_BORDER),
 			new EmptyBorder(16, 18, 16, 18)));
 		p.setAlignmentX(Component.LEFT_ALIGNMENT);
-		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
+		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 500));
 		return p;
 	}
 
-	private JPanel buildCard2(JComponent child)
+	private JLabel buildTitre(String t)
 	{
-		JPanel p = new JPanel(new BorderLayout());
-		p.setBackground(C_SURFACE);
-		p.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(C_BORDER),
-			new EmptyBorder(10, 14, 10, 14)));
-		p.setAlignmentX(Component.LEFT_ALIGNMENT);
-		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-		p.add(child, BorderLayout.WEST);
-		return p;
-	}
-
-	private JLabel buildTitre(String texte)
-	{
-		JLabel l = new JLabel(texte);
+		JLabel l = new JLabel(t);
 		l.setFont(new Font("SansSerif", Font.BOLD, 14));
 		l.setForeground(C_TEXT);
 		l.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return l;
 	}
 
-	private JLabel buildDesc(String texte)
+	private JLabel buildDesc(String t)
 	{
-		JLabel l = new JLabel("<html><span style='color:#78809b'>" + texte + "</span></html>");
+		JLabel l = new JLabel("<html><span style='color:#78809b'>" + t + "</span></html>");
 		l.setFont(new Font("SansSerif", Font.PLAIN, 11));
 		l.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return l;
 	}
 
-	private JLabel buildLabel(String texte)
+	private JLabel buildLabel(String t)
 	{
-		JLabel l = new JLabel(texte);
+		JLabel l = new JLabel(t);
 		l.setFont(new Font("SansSerif", Font.BOLD, 11));
 		l.setForeground(C_MUTED);
 		l.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -723,7 +721,7 @@ public class PanelSemaineSuivante extends JPanel
 		t.setBackground(C_SURFACE);
 		t.setForeground(C_TEXT);
 		t.setGridColor(C_BORDER);
-		t.setSelectionBackground(new Color(74, 158, 255, 50));
+		t.setSelectionBackground(new Color(64, 128, 230, 60));
 		t.setSelectionForeground(C_TEXT);
 		t.getTableHeader().setBackground(C_CARD);
 		t.getTableHeader().setForeground(C_MUTED);
