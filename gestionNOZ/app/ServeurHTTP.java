@@ -414,48 +414,48 @@ public class ServeurHTTP
 	class ModifierLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
-			rwLock.writeLock().lock();
-			try {
-				String c = lire(ex);
-				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
-				Lot lot = findLot(numCDE);
-				if (lot == null) { rep(ex, 404, "{\"err\":\"Lot introuvable.\"}"); return; }
-				// Utiliser la méthode exacte de PlanningGlobal.modifierLot (16 params)
-				metier.modifierLot(lot,
-					JsonSerialiser.extraireString(c, "typologie"),
-					JsonSerialiser.extraireString(c, "affaire"),
-					JsonSerialiser.extraireInt   (c, "nbPieces"),
-					JsonSerialiser.extraireDouble (c, "cadence"),
-					JsonSerialiser.extraireInt   (c, "valeurVente"),
-					JsonSerialiser.extraireString(c, "statut"),
-					JsonSerialiser.extraireString(c, "statutEchant"),
-					JsonSerialiser.extraireString(c, "semaine"),
-					JsonSerialiser.extraireInt   (c, "priorite"),
-					JsonSerialiser.extraireString(c, "lotACharge"),
-					JsonSerialiser.extraireString(c, "emplacement"),
-					JsonSerialiser.extraireBool  (c, "estSousDouane"),
-					JsonSerialiser.extraireString(c, "dateReception"),
-					JsonSerialiser.extraireString(c, "datePaiement"),
-					JsonSerialiser.extraireString(c, "commentaire"));
-				lot.setEstMachine(JsonSerialiser.extraireBool(c, "estMachine"));
-				// Champs logistiques supplémentaires (setters directs)
-				String fc = JsonSerialiser.extraireString(c, "formatCarton");
-				if (!fc.isEmpty()) lot.setFormatCarton(fc);
-				int coli = JsonSerialiser.extraireInt(c, "collisage");
-				if (coli >= 0) lot.setCollisage(coli);
-				int np = JsonSerialiser.extraireInt(c, "nbPers");
-				if (np >= 0) lot.setNbPers(np);
-				String dist = JsonSerialiser.extraireString(c, "distribution");
-				lot.setDistribution(dist);
-				double cadR = JsonSerialiser.extraireDouble(c, "cadenceReel");
-				if (cadR > 0) lot.setCadenceReel(cadR);
-				String me = JsonSerialiser.extraireString(c, "methode");
-				lot.setMethode(me);
-				int prec = JsonSerialiser.extraireInt(c, "poucentrecupCartonFour");
-				if (prec >= 0) lot.setPoucentrecupCartonFour(prec);
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
-			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
-			finally { rwLock.writeLock().unlock(); }
+			synchronized (verrou) {
+				try {
+					String c = lire(ex);
+					Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
+					if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+ 
+					// Champs administratifs
+					metier.modifierLot(lot,
+						JsonSerialiser.extraireString(c, "typologie"),
+						JsonSerialiser.extraireString(c, "affaire"),
+						JsonSerialiser.extraireInt   (c, "nbPieces"),
+						JsonSerialiser.extraireDouble (c, "cadence"),
+						JsonSerialiser.extraireInt   (c, "valeurVente"),
+						JsonSerialiser.extraireString(c, "statut"),
+						JsonSerialiser.extraireString(c, "statutEchant"),
+						JsonSerialiser.extraireString(c, "semaine"),
+						JsonSerialiser.extraireInt   (c, "priorite"),
+						JsonSerialiser.extraireString(c, "lotACharge"),
+						JsonSerialiser.extraireString(c, "emplacement"),
+						JsonSerialiser.extraireBool  (c, "estSousDouane"),
+						JsonSerialiser.extraireString(c, "dateReception"),
+						JsonSerialiser.extraireString(c, "datePaiement"),
+						JsonSerialiser.extraireString(c, "commentaire")
+					);
+ 
+					// CORRECTIF : estMachine appliqué directement après modifierLot()
+					lot.setEstMachine  (JsonSerialiser.extraireBool  (c, "estMachine"));
+ 
+					// Champs logistiques
+					lot.setMethode     (JsonSerialiser.extraireString(c, "methode"));
+					lot.setDistribution(JsonSerialiser.extraireString(c, "distribution"));
+					lot.setFormatCarton(JsonSerialiser.extraireString(c, "formatCarton"));
+					lot.setCollisage   (JsonSerialiser.extraireInt   (c, "collisage"));
+					lot.setNbPers      (JsonSerialiser.extraireInt   (c, "nbPers"));
+					lot.setCadenceReel (JsonSerialiser.extraireDouble (c, "cadenceReel"));
+					lot.setPoucentrecupCartonFour(JsonSerialiser.extraireInt(c, "poucentrecup"));
+ 
+					save();
+					versionDonnees = System.currentTimeMillis();
+					rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
+			}
 		}
 	}
 
