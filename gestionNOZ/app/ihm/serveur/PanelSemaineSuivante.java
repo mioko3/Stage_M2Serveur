@@ -565,10 +565,24 @@ public class PanelSemaineSuivante extends JPanel
 
 	private void retirerDeToutes(Lot lot)
 	{
-		if (socsPrepCopy == null) return;
-		for (Societe s : socsPrepCopy) {
-			s.getLots().remove(lot);
-			for (Ace a : s.getAces()) a.getLots().remove(lot);
+		if (lot == null || socsPrepCopy == null) return;
+		for (Societe s : socsPrepCopy)
+		{
+			for (int i = s.getLots().size() - 1; i >= 0; i--)
+			{
+				Lot l = s.getLots().get(i);
+				if (l != null && lot.getId() != null && lot.getId().equals(l.getId()))
+					s.getLots().remove(i);
+			}
+			for (Ace a : s.getAces())
+			{
+				for (int j = a.getLots().size() - 1; j >= 0; j--)
+				{
+					Lot l = a.getLots().get(j);
+					if (l != null && lot.getId() != null && lot.getId().equals(l.getId()))
+						a.getLots().remove(j);
+				}
+			}
 		}
 	}
 
@@ -642,22 +656,29 @@ public class PanelSemaineSuivante extends JPanel
 
 	private Societe getSocDuLot(Lot lot)
 	{
-		if (socsPrepCopy == null) return null;
-		for (Societe s : socsPrepCopy) if (s.getLots().contains(lot)) return s;
+		if (lot == null || socsPrepCopy == null) return null;
+		for (Societe s : socsPrepCopy)
+			for (Lot l : s.getLots())
+				if (l != null && lot.getId() != null && lot.getId().equals(l.getId())) return s;
 		return null;
 	}
 
 	private Ace getAceDuLot(Lot lot)
 	{
-		if (socsPrepCopy == null) return null;
+		if (lot == null || socsPrepCopy == null) return null;
 		for (Societe s : socsPrepCopy)
-			for (Ace a : s.getAces()) if (a.getLots().contains(lot)) return a;
+			for (Ace a : s.getAces())
+				for (Lot l : a.getLots())
+					if (l != null && lot.getId() != null && lot.getId().equals(l.getId())) return a;
 		return null;
 	}
 
 	private Ace getAceDuLotDansSoc(Lot lot, Societe soc)
 	{
-		for (Ace a : soc.getAces()) if (a.getLots().contains(lot)) return a;
+		if (lot == null || soc == null) return null;
+		for (Ace a : soc.getAces())
+			for (Lot l : a.getLots())
+				if (l != null && lot.getId() != null && lot.getId().equals(l.getId())) return a;
 		return null;
 	}
 

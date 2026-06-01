@@ -604,9 +604,10 @@ public class ControleurClient implements IControleur
 		// 3. Rafraîchir la fenêtre IMMÉDIATEMENT
 		if (fenetre != null) fenetre.rafraichirTout();
 		// 4. Synchroniser avec le serveur en arrière-plan
+		String aceNom = ace != null ? ace.getNom() : "";
 		String c = "{\"numCDE\":" + lot.getNumCDE()
-			+ ",\"societe\":" + e(societe.getNom())
-			+ ",\"ace\":"     + e(ace.getNom()) + "}";
+			+ ",\"societeNom\":" + e(societe.getNom())
+			+ ",\"aceNom\":"     + e(aceNom) + "}";
 		new Thread(() -> {
 			try {
 				majDual(post("/lots/affecter", c));

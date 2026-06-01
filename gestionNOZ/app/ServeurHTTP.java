@@ -468,7 +468,11 @@ public class ServeurHTTP
 				String c = lire(ex);
 				int numCDE    = JsonSerialiser.extraireInt(c, "numCDE");
 				String nomSoc = JsonSerialiser.extraireString(c, "societeNom");
+				if (nomSoc == null || nomSoc.isEmpty())
+					nomSoc = JsonSerialiser.extraireString(c, "societe");
 				String nomAce = JsonSerialiser.extraireString(c, "aceNom");
+				if (nomAce == null || nomAce.isEmpty())
+					nomAce = JsonSerialiser.extraireString(c, "ace");
 				Lot lot = findLot(numCDE);
 				Societe soc = findSociete(nomSoc);
 				if (lot == null || soc == null)

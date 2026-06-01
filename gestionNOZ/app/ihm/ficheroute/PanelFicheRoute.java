@@ -414,8 +414,11 @@ public class PanelFicheRoute extends JPanel
 		panelCartes_a.removeAll();
 		panelCartes_a.add(creerEnteteSection(
 			"▶  " + aceCourante.getNom() + "  (" + lots.size() + " lot(s))", aceCourante.getColor()));
-		for (Lot lot : lots)
-			panelCartes_a.add(new CarteLot(lot, ctrl.getAceDuLot(lot).getColor(), this.ctrl, this));
+		for (Lot lot : lots) {
+			Ace lotAce = ctrl.getAceDuLot(lot);
+			Color col = lotAce != null ? lotAce.getColor() : aceCourante.getColor();
+			panelCartes_a.add(new CarteLot(lot, col, this.ctrl, this));
+		}
 		panelCartes_a.add(Box.createVerticalGlue());
 		panelCartes_a.revalidate();
 		panelCartes_a.repaint();

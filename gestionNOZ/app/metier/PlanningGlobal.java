@@ -245,18 +245,20 @@ public class PlanningGlobal
 
 	public Societe getSocieteDuLot(Lot lot)
 	{
+		if (lot == null) return null;
 		for (Societe s : this.societes)
 			for (Lot l : s.getLots())
-				if (l == lot) return s;
+				if (l != null && lot.getId() != null && lot.getId().equals(l.getId())) return s;
 		return null;
 	}
 
 	public Ace getAceDuLot(Lot lot)
 	{
+		if (lot == null) return null;
 		for (Societe s : this.societes)
 			for (Ace a : s.getAces())
 				for (Lot l : a.getLots())
-					if (l == lot) return a;
+					if (l != null && lot.getId() != null && lot.getId().equals(l.getId())) return a;
 		return null;
 	}
 
