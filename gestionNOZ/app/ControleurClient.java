@@ -492,6 +492,7 @@ public class ControleurClient implements IControleur
 			+ ",\"statut\":"                  + e(statut)
 			+ ",\"statutEchant\":"            + e(statutEchant)
 			+ ",\"sousDouane\":"              + sousDouane
+		+ ",\"estMachine\":"              + machine
 			+ ",\"commentaire\":"             + e(commentaire)
 			+ ",\"formatCarton\":"            + e(formatCarton)
 			+ ",\"collisage\":"               + collisage

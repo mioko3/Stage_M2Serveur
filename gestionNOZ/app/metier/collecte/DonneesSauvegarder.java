@@ -216,7 +216,7 @@ public class DonneesSauvegarder
 			sb.append("    \"dateFinTheorique\": "         ).append(esc(l.getdateFinT()))                               .append(",\n");
 			sb.append("    \"heuresAce\": "                ).append(l.getHeuresAce())                                   .append(",\n");
 			sb.append("    \"collisage\": "                ).append(l.getCollisage())                                   .append(",\n");
-			sb.append("    \"estMachine\": "               ).append(false)                                              .append(",\n");
+			sb.append("    \"estMachine\": "               ).append(l.estMachine())                                        .append(",\n");
 			sb.append("    \"nbPers\": "                   ).append(l.getNbPers())                                      .append(",\n");
 			sb.append("    \"cadenceReel\": "              ).append(l.getCadenceReel())                                 .append(",\n");
 			sb.append("    \"lignesColisage\": []"         )                                                            .append(",\n");

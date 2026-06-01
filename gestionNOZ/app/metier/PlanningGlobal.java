@@ -292,7 +292,8 @@ public class PlanningGlobal
 	                       String statut, String statutEchant,
 	                       String semaine, int priorite,
 	                       String lotACharge, String emplacement,
-	                       boolean sousDouane, String dateReception,
+	                       boolean sousDouane, boolean machine,
+	                       String dateReception,
 	                       String datePaiement, String commentaire)
 	{
 		Lot lot = new Lot(numCDE, nbPieces, cadence,
@@ -305,6 +306,7 @@ public class PlanningGlobal
 		lot.setLotACharge   (lotACharge   != null ? lotACharge   : "");
 		lot.setEmplacement  (emplacement  != null ? emplacement  : "");
 		lot.setEstSousDouane(sousDouane);
+		lot.setEstMachine   (machine);
 		lot.setDateReception(dateReception != null ? dateReception : "");
 		lot.setDatePaiement (datePaiement  != null ? datePaiement  : "");
 		lot.setCommentaire  (commentaire   != null ? commentaire   : "");

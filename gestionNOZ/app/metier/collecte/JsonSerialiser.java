@@ -154,6 +154,7 @@ public class JsonSerialiser
 			+ "\"lotACharge\":"              + esc(lot.getLotACharge())                     + ","
 			+ "\"emplacement\":"             + esc(lot.getEmplacement())                    + ","
 			+ "\"estSousDouane\":"           + lot.isEstSousDouane()                        + ","
+			+ "\"estMachine\":"              + lot.estMachine()                             + ","
 			+ "\"dateReception\":"           + esc(lot.getDateReception())                  + ","
 			+ "\"datePaiement\":"            + esc(lot.getDatePaiement())                   + ","
 			+ "\"commentaire\":"             + esc(lot.getCommentaire())                    + ","
@@ -300,6 +301,7 @@ public class JsonSerialiser
 		lot.setLotACharge   (getString(obj, "lotACharge"));
 		lot.setEmplacement  (getString(obj, "emplacement"));
 		lot.setEstSousDouane(getBool  (obj, "estSousDouane"));
+		lot.setEstMachine   (getBool  (obj, "estMachine"));
 		lot.setDateReception(getString(obj, "dateReception"));
 		lot.setDatePaiement (getString(obj, "datePaiement"));
 		lot.setCommentaire  (getString(obj, "commentaire"));

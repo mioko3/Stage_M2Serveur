@@ -368,7 +368,7 @@ public class ServeurHTTP
 				String c = lire(ex);
 				int numCDE = JsonSerialiser.extraireInt(c, "numCDE");
 				if (numCDE <= 0) { rep(ex, 400, "{\"err\":\"numCDE invalide\"}"); return; }
-				// Signature exacte de PlanningGlobal.ajouterLot : 16 paramètres
+				// Signature exacte de PlanningGlobal.ajouterLot : 17 paramètres
 				metier.ajouterLot(numCDE,
 					JsonSerialiser.extraireString(c, "typologie"),
 					JsonSerialiser.extraireString(c, "affaire"),
@@ -382,6 +382,7 @@ public class ServeurHTTP
 					JsonSerialiser.extraireString(c, "lotACharge"),
 					JsonSerialiser.extraireString(c, "emplacement"),
 					JsonSerialiser.extraireBool  (c, "estSousDouane"),
+					JsonSerialiser.extraireBool  (c, "estMachine"),
 					JsonSerialiser.extraireString(c, "dateReception"),
 					JsonSerialiser.extraireString(c, "datePaiement"),
 					JsonSerialiser.extraireString(c, "commentaire"));
@@ -436,6 +437,7 @@ public class ServeurHTTP
 					JsonSerialiser.extraireString(c, "dateReception"),
 					JsonSerialiser.extraireString(c, "datePaiement"),
 					JsonSerialiser.extraireString(c, "commentaire"));
+				lot.setEstMachine(JsonSerialiser.extraireBool(c, "estMachine"));
 				// Champs logistiques supplémentaires (setters directs)
 				String fc = JsonSerialiser.extraireString(c, "formatCarton");
 				if (!fc.isEmpty()) lot.setFormatCarton(fc);
