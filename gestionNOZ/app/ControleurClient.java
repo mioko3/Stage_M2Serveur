@@ -811,9 +811,11 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void autoSauvegarde() {
-		if (desynchronise) return; // en désync, on ne sauvegarde pas sur le serveur
-		try { post("/autosave/lots",     "{}"); } catch (Exception ignored) {}
-		try { post("/autosave/societes", "{}"); } catch (Exception ignored) {}
+		if (desynchronise) return;
+		new Thread(() -> {
+			try { post("/autosave/lots",     "{}"); } catch (Exception ignored) {}
+			try { post("/autosave/societes", "{}"); } catch (Exception ignored) {}
+		}).start();
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -887,18 +889,16 @@ public class ControleurClient implements IControleur
 	 * Interroge GET /version et recharge les données si la version a changé.
 	 * Retourne true si un rechargement a eu lieu.
 	 */
-	private boolean rafraichirSiModif() {
-		try {
-			String  rep = get("/version");
-			String  v   = JsonSerialiser.extraireString(rep, "v");
-			boolean hs  = JsonSerialiser.extraireBool(rep, "heureSup");
-			if (hs != heureSup) { heureSup = hs; PlanningGlobal.estHeureSup = hs; }
-			if (v != null && !v.equals(versionLocale)) {
-				versionLocale = v;
-				chargerDepuisServeur();
-				return true;
-			}
-		} catch (Exception ignored) {}
+	private boolean rafraichirSiModif() throws Exception {
+		String  rep = get("/version");
+		String  v   = JsonSerialiser.extraireString(rep, "v");
+		boolean hs  = JsonSerialiser.extraireBool(rep, "heureSup");
+		if (hs != heureSup) { heureSup = hs; PlanningGlobal.estHeureSup = hs; }
+		if (v != null && !v.equals(versionLocale)) {
+			versionLocale = v;
+			chargerDepuisServeur();
+			return true;
+		}
 		return false;
 	}
 

@@ -190,12 +190,10 @@ public class FenetrePrincipale extends JFrame
 		long nbAff = ctrl.getSocietes().stream().mapToLong(s -> s.getLots().size()).sum();
 		int  nbH   = ctrl.getSocietes().stream().mapToInt(s -> s.getTotalHeuresCE()).sum();
 		String heureSup = PlanningGlobal.estHeureSup ? "oui" : "non";
-		String desyncInfo = "";
 		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot" + getHeureLotTotal()
 			+ ctrl.getSocietes().size() + " sociétés  |  "
 			+ nbAff + " affectés  |  "
-			+ nbH + "h disponibles  |  Heures Sup : " + heureSup
-			+ desyncInfo;
+			+ nbH + "h disponibles  |  Heures Sup : " + heureSup;
 	}
 
 	public String getHeureLotTotal()
