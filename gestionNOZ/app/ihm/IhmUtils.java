@@ -44,6 +44,9 @@ public final class IhmUtils
     public static final Color TEXTE    = new Color(24,  30,  46);
     public static final Color MUTED    = new Color(95, 108, 130);
 
+    public static final Color GREEN_LIVE = new Color(52, 211, 153);
+    public static final Color RED_LIVE   = new Color(220, 38, 38);
+
     public static final String FONT_NAME = "Segoe UI";
 
     private IhmUtils() {}

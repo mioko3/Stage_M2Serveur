@@ -11,9 +11,10 @@ import app.metier.PlanningGlobal;
 import app.metier.lot.Lot;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -21,6 +22,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 
 /**
  * Fenêtre principale.
@@ -45,11 +47,9 @@ public class FenetrePrincipale extends JFrame
 	private PanelLots        panelLots;
 	private PanelFicheRoute  panelFicheRoute;
 	private PanelMap         panelMap;
-	private PanelDiagrame    panelAuto;
+	private PanelDiagrame    panelDiagrame;
 	private JLabel           lblInfo;
 
-	private JLabel lblStatutConnexion; // label visible en permanence
-	private JLabel dotConnexion;       // point coloré ● 
 
 	// ── Constructeur ─────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ public class FenetrePrincipale extends JFrame
 		this.panelLots        = new PanelLots       (ctrl, this);
 		this.panelFicheRoute  = new PanelFicheRoute (ctrl, this);
 		this.panelMap         = new PanelMap        (ctrl, this);
-		this.panelAuto        = new PanelDiagrame   (ctrl, this);
+		this.panelDiagrame        = new PanelDiagrame   (ctrl, this);
 
 		JTabbedPane onglets = new JTabbedPane();
 		onglets.setFont(new Font("SansSerif", Font.PLAIN, 13));
@@ -83,7 +83,7 @@ public class FenetrePrincipale extends JFrame
 		onglets.addTab("☰ Liste des lots",    panelLots);
 		onglets.addTab("🕒 Sociétés & heures", panelSocietes);
 		onglets.addTab("🗺 Carte entrepôt",    panelMap);
-		onglets.addTab("⚙ DiagrameGantt",     panelAuto);
+		onglets.addTab("⚙ DiagrameGantt",     panelDiagrame);
 		add(onglets, BorderLayout.CENTER);
 
 		onglets.addChangeListener(e -> {
@@ -119,70 +119,74 @@ public class FenetrePrincipale extends JFrame
 	{
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(IhmUtils.HEADER);
-		p.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+		p.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-		JLabel titre = new JLabel("Planning Global Futura — Gestion des lots");
+		// ── Ligne principale ──────────────────────────────────────────────
+		JPanel ligne = new JPanel(new BorderLayout(16, 0));
+		ligne.setBackground(IhmUtils.HEADER);
+		ligne.setBorder(new EmptyBorder(14, 22, 14, 22));
+
+		// Gauche : icône + titres
+		JPanel gauche = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		gauche.setOpaque(false);
+
+		JLabel ico = new JLabel("⬡  ");
+		ico.setFont(new Font("SansSerif", Font.BOLD, 20));
+		ico.setForeground(new Color(96, 165, 250));
+
+		JPanel titreBloc = new JPanel();
+		titreBloc.setLayout(new BoxLayout(titreBloc, BoxLayout.Y_AXIS));
+		titreBloc.setOpaque(false);
+
+		JLabel titre = new JLabel("Planning Global Futura");
+		titre.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 16));
 		titre.setForeground(Color.WHITE);
-		titre.setFont(new Font("SansSerif", Font.BOLD, 17));
 
-		JButton btnRafraichir = new JButton("⟳");
-		btnRafraichir.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		btnRafraichir.setBackground(IhmUtils.HEADER);
-		btnRafraichir.setForeground(new Color(255, 255, 180));
-		btnRafraichir.addActionListener(e -> this.rafraichirTout());
+		JLabel sous = new JLabel("Gestion des lots & fiches de route");
+		sous.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 11));
+		sous.setForeground(new Color(148, 163, 184));
+
+		titreBloc.add(titre);
+		titreBloc.add(sous);
+		gauche.add(ico);
+		gauche.add(titreBloc);
+
+		// Droite : chips d'info + boutons
+		JPanel droite = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+		droite.setOpaque(false);
 
 		lblInfo = new JLabel(buildInfo());
-		lblInfo.setForeground(new Color(180, 180, 180));
-		lblInfo.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		lblInfo.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 13));
+		lblInfo.setForeground(new Color(148, 163, 184));
+		droite.add(lblInfo);
 
-		// ── Indicateur de connexion ──────────────────────────────────
-		lblStatutConnexion = new JLabel("● EN LIGNE");
-		lblStatutConnexion.setForeground(new Color(52, 211, 153)); // vert
-		lblStatutConnexion.setFont(new Font("SansSerif", Font.BOLD, 12));
-		lblStatutConnexion.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
-
-		JPanel panelDroite = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-		panelDroite.setOpaque(false);
-		panelDroite.add(lblInfo);
-		panelDroite.add(lblStatutConnexion);
-
-		JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		panelBtn.setBackground(IhmUtils.HEADER);
 		if (!ctrl.isAccesPAM())
 		{
-			JButton btnSup = new JButton("Heures Sup");
-			btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
-			btnSup.setBackground(IhmUtils.HEADER);
-			btnSup.setForeground(new Color(255, 255, 180));
-			btnSup.setEnabled(true);
-			btnSup.addActionListener(e -> this.SemaineSup());
-			panelBtn.add(btnSup);
+			JButton btnSup = IhmUtils.bouton("⏱ Heures Sup",
+				new Color(180, 100, 20), Color.WHITE);
+			btnSup.setFont(new Font("SansSerif", Font.BOLD, 20));
+			btnSup.addActionListener(e -> SemaineSup());
+			droite.add(btnSup);
 		}
-		panelBtn.add(btnRafraichir);
 
-		p.add(titre,       BorderLayout.WEST);
-		p.add(panelDroite, BorderLayout.EAST);  // ← lblInfo + lblStatutConnexion ensemble
-		p.add(panelBtn,    BorderLayout.SOUTH);
+		JButton btnRafraichir = IhmUtils.boutonCompact("⟳ Rafraîchir",
+			IhmUtils.HEADER2, new Color(148, 163, 184));
+		btnRafraichir.setFont(new Font("SansSerif", Font.BOLD, 20));
+		btnRafraichir.addActionListener(e -> rafraichirTout());
+		droite.add(btnRafraichir);
 
+		droite.add(ConnectLive());
+		ligne.add(gauche, BorderLayout.WEST);
+		ligne.add(droite, BorderLayout.EAST);
+
+		// Trait bas
+		JPanel trait = new JPanel();
+		trait.setBackground(new Color(51, 65, 85));
+		trait.setPreferredSize(new Dimension(1, 1));
+
+		p.add(ligne, BorderLayout.CENTER);
+		p.add(trait, BorderLayout.SOUTH);
 		return p;
-	}
-
-	// ── À appeler depuis le thread de polling ────────────────────────────
-	/** Appelé par ControleurClient.demarrerPolling() quand la connexion change. */
-	public void setStatutConnexion(boolean enLigne)
-	{
-		SwingUtilities.invokeLater(() -> {
-			if (lblStatutConnexion == null) return;
-			if (enLigne) {
-				lblStatutConnexion.setText("● EN LIGNE");
-				lblStatutConnexion.setForeground(new Color(52, 211, 153)); // vert
-				lblStatutConnexion.setToolTipText("Synchronisé avec le serveur");
-			} else {
-				lblStatutConnexion.setText("● HORS LIGNE");
-				lblStatutConnexion.setForeground(new Color(220, 38, 38));  // rouge
-				lblStatutConnexion.setToolTipText("Serveur inaccessible — modifications non sauvegardées");
-			}
-		});
 	}
 
 	private String buildInfo()
@@ -190,12 +194,31 @@ public class FenetrePrincipale extends JFrame
 		long nbAff = ctrl.getSocietes().stream().mapToLong(s -> s.getLots().size()).sum();
 		int  nbH   = ctrl.getSocietes().stream().mapToInt(s -> s.getTotalHeuresCE()).sum();
 		String heureSup = PlanningGlobal.estHeureSup ? "oui" : "non";
-		String desyncInfo = "";
 		return ctrl.getLots().size() + " lots  |  " + " Heures total Lot" + getHeureLotTotal()
 			+ ctrl.getSocietes().size() + " sociétés  |  "
 			+ nbAff + " affectés  |  "
-			+ nbH + "h disponibles  |  Heures Sup : " + heureSup
-			+ desyncInfo;
+			+ nbH + "h disponibles  |  Heures Sup : " + heureSup;
+	}
+
+	private JPanel ConnectLive()
+	{
+		// Point EN LIGNE
+		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+		live.setOpaque(false);
+		live.setBorder(new EmptyBorder(0, 8, 0, 0));
+		JLabel dot = new JLabel("●");
+		dot.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 9));
+
+		Color liveColor  = ctrl.isPollingActif() ? IhmUtils.GREEN_LIVE : IhmUtils.RED_LIVE;
+		String connexion = ctrl.isPollingActif() ? "EN LIGNE" : "HORS LIGNE";
+
+		dot.setForeground(liveColor);
+		JLabel txtLive = new JLabel(connexion);
+		txtLive.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 11));
+		txtLive.setForeground(liveColor);
+		live.add(dot);
+		live.add(txtLive);
+		return live;
 	}
 
 	public String getHeureLotTotal()

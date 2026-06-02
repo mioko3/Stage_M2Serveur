@@ -829,55 +829,45 @@ public class ControleurClient implements IControleur
 	private void demarrerPolling()
 	{
 		Thread t = new Thread(() -> {
-			int     echecsConsecutifs    = 0;
-			boolean etaitHorsLigne       = false;   // état précédent
+			int     echecsConsecutifs   = 0;
+			boolean avertissementAffiche = false;
 
 			while (true) {
 				try {
 					Thread.sleep(POLLING_MS);
-					if (desynchronise) continue;
+					if (desynchronise) continue; // polling suspendu en mode désync
 
 					boolean modif = rafraichirSiModif();
-					echecsConsecutifs = 0;
-
-					// ── Retour en ligne ───────────────────────────────────
-					if (etaitHorsLigne) {
-						etaitHorsLigne = false;
-						if (fenetre != null)
-							fenetre.setStatutConnexion(true); // vert
-					}
-
+					echecsConsecutifs    = 0;
+					avertissementAffiche = false;
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
 
-				} catch (InterruptedException ex) {
-					break;
-				} catch (Exception ex) {
+				} catch (InterruptedException ex)
+				{
+					break; // fin du thread si interrompu (ex: à la fermeture de la fenêtre)
+				} catch (Exception ex)
+				{
 					echecsConsecutifs++;
-
-					// ── Passe hors ligne après 3 échecs (~3s) ─────────────
-					if (echecsConsecutifs >= 3 && !etaitHorsLigne) {
-						etaitHorsLigne = true;
-
-						// 1. Mettre l'indicateur visuel en rouge IMMÉDIATEMENT
-						if (fenetre != null)
-							fenetre.setStatutConnexion(false); // rouge
-
-						// 2. Notification une seule fois (non bloquante)
+					if (echecsConsecutifs >= 3 && !avertissementAffiche)
+					{
+						avertissementAffiche = true;
 						SwingUtilities.invokeLater(() ->
 							JOptionPane.showMessageDialog(fenetre,
-								"⚠️ Le serveur est inaccessible.\n" +
-								"Vos modifications ne seront pas sauvegardées\n" +
-								"tant que la connexion n'est pas rétablie.",
+								"⚠️ Connexion au serveur perdue.\n" +
+								"Le serveur est peut-être arrêté.\n" +
+								"Les modifications ne seront pas synchronisées.",
 								"Serveur inaccessible", JOptionPane.WARNING_MESSAGE));
 					}
 				}
 			}
 		});
-		t.setDaemon(true);
+		t.setDaemon(true); // daemon : s'arrête quand la fenêtre se ferme
 		t.setName("polling-serveur");
 		t.start();
 	}
+
+	public boolean isPollingActif() { return desynchronise; }
 
 	/**
 	 * Interroge GET /version et recharge les données si la version a changé.
