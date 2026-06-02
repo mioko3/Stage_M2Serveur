@@ -4,7 +4,6 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.*;
 
 /**
@@ -84,7 +83,7 @@ public final class IhmUtils
             protected void paintBorder(Graphics g) { /* pas de bordure carrée */ }
         };
         b.setForeground(fg);
-        b.setFont(new Font(FONT_NAME, Font.BOLD, 12));
+        b.setFont(new Font("SansSerif", Font.BOLD, 12));
         b.setFocusPainted(false);
         b.setBorderPainted(false);
         b.setContentAreaFilled(false);

@@ -164,12 +164,6 @@ public class PanelAffectation extends JPanel
 		btnAjouter .addActionListener(e -> new DialogAjoutLot(fenetre, ctrl, this).setVisible(true));
 		btnNewLots .addActionListener(e -> ctrl.exportNewLot());
 
-		btnAffecter.setFont(new Font("SansSerif", Font.BOLD, 20));
-		btnRetirer.setFont(new Font("SansSerif", Font.BOLD, 20));
-		btnEditer.setFont(new Font("SansSerif", Font.BOLD, 20));
-		btnAjouter.setFont(new Font("SansSerif", Font.BOLD, 20));
-		btnNewLots.setFont(new Font("SansSerif", Font.BOLD, 20));
-
 		lblStatut = new JLabel(" ");
 		lblStatut.setFont(new Font("SansSerif", Font.ITALIC, 11));
 		lblStatut.setAlignmentX(Component.LEFT_ALIGNMENT);

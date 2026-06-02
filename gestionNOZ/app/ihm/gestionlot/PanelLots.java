@@ -83,9 +83,6 @@ public class PanelLots extends JPanel
 		btnEdit .addActionListener(e -> ouvrirEdition());
 		btnSuppr.addActionListener(e -> supprimerLot());
 
-		btnEdit.setFont(new Font("SansSerif", Font.BOLD, 20));
-		btnSuppr.setFont(new Font("SansSerif", Font.BOLD, 20));
-
 		JLabel hint = new JLabel("  double-clic pour modifier");
 		hint.setFont(new Font("SansSerif", Font.ITALIC, 11));
 		hint.setForeground(Color.GRAY);

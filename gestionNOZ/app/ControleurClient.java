@@ -607,8 +607,8 @@ public class ControleurClient implements IControleur
 		// 4. Synchroniser avec le serveur en arrière-plan
 		String aceNom = ace != null ? ace.getNom() : "";
 		String c = "{\"numCDE\":" + lot.getNumCDE()
-			+ ",\"societeNom\":" + e(societe.getNom())
-			+ ",\"aceNom\":"     + e(aceNom) + "}";
+				+ ",\"societe\":" + e(societe.getNom())
+				+ ",\"ace\":"     + e(aceNom) + "}";
 		new Thread(() -> {
 			try {
 				majDual(post("/lots/affecter", c));
@@ -829,37 +829,52 @@ public class ControleurClient implements IControleur
 	private void demarrerPolling()
 	{
 		Thread t = new Thread(() -> {
-			int     echecsConsecutifs   = 0;
-			boolean avertissementAffiche = false;
+			int     echecsConsecutifs    = 0;
+			boolean etaitHorsLigne       = false;   // état précédent
 
 			while (true) {
 				try {
 					Thread.sleep(POLLING_MS);
-					if (desynchronise) continue; // polling suspendu en mode désync
+					if (desynchronise) continue;
 
 					boolean modif = rafraichirSiModif();
-					echecsConsecutifs    = 0;
-					avertissementAffiche = false;
+					echecsConsecutifs = 0;
+
+					// ── Retour en ligne ───────────────────────────────────
+					if (etaitHorsLigne) {
+						etaitHorsLigne = false;
+						if (fenetre != null)
+							fenetre.setStatutConnexion(true); // vert
+					}
+
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
 
 				} catch (InterruptedException ex) {
-					break; // thread interrompu → sortie propre
+					break;
 				} catch (Exception ex) {
 					echecsConsecutifs++;
-					if (echecsConsecutifs >= 3 && !avertissementAffiche) {
-						avertissementAffiche = true;
+
+					// ── Passe hors ligne après 3 échecs (~3s) ─────────────
+					if (echecsConsecutifs >= 3 && !etaitHorsLigne) {
+						etaitHorsLigne = true;
+
+						// 1. Mettre l'indicateur visuel en rouge IMMÉDIATEMENT
+						if (fenetre != null)
+							fenetre.setStatutConnexion(false); // rouge
+
+						// 2. Notification une seule fois (non bloquante)
 						SwingUtilities.invokeLater(() ->
 							JOptionPane.showMessageDialog(fenetre,
-								"⚠️ Connexion au serveur perdue.\n" +
-								"Le serveur est peut-être arrêté.\n" +
-								"Les modifications ne seront pas synchronisées.",
+								"⚠️ Le serveur est inaccessible.\n" +
+								"Vos modifications ne seront pas sauvegardées\n" +
+								"tant que la connexion n'est pas rétablie.",
 								"Serveur inaccessible", JOptionPane.WARNING_MESSAGE));
 					}
 				}
 			}
 		});
-		t.setDaemon(true); // daemon : s'arrête quand la fenêtre se ferme
+		t.setDaemon(true);
 		t.setName("polling-serveur");
 		t.start();
 	}

@@ -109,8 +109,6 @@ public class DialogEditSociete extends JDialog
 		JButton btnDel = IhmUtils.bouton("− Supprimer la ligne sélectionnée", new Color(180, 30, 30), Color.WHITE);
 		btnAdd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 		btnDel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-		btnAdd.setFont(new Font("SansSerif", Font.BOLD, 14));
-		btnDel.setFont(new Font("SansSerif", Font.BOLD, 14));
 		btnAdd.addActionListener(e -> modelAces.addRow(new Object[]{"Nouvelle ACE", 1, 1}));
 		btnDel.addActionListener(e -> {
 			int row = tblAces.getSelectedRow();
