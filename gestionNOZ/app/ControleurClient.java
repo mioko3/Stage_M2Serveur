@@ -213,8 +213,6 @@ public class ControleurClient implements IControleur
 	private ArrayList<Lot>     lots     = new ArrayList<>();
 	private ArrayList<Societe> societes = new ArrayList<>();
 
-	// ── Mode désynchronisé ────────────────────────────────────────────────
-	private volatile boolean   desynchronise = false;
 	// Utilisé uniquement en mode désynchronisé pour sauvegarder localement
 	private DonneesSauvegarder savLocal;
 
@@ -223,6 +221,7 @@ public class ControleurClient implements IControleur
 	// Si /version retourne un numéro différent, on recharge tout.
 	private volatile String  versionLocale = "";
 	private volatile boolean heureSup      = false;
+	private boolean pollingActif    = true;     // true = serveur actif | false = serveur down
 	private static final int POLLING_MS    = 1000; // 1 secondes entre chaque sondage
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -280,34 +279,7 @@ public class ControleurClient implements IControleur
 
 	public String  getIdentifiant()  { return identifiant;   }
 	public boolean isAccesPAM()      { return accesPAM;      }
-	public boolean isDesynchronise() { return desynchronise; }
 
-	// ══════════════════════════════════════════════════════════════════════
-	//  MODE DÉSYNCHRONISÉ
-	// ══════════════════════════════════════════════════════════════════════
-
-	/**
-	 * Passe en mode désynchronisé (PAM uniquement).
-	 * Le polling est suspendu, les sauvegardes se font en local.
-	 * Les autres clients continuent de voir l'état du serveur.
-	 */
-	public void seDesynchroniser()
-	{
-		if (accesPAM) { desynchronise = true; }
-	}
-
-	/**
-	 * Revient en mode synchronisé.
-	 * Recharge l'état du serveur, ce qui écrase les modifications locales.
-	 */
-	public void seResynchroniser()
-	{
-		desynchronise = false;
-		try {
-			chargerDepuisServeur();
-			if (fenetre != null) SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
-		} catch (Exception ignored) {}
-	}
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  IControleur — Données
@@ -779,37 +751,24 @@ public class ControleurClient implements IControleur
 	// ── Sauvegarde / Chargement ───────────────────────────────────────────
 
 	@Override
-	public void sauvegarderDonnees(String cheminDossier, String semaine) {
-		if (desynchronise) {
-			// Mode désynchronisé : sauvegarde locale, le serveur n'est pas contacté
-			async("sauvegarderDonnees (local)", () -> {
-				String dossier = cheminDossier + "/S" + semaine;
-				java.nio.file.Files.createDirectories(java.nio.file.Paths.get(dossier));
-				savLocal.sauvegarderLots    (lots,     dossier + "/lots.json");
-				savLocal.sauvegarderSocietes(societes, lots, dossier + "/societes.json");
-				JOptionPane.showMessageDialog(null, "Sauvegarde locale S" + semaine, "OK",
-					JOptionPane.INFORMATION_MESSAGE);
-			});
-		} else {
-			// Mode normal : délègue la sauvegarde au serveur
-			async("sauvegarderDonnees", () -> {
-				post("/sauvegarder",
-					"{\"chemin\":" + e(cheminDossier) + ",\"semaine\":" + e(semaine) + "}");
-			});
-		}
+	public void sauvegarderDonnees(String cheminDossier, String semaine)
+	{
+		// Mode normal : délègue la sauvegarde au serveur
+		async("sauvegarderDonnees", () -> {
+			post("/sauvegarder",
+				"{\"chemin\":" + e(cheminDossier) + ",\"semaine\":" + e(semaine) + "}");
+		});
 	}
 
 	@Override
 	public void chargerDonnees(String chemin) throws IOException {
 		// Uniquement disponible en mode désynchronisé
-		if (!desynchronise) return;
 		try { savLocal.charger(new PlanningGlobal(), chemin); }
 		catch (Exception ex) { err("chargerDonnees (désync)", ex); }
 	}
 
 	@Override
 	public void autoSauvegarde() {
-		if (desynchronise) return; // en désync, on ne sauvegarde pas sur le serveur
 		try { post("/autosave/lots",     "{}"); } catch (Exception ignored) {}
 		try { post("/autosave/societes", "{}"); } catch (Exception ignored) {}
 	}
@@ -830,18 +789,18 @@ public class ControleurClient implements IControleur
 	{
 		Thread t = new Thread(() -> {
 			int     echecsConsecutifs   = 0;
-			boolean avertissementAffiche = false;
 
-			while (true) {
+			while (true)
+			{
 				try {
 					Thread.sleep(POLLING_MS);
-					if (desynchronise) continue; // polling suspendu en mode désync
 
 					boolean modif = rafraichirSiModif();
-					echecsConsecutifs    = 0;
-					avertissementAffiche = false;
+					echecsConsecutifs = 0;
+					
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
+					this.pollingActif = true;
 
 				} catch (InterruptedException ex)
 				{
@@ -849,17 +808,19 @@ public class ControleurClient implements IControleur
 				} catch (Exception ex)
 				{
 					echecsConsecutifs++;
-					if (echecsConsecutifs >= 3 && !avertissementAffiche)
+					if (echecsConsecutifs >= 3)
 					{
-						avertissementAffiche = true;
 						SwingUtilities.invokeLater(() ->
 							JOptionPane.showMessageDialog(fenetre,
 								"⚠️ Connexion au serveur perdue.\n" +
 								"Le serveur est peut-être arrêté.\n" +
 								"Les modifications ne seront pas synchronisées.",
 								"Serveur inaccessible", JOptionPane.WARNING_MESSAGE));
+						
 					}
+					this.pollingActif = false;
 				}
+				System.out.println("[Polling] " + (this.pollingActif ? "OK" : "Échec") + " | Version locale: " + versionLocale);
 			}
 		});
 		t.setDaemon(true); // daemon : s'arrête quand la fenêtre se ferme
@@ -867,7 +828,7 @@ public class ControleurClient implements IControleur
 		t.start();
 	}
 
-	public boolean isPollingActif() { return desynchronise; }
+	public boolean isPollingActif() { return this.pollingActif; }
 
 	/**
 	 * Interroge GET /version et recharge les données si la version a changé.

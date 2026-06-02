@@ -202,7 +202,6 @@ public class FenetrePrincipale extends JFrame
 
 	private JPanel ConnectLive()
 	{
-		// Point EN LIGNE
 		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
 		live.setOpaque(false);
 		live.setBorder(new EmptyBorder(0, 8, 0, 0));
@@ -211,6 +210,9 @@ public class FenetrePrincipale extends JFrame
 
 		Color liveColor  = ctrl.isPollingActif() ? IhmUtils.GREEN_LIVE : IhmUtils.RED_LIVE;
 		String connexion = ctrl.isPollingActif() ? "EN LIGNE" : "HORS LIGNE";
+		System.out.println("Polling actif : " + ctrl.isPollingActif());
+		System.out.println("Connexion serveur : " + connexion);
+
 
 		dot.setForeground(liveColor);
 		JLabel txtLive = new JLabel(connexion);
