@@ -48,8 +48,10 @@ public class FenetrePrincipale extends JFrame
 	private PanelFicheRoute  panelFicheRoute;
 	private PanelMap         panelMap;
 	private PanelDiagrame    panelDiagrame;
-	private JLabel           lblInfo;
 
+	private JLabel           lblInfo;
+	private JLabel lblConnexion;
+	private JLabel lblDotConnexion;
 
 	// ── Constructeur ─────────────────────────────────────────────────────
 
@@ -200,27 +202,42 @@ public class FenetrePrincipale extends JFrame
 			+ nbH + "h disponibles  |  Heures Sup : " + heureSup;
 	}
 
-	private JPanel ConnectLive()
+	public JPanel ConnectLive()
 	{
 		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
 		live.setOpaque(false);
 		live.setBorder(new EmptyBorder(0, 8, 0, 0));
-		JLabel dot = new JLabel("●");
-		dot.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 9));
 
-		Color liveColor  = ctrl.isPollingActif() ? IhmUtils.GREEN_LIVE : IhmUtils.RED_LIVE;
-		String connexion = ctrl.isPollingActif() ? "EN LIGNE" : "HORS LIGNE";
-		System.out.println("Polling actif : " + ctrl.isPollingActif());
-		System.out.println("Connexion serveur : " + connexion);
+		lblDotConnexion = new JLabel("●");
+		lblDotConnexion.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 9));
 
+		lblConnexion = new JLabel();
+		lblConnexion.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 11));
 
-		dot.setForeground(liveColor);
-		JLabel txtLive = new JLabel(connexion);
-		txtLive.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 11));
-		txtLive.setForeground(liveColor);
-		live.add(dot);
-		live.add(txtLive);
+		majEtatConnexion();
+
+		live.add(lblDotConnexion);
+		live.add(lblConnexion);
+
 		return live;
+	}
+
+	private void majEtatConnexion()
+	{
+		if (lblConnexion == null || lblDotConnexion == null)
+			return;
+
+		Color liveColor = ctrl.isPollingActif()
+			? IhmUtils.GREEN_LIVE
+			: IhmUtils.RED_LIVE;
+
+		String connexion = ctrl.isPollingActif()
+			? "EN LIGNE"
+			: "HORS LIGNE";
+
+		lblDotConnexion.setForeground(liveColor);
+		lblConnexion.setForeground(liveColor);
+		lblConnexion.setText(connexion);
 	}
 
 	public String getHeureLotTotal()
@@ -243,21 +260,23 @@ public class FenetrePrincipale extends JFrame
 	{
 		Runnable refresh = () -> {
 			if (panelAffectation != null) panelAffectation.rafraichir();
-			this.panelSocietes   .rafraichir();
-			this.panelLots       .rafraichir();
-			this.panelFicheRoute .rafraichir();
-			this.panelMap        .rafraichir();
-			if (lblInfo != null) lblInfo.setText(buildInfo());
+			panelSocietes.rafraichir();
+			panelLots.rafraichir();
+			panelFicheRoute.rafraichir();
+			panelMap.rafraichir();
+
+			if (lblInfo != null)
+				lblInfo.setText(buildInfo());
+
+			majEtatConnexion(); // ← ajout
 		};
+
 		if (SwingUtilities.isEventDispatchThread())
-		{
 			refresh.run();
-		}
 		else
-		{
 			SwingUtilities.invokeLater(refresh);
-		}
-		this.ctrl.autoSauvegarde();
+
+		ctrl.autoSauvegarde();
 	}
 
 	public void SemaineSup()

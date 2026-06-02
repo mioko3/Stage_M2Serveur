@@ -796,36 +796,43 @@ public class ControleurClient implements IControleur
 					Thread.sleep(POLLING_MS);
 
 					boolean modif = rafraichirSiModif();
-					echecsConsecutifs = 0;
-					
+					boolean connec = connection();
+					echecsConsecutifs = connec ? 0 : echecsConsecutifs + 1;
+
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
-					this.pollingActif = true;
 
 				} catch (InterruptedException ex)
 				{
 					break; // fin du thread si interrompu (ex: à la fermeture de la fenêtre)
-				} catch (Exception ex)
-				{
-					echecsConsecutifs++;
-					if (echecsConsecutifs >= 3)
-					{
-						SwingUtilities.invokeLater(() ->
-							JOptionPane.showMessageDialog(fenetre,
-								"⚠️ Connexion au serveur perdue.\n" +
-								"Le serveur est peut-être arrêté.\n" +
-								"Les modifications ne seront pas synchronisées.",
-								"Serveur inaccessible", JOptionPane.WARNING_MESSAGE));
-						
-					}
-					this.pollingActif = false;
 				}
-				System.out.println("[Polling] " + (this.pollingActif ? "OK" : "Échec") + " | Version locale: " + versionLocale);
+				
+				if (echecsConsecutifs == 3)
+				{
+					SwingUtilities.invokeLater(() ->
+						JOptionPane.showMessageDialog(fenetre,
+							"⚠️ Connexion au serveur perdue.\n" +
+							"Le serveur est peut-être arrêté.\n" +
+							"Les modifications ne seront pas synchronisées.",
+							"Serveur inaccessible", JOptionPane.WARNING_MESSAGE));
+					this.pollingActif = false;
+					if (fenetre != null)
+						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
+				}
 			}
 		});
 		t.setDaemon(true); // daemon : s'arrête quand la fenêtre se ferme
 		t.setName("polling-serveur");
 		t.start();
+	}
+	private boolean connection()
+	{
+		try {
+			get("/version");
+			return true;
+		} catch (Exception ex) {
+			return false;
+		}
 	}
 
 	public boolean isPollingActif() { return this.pollingActif; }
