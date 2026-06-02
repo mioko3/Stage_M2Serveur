@@ -92,6 +92,7 @@ public class PanelFicheRoute extends JPanel
 		combSociete.addActionListener(e -> changerSociete());
 		JButton btnMeth = IhmUtils.bouton("\uD83D\uDC41 Voir la Méthode", IhmUtils.VERT, Color.WHITE);
 		btnMeth.addActionListener(e -> ouvrirMeth_s());
+		btnMeth.setFont(new Font("SansSerif", Font.BOLD, 13));
 		ligneSelect.add(lbl); ligneSelect.add(combSociete); ligneSelect.add(btnMeth);
 
 		JPanel tuiles = new JPanel(new GridLayout(1, 6, 6, 0));

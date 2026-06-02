@@ -10,17 +10,19 @@ import app.ihm.map.PanelMap;
 import app.metier.PlanningGlobal;
 import app.metier.lot.Lot;
 import java.awt.BorderLayout;
-import java.awt.Button;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 
 /**
  * Fenêtre principale.
@@ -112,44 +114,92 @@ public class FenetrePrincipale extends JFrame
 
 	// ── En-tête ───────────────────────────────────────────────────────────
 
+	// ── En-tête dark ──────────────────────────────────────────────────────
+
 	private JPanel creerEntete()
 	{
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(IhmUtils.HEADER);
-		p.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+		p.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-		JLabel titre = new JLabel("Planning Global Futura — Gestion des lots");
+		// ── Ligne principale ──────────────────────────────────────────────
+		JPanel ligne = new JPanel(new BorderLayout(16, 0));
+		ligne.setBackground(IhmUtils.HEADER);
+		ligne.setBorder(new EmptyBorder(14, 22, 14, 22));
+
+		// Gauche : icône + titres
+		JPanel gauche = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		gauche.setOpaque(false);
+
+		JLabel ico = new JLabel("⬡  ");
+		ico.setFont(new Font("SansSerif", Font.BOLD, 20));
+		ico.setForeground(new Color(96, 165, 250));
+
+		JPanel titreBloc = new JPanel();
+		titreBloc.setLayout(new BoxLayout(titreBloc, BoxLayout.Y_AXIS));
+		titreBloc.setOpaque(false);
+
+		JLabel titre = new JLabel("Planning Global Futura");
+		titre.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 16));
 		titre.setForeground(Color.WHITE);
-		titre.setFont(new Font("SansSerif", Font.BOLD, 17));
 
-		Button btnRafraichir = new Button("⟳");
-		btnRafraichir.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		btnRafraichir.setBackground(IhmUtils.HEADER);
-		btnRafraichir.setForeground(new Color(255, 255, 180));
-		btnRafraichir.addActionListener(e -> this.rafraichirTout());
+		JLabel sous = new JLabel("Gestion des lots & fiches de route");
+		sous.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 11));
+		sous.setForeground(new Color(148, 163, 184));
+
+		titreBloc.add(titre);
+		titreBloc.add(sous);
+		gauche.add(ico);
+		gauche.add(titreBloc);
+
+		// Droite : chips d'info + boutons
+		JPanel droite = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+		droite.setOpaque(false);
 
 		lblInfo = new JLabel(buildInfo());
-		lblInfo.setForeground(new Color(180, 180, 180));
-		lblInfo.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		lblInfo.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 11));
+		lblInfo.setForeground(new Color(148, 163, 184));
+		droite.add(lblInfo);
 
-		JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		panelBtn.setBackground(IhmUtils.HEADER);
 		if (!ctrl.isAccesPAM())
 		{
-			Button btnSup = new Button("Heures Sup");
-			btnSup.setFont(new Font("SansSerif", Font.PLAIN, 12));
-			btnSup.setBackground(IhmUtils.HEADER);
-			btnSup.setForeground(new Color(255, 255, 180));
-			btnSup.setEnabled(true);
-			btnSup.addActionListener(e -> this.SemaineSup());
-			panelBtn.add(btnSup);
+			JButton btnSup = IhmUtils.bouton("⏱ Heures Sup",
+				new Color(180, 100, 20), Color.WHITE);
+			btnSup.setFont(new Font("SansSerif", Font.BOLD, 20));
+			btnSup.addActionListener(e -> SemaineSup());
+			droite.add(btnSup);
 		}
-		panelBtn.add(btnRafraichir);
 
-		p.add(titre,    BorderLayout.WEST);
-		p.add(lblInfo,  BorderLayout.EAST);
-		p.add(panelBtn, BorderLayout.SOUTH);
+		JButton btnRafraichir = IhmUtils.boutonCompact("⟳ Rafraîchir",
+			IhmUtils.HEADER2, new Color(148, 163, 184));
+		btnRafraichir.setFont(new Font("SansSerif", Font.BOLD, 20));
+		btnRafraichir.addActionListener(e -> rafraichirTout());
+		droite.add(btnRafraichir);
 
+		// Point EN LIGNE
+		JPanel live = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+		live.setOpaque(false);
+		live.setBorder(new EmptyBorder(0, 8, 0, 0));
+		JLabel dot = new JLabel("●");
+		dot.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 9));
+		dot.setForeground(new Color(52, 211, 153));
+		JLabel txtLive = new JLabel("EN LIGNE");
+		txtLive.setFont(new Font(IhmUtils.FONT_NAME, Font.BOLD, 11));
+		txtLive.setForeground(new Color(52, 211, 153));
+		live.add(dot);
+		live.add(txtLive);
+		droite.add(live);
+
+		ligne.add(gauche, BorderLayout.WEST);
+		ligne.add(droite, BorderLayout.EAST);
+
+		// Trait bas
+		JPanel trait = new JPanel();
+		trait.setBackground(new Color(51, 65, 85));
+		trait.setPreferredSize(new Dimension(1, 1));
+
+		p.add(ligne, BorderLayout.CENTER);
+		p.add(trait, BorderLayout.SOUTH);
 		return p;
 	}
 

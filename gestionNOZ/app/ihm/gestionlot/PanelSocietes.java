@@ -64,6 +64,9 @@ public class PanelSocietes extends JPanel
 		btnNew.setAlignmentX(Component.LEFT_ALIGNMENT);
 		btnNew.addActionListener(e -> ouvrirNouvelleHeure());
 
+		btnEdit.setFont(new Font("SansSerif", Font.BOLD, 20));
+		btnNew.setFont(new Font("SansSerif", Font.BOLD, 20));
+
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(IhmUtils.FOND);
 		p.add(btnEdit, BorderLayout.WEST);
