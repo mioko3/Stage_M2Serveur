@@ -148,7 +148,6 @@ public class DonneesSauvegarder
 	private String lire(String chemin) throws IOException
 	{
 		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
-		String prefix = contenu.length() <= 200 ? contenu : contenu.substring(0, 200);
 
 		if (aes == null) return contenu;
 
@@ -166,7 +165,6 @@ public class DonneesSauvegarder
 		// Fichier chiffré : déchiffrer
 		try {
 			String resultat = aes.dechiffrer(contenu);
-			String prefixDechiffre = resultat.length() <= 200 ? resultat : resultat.substring(0, 200);
 			return resultat;
 		} catch (Exception e) {
 			throw new IOException("Erreur déchiffrement de " + chemin
@@ -280,19 +278,6 @@ public class DonneesSauvegarder
 		}
 		sb.append("]");
 		return sb.toString();
-	}
-
-	/**
-	 * Retire l'extension d'un chemin de fichier.
-	 * "app/data/lots.json" → "app/data/lots"
-	 * Utilisé pour créer les fichiers temporaires avec l'extension .json
-	 * à la place de l'extension originale.
-	 */
-	private static String cheminSansExtension(String chemin)
-	{
-		int dot = chemin.lastIndexOf('.');
-		if (dot < 0) return chemin;
-		return chemin.substring(0, dot);
 	}
 
 	private static String esc(String s)

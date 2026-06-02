@@ -435,8 +435,7 @@ public class Lot
 		if (heures <= 0 || this.nbPers <= 0)
 			return 0;
 
-		double cadence =
-			this.nbPieces / (heures * this.nbPers);
+		double cadence = this.nbPieces / (heures * this.nbPers);
 
 		return Math.round(cadence * 100.0) / 100.0;
 	}
