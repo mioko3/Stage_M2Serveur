@@ -704,26 +704,22 @@ public class CarteLot extends JPanel implements ActionListener
 		l.setForeground(new Color(130, 130, 130));
 
 		double cadence = lot.getCadence();
-		double cible = lot.getCadenceReel();
+		double cadReel = lot.getCadenceReel();
 
 		String texte = cadence > 0 ? String.format("%.0f p/h", cadence) : "—";
 
 		JLabel v = new JLabel(texte);
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-		// une marge de 10% est tolérée pour être considéré "dans la cible"
+		// une marge de 10% est tolérée pour être considéré "dans la cadReel"
 		
-		if (cadence < cible)
+		if (cadence < cadReel)
 		{
 			v.setForeground(new Color(0, 150, 0));
 		}
 		else 
 		{
 			v.setForeground(Color.RED);
-		}
-		if (cadence >= cible * 0.9 && cadence <= cible * 1.1)
-		{
-			v.setForeground(Color.DARK_GRAY);
 		}
 
 		bloc.add(l, BorderLayout.NORTH);
