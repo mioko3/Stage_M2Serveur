@@ -108,6 +108,27 @@ public class PanelSocietes extends JPanel
 			}
 		});
 
+		// ── DefaultRenderer (toutes colonnes sauf col 3) — CORRECTIF sélection ──
+		tbl.setDefaultRenderer(Object.class, new DefaultTableCellRenderer()
+		{
+			public Component getTableCellRendererComponent(JTable t, Object v,
+					boolean sel, boolean foc, int r, int c)
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				if (sel)
+				{
+					setBackground(IhmUtils.SEL);
+					setForeground(IhmUtils.TEXTE);
+				}
+				else
+				{
+					setBackground(r % 2 == 0 ? Color.WHITE : new Color(249, 251, 254));
+					setForeground(IhmUtils.TEXTE);
+				}
+				return this;
+			}
+		});
+
 		tbl.addMouseListener(new MouseAdapter()
 		{
 			public void mouseClicked(MouseEvent e)

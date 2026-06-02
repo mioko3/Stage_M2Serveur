@@ -110,7 +110,7 @@ public class ServeurHTTP
 
 		// Chiffrement AES
 		try {
-			this.aes = ChiffrementAES.chargerOuCreer(CheminApp.resoudre("secret.key"));
+			this.aes = ChiffrementAES.chargerOuCreer(CheminApp.resoudre("/app/data/pastouche/secret.key"));
 			this.savDonnees.setCrypte(aes);
 			log("[Serveur] Chiffrement AES-256 activé.");
 		} catch (Exception e) {

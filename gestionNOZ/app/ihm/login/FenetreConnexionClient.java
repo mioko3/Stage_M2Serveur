@@ -6,9 +6,13 @@ import java.awt.event.*;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+
 
 /**
  * ══════════════════════════════════════════════════════════════
@@ -83,7 +87,7 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 		// IP
 		carte.add(champLabel("IP du serveur (ex: 192.168.1.10) :"));
 		carte.add(Box.createRigidArea(new Dimension(0, 6)));
-		txtIP = champTexte("localhost");
+		txtIP = champTexte(chargerIPSauvegardee());
 		txtIP.addActionListener(this);
 		carte.add(txtIP);
 		carte.add(Box.createRigidArea(new Dimension(0, 16)));
@@ -215,6 +219,7 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 				final boolean accesPAMFinal = accesPAM;
 
 				SwingUtilities.invokeLater(() -> {
+					sauvegarderIP(ipFinal);
 					dispose();
 					new ControleurClient(ipFinal, idFinal, accesPAMFinal, tokenFinal);
 				});
@@ -240,6 +245,27 @@ public class FenetreConnexionClient extends JFrame implements ActionListener
 			txtIdentifiant.setEnabled(true);
 			txtMdp.setEnabled(true);
 		});
+	}
+
+	// ── Sauvegarde l'IP dans un fichier local ──────────────────────────────
+	private static final Path CONFIG_FILE = Paths.get("app/data/pastouche/client.config");
+
+	private static String chargerIPSauvegardee()
+	{
+		try {
+			if (Files.exists(CONFIG_FILE)) {
+				String contenu = Files.readString(CONFIG_FILE).trim();
+				if (!contenu.isBlank()) return contenu;
+			}
+		} catch (Exception ignored) {}
+		return "192.168.2."; // valeur par défaut si rien de sauvegardé
+	}
+
+	private static void sauvegarderIP(String ip)
+	{
+		try {
+			Files.writeString(CONFIG_FILE, ip.trim());
+		} catch (Exception ignored) {}
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────

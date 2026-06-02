@@ -30,38 +30,27 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.Timer;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Onglet "Affectation des lots".
- *
- * Modifications issues de livraison :
- *   - lotsDisponiblesAffiches / lotsAffectesAffiches : listes de référence
- *     pour getLotSelectionne() — plus de compteur fragile dans une boucle
- *   - combFiltreStatut intégré dans le tableau gauche (sous la recherche)
- */
 public class PanelAffectation extends JPanel
 {
 	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
 
-	// ── Listes de référence (cf. livraison) ───────────────────────────────
 	private List<Lot> lotsDisponiblesAffiches = new ArrayList<>();
 	private List<Lot> lotsAffectesAffiches    = new ArrayList<>();
 
-	// ── Tableau gauche : lots disponibles ─────────────────────────────────
 	private DefaultTableModel modelDisponibles;
 	private JTable            tblDisponibles;
 	private JTextField        txtRechercheDisp;
 	private JComboBox<String> combFiltreStatut;
 
-	// ── Panneau central ───────────────────────────────────────────────────
 	private JTextArea         infoLot;
 	private JComboBox<String> combSociete;
 	private JComboBox<String> combAce;
 	private JLabel            lblStatut;
 
-	// ── Tableau droit : lots affectés ─────────────────────────────────────
 	private DefaultTableModel modelAffectes;
 	private JTable            tblAffectes;
 	private JTextField        txtRechercheAff;
@@ -83,7 +72,6 @@ public class PanelAffectation extends JPanel
 
 	private JPanel creerTableauDisponibles()
 	{
-		// Colonne "Nb pcs" ajoutée (cf. livraison)
 		String[] cols = {"N° CDE", "Typologie", "Nb pcs", "H", "Statut"};
 		modelDisponibles = new DefaultTableModel(cols, 0)
 		{
@@ -94,6 +82,27 @@ public class PanelAffectation extends JPanel
 		tblDisponibles.getSelectionModel().addListSelectionListener(e ->
 		{
 			if (!e.getValueIsAdjusting()) majInfoLot();
+		});
+
+		// ── CORRECTIF couleur sélection ───────────────────────────────────
+		tblDisponibles.setDefaultRenderer(Object.class, new DefaultTableCellRenderer()
+		{
+			public Component getTableCellRendererComponent(JTable t, Object v,
+					boolean sel, boolean foc, int r, int c)
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				if (sel)
+				{
+					setBackground(IhmUtils.SEL);
+					setForeground(IhmUtils.TEXTE);
+				}
+				else
+				{
+					setBackground(r % 2 == 0 ? Color.WHITE : new Color(249, 251, 254));
+					setForeground(IhmUtils.TEXTE);
+				}
+				return this;
+			}
 		});
 
 		txtRechercheDisp = new JTextField();
@@ -115,7 +124,7 @@ public class PanelAffectation extends JPanel
 		top.setBackground(IhmUtils.FOND);
 		top.add(IhmUtils.labelSection("Lots disponibles"), BorderLayout.WEST);
 		top.add(txtRechercheDisp,  BorderLayout.CENTER);
-		top.add(combFiltreStatut,  BorderLayout.SOUTH);   // filtre sous la recherche
+		top.add(combFiltreStatut,  BorderLayout.SOUTH);
 
 		JPanel tblPanel = new JPanel(new BorderLayout());
 		tblPanel.setBackground(Color.WHITE);
@@ -204,6 +213,27 @@ public class PanelAffectation extends JPanel
 			public boolean isCellEditable(int r, int c) { return false; }
 		};
 		tblAffectes = IhmUtils.creerTable(modelAffectes);
+
+		// ── CORRECTIF couleur sélection ───────────────────────────────────
+		tblAffectes.setDefaultRenderer(Object.class, new DefaultTableCellRenderer()
+		{
+			public Component getTableCellRendererComponent(JTable t, Object v,
+					boolean sel, boolean foc, int r, int c)
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				if (sel)
+				{
+					setBackground(IhmUtils.SEL);
+					setForeground(IhmUtils.TEXTE);
+				}
+				else
+				{
+					setBackground(r % 2 == 0 ? Color.WHITE : new Color(249, 251, 254));
+					setForeground(IhmUtils.TEXTE);
+				}
+				return this;
+			}
+		});
 
 		txtRechercheAff = new JTextField();
 		txtRechercheAff.setToolTipText("Rechercher dans les lots affectés…");
@@ -326,7 +356,7 @@ public class PanelAffectation extends JPanel
 		new DialogEditLot(fenetre, ctrl, lot, this).setVisible(true);
 	}
 
-	// ── Sélection depuis listes de référence (cf. livraison) ─────────────
+	// ── Sélection ─────────────────────────────────────────────────────────
 
 	private Lot getLotSelectionne()
 	{
