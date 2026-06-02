@@ -221,7 +221,7 @@ public class ControleurClient implements IControleur
 	// Si /version retourne un numéro différent, on recharge tout.
 	private volatile String  versionLocale = "";
 	private volatile boolean heureSup      = false;
-	private boolean pollingActif    = true;     // true = serveur actif | false = serveur down
+	private boolean pollingActif           = true;     // true = serveur actif | false = serveur down
 	private static final int POLLING_MS    = 1000; // 1 secondes entre chaque sondage
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -277,8 +277,9 @@ public class ControleurClient implements IControleur
 	//  GETTERS
 	// ══════════════════════════════════════════════════════════════════════
 
-	public String  getIdentifiant()  { return identifiant;   }
-	public boolean isAccesPAM()      { return accesPAM;      }
+	public String  getIdentifiant()  { return this.identifiant;  }
+	public boolean isAccesPAM()      { return this.accesPAM;     }
+	public boolean isPollingActif()  { return this.pollingActif; }
 
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -825,6 +826,11 @@ public class ControleurClient implements IControleur
 		t.setName("polling-serveur");
 		t.start();
 	}
+	/**
+	 * Teste la connexion au serveur en appelant GET /version.
+	 * Retourne true si la connexion est OK, false en cas d'erreur.
+	 * @return
+	 */
 	private boolean connection()
 	{
 		try {
@@ -834,8 +840,6 @@ public class ControleurClient implements IControleur
 			return false;
 		}
 	}
-
-	public boolean isPollingActif() { return this.pollingActif; }
 
 	/**
 	 * Interroge GET /version et recharge les données si la version a changé.
