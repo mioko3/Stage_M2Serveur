@@ -6,7 +6,6 @@ import app.ihm.ficheroute.PanelFicheRoute;
 import app.ihm.gestionlot.PanelAffectation;
 import app.ihm.gestionlot.PanelLots;
 import app.ihm.gestionlot.PanelSocietes;
-import app.ihm.map.PanelMap;
 import app.metier.PlanningGlobal;
 import app.metier.lot.Lot;
 import java.awt.BorderLayout;
@@ -46,7 +45,7 @@ public class FenetrePrincipale extends JFrame
 	private PanelSocietes    panelSocietes;
 	private PanelLots        panelLots;
 	private PanelFicheRoute  panelFicheRoute;
-	private PanelMap         panelMap;
+	//private PanelMap         panelMap;
 	private PanelDiagrame    panelDiagrame;
 
 	private JLabel           lblInfo;
@@ -72,7 +71,7 @@ public class FenetrePrincipale extends JFrame
 		this.panelSocietes    = new PanelSocietes   (ctrl, this);
 		this.panelLots        = new PanelLots       (ctrl, this);
 		this.panelFicheRoute  = new PanelFicheRoute (ctrl, this);
-		this.panelMap         = new PanelMap        (ctrl, this);
+		//this.panelMap         = new PanelMap        (ctrl, this);
 		this.panelDiagrame        = new PanelDiagrame   (ctrl, this);
 
 		JTabbedPane onglets = new JTabbedPane();
@@ -84,15 +83,15 @@ public class FenetrePrincipale extends JFrame
 		onglets.addTab("📋 Fiches de Route",   panelFicheRoute);
 		onglets.addTab("☰ Liste des lots",    panelLots);
 		onglets.addTab("🕒 Sociétés & heures", panelSocietes);
-		onglets.addTab("🗺 Carte entrepôt",    panelMap);
+		//onglets.addTab("🗺 Carte entrepôt",    panelMap);
 		onglets.addTab("⚙ DiagrameGantt",     panelDiagrame);
 		add(onglets, BorderLayout.CENTER);
 
 		onglets.addChangeListener(e -> {
 			if (onglets.getSelectedComponent() == panelFicheRoute)
 				panelFicheRoute.rafraichir();
-			if (onglets.getSelectedComponent() == panelMap)
-				panelMap.rafraichir();
+			//if (onglets.getSelectedComponent() == panelMap)
+			//	panelMap.rafraichir();
 		});
 
 		panelAffectation.remplirComboSocietes();
@@ -161,15 +160,6 @@ public class FenetrePrincipale extends JFrame
 		lblInfo.setFont(new Font(IhmUtils.FONT_NAME, Font.PLAIN, 13));
 		lblInfo.setForeground(new Color(148, 163, 184));
 		droite.add(lblInfo);
-
-		if (!ctrl.isAccesPAM())
-		{
-			JButton btnSup = IhmUtils.bouton("⏱ Heures Sup",
-				new Color(180, 100, 20), Color.WHITE);
-			btnSup.setFont(new Font("SansSerif", Font.BOLD, 20));
-			btnSup.addActionListener(e -> SemaineSup());
-			droite.add(btnSup);
-		}
 
 		JButton btnRafraichir = IhmUtils.boutonCompact("⟳ Rafraîchir",
 			IhmUtils.HEADER2, new Color(148, 163, 184));
@@ -263,7 +253,7 @@ public class FenetrePrincipale extends JFrame
 			panelSocietes.rafraichir();
 			panelLots.rafraichir();
 			panelFicheRoute.rafraichir();
-			panelMap.rafraichir();
+			//panelMap.rafraichir();
 
 			if (lblInfo != null)
 				lblInfo.setText(buildInfo());

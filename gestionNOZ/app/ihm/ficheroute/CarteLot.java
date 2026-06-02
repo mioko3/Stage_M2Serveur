@@ -186,7 +186,7 @@ public class CarteLot extends JPanel implements ActionListener
 		info(l2, "VVS",          lot.getValeurVente() > 0 ? fmt(lot.getValeurVente()) + " €" : "—", bg);
 		info(l2, "Pièces",       fmt(lot.getNbPieces()), bg);
 		info(l2, "PU",           lot.getPrixUnitaire() > 0 ? String.format("%.2f €", lot.getPrixUnitaire()) : "—", bg);
-		info(l2, "Cadence",      lot.getCadence() > 0 ? String.format("%.0f p/h", lot.getCadence()) : "—", bg);
+		infoCadence(l2, lot, bg);
 		info(l2, "H. Total",     lot.getHeures() > 0 ? String.format("%.1f h", lot.getHeures()) : "—", bg);
 		info(l2, "H. sur piste", lot.getHeuresAce() > 0 ? String.format("%.1f h", lot.getHeuresAce()) : "—", bg);
 		if (!s(lot.getEmplacement()).isEmpty())   info(l2, "Emplacement", s(lot.getEmplacement()), bg);
@@ -690,6 +690,42 @@ public class CarteLot extends JPanel implements ActionListener
 		JLabel v = new JLabel(val);
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
 		v.setForeground(Color.DARK_GRAY);
+		bloc.add(l, BorderLayout.NORTH);
+		bloc.add(v, BorderLayout.CENTER);
+		p.add(bloc);
+	}
+	static void infoCadence(JPanel p, Lot lot, Color bg)
+	{
+		JPanel bloc = new JPanel(new BorderLayout(0, 0));
+		bloc.setBackground(bg);
+
+		JLabel l = new JLabel("Cadence");
+		l.setFont(new Font("SansSerif", Font.PLAIN, 10));
+		l.setForeground(new Color(130, 130, 130));
+
+		double cadence = lot.getCadence();
+		double cible = lot.getCadenceReel();
+
+		String texte = cadence > 0 ? String.format("%.0f p/h", cadence) : "—";
+
+		JLabel v = new JLabel(texte);
+		v.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+		// une marge de 10% est tolérée pour être considéré "dans la cible"
+		
+		if (cadence < cible)
+		{
+			v.setForeground(new Color(0, 150, 0));
+		}
+		else 
+		{
+			v.setForeground(Color.RED);
+		}
+		if (cadence >= cible * 0.9 && cadence <= cible * 1.1)
+		{
+			v.setForeground(Color.DARK_GRAY);
+		}
+
 		bloc.add(l, BorderLayout.NORTH);
 		bloc.add(v, BorderLayout.CENTER);
 		p.add(bloc);

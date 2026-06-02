@@ -16,8 +16,6 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
@@ -33,7 +31,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * Panneau de la liste des lots.
+ * Panneau "Liste des lots".
  *
  * Permet le filtrage, la recherche, la modification et la suppression
  * des lots présents dans le planning.
@@ -42,8 +40,6 @@ public class PanelLots extends JPanel
 {
 	private final IControleur       ctrl;
 	private final FenetrePrincipale fenetre;
-
-	private List<Lot> lotsAffiches = new ArrayList<>();
 
 	private DefaultTableModel  modelLots;
 	private JTable             tbl;
@@ -127,37 +123,54 @@ public class PanelLots extends JPanel
 			}
 		});
 
+		// ── Renderer colonne Statut (col 7) — CORRIGÉ ────────────────────
+		// Avant : setBackground(Color.WHITE) s'appliquait même sur la ligne sélectionnée
+		// Après : si sel → fond SEL + texte normal ; sinon → couleur selon statut
+		tbl.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer()
+		{
+			public Component getTableCellRendererComponent(JTable t, Object v,
+					boolean sel, boolean foc, int r, int c)
+			{
+				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+				String s = v != null ? v.toString() : "";
+				if (sel)
+				{
+					setBackground(IhmUtils.SEL);
+					setForeground(IhmUtils.TEXTE);
+				}
+				else
+				{
+					setBackground(r % 2 == 0 ? Color.WHITE : new Color(249, 251, 254));
+					if      (s.startsWith("VA")) setForeground(IhmUtils.VERT);
+					else if (s.startsWith("BL")) setForeground(IhmUtils.ROUGE);
+					else                         setForeground(IhmUtils.AMBER);
+				}
+				return this;
+			}
+		});
+
+		// ── DefaultRenderer (toutes colonnes) — CORRIGÉ ──────────────────
+		// Avant : pas de branche "else" → fond blanc même ligne sélectionnée
+		// Après : si sel → fond SEL ; sinon → violet si sous douane, blanc sinon
 		tbl.setDefaultRenderer(Object.class, new DefaultTableCellRenderer()
 		{
 			public Component getTableCellRendererComponent(JTable t, Object v,
 					boolean sel, boolean foc, int r, int c)
 			{
 				super.getTableCellRendererComponent(t, v, sel, foc, r, c);
-				setForeground(Color.BLACK);
-
-				Lot lot = getLotLigne(r);
-				System.out.println("row=" + r + " lot=" + (lot == null ? "NULL" : lot.getNumCDE())
-					+ " douane=" + (lot != null && lot.isEstSousDouane())
-					+ " lotsAffiches.size=" + lotsAffiches.size());
-
-				if (!sel)
+				if (sel)
 				{
+					setBackground(IhmUtils.SEL);
+					setForeground(IhmUtils.TEXTE);
+				}
+				else
+				{
+					Lot lot = getLotLigne(r);
 					if (lot != null && lot.isEstSousDouane())
-					{
 						setBackground(new Color(170, 85, 195));
-						setForeground(Color.WHITE);
-					}
 					else
-					{
-						setBackground(Color.WHITE);
-						if (c == 7)
-						{
-							String sv = v != null ? v.toString() : "";
-							if      (sv.startsWith("VA")) setForeground(IhmUtils.VERT);
-							else if (sv.startsWith("BL")) setForeground(IhmUtils.ROUGE);
-							else                          setForeground(IhmUtils.AMBER);
-						}
-					}
+						setBackground(r % 2 == 0 ? Color.WHITE : new Color(249, 251, 254));
+					setForeground(IhmUtils.TEXTE);
 				}
 				return this;
 			}
@@ -171,7 +184,7 @@ public class PanelLots extends JPanel
 	}
 
 	/**
-	 * Ouvre la boîte de dialogue d’édition pour le lot sélectionné.
+	 * Ouvre la boîte de dialogue d'édition pour le lot sélectionné.
 	 */
 	private void ouvrirEdition()
 	{
@@ -181,7 +194,7 @@ public class PanelLots extends JPanel
 	}
 
 	/**
-	 * Supprime le lot sélectionné après vérification qu’il n’est pas affecté.
+	 * Supprime le lot sélectionné après vérification qu'il n'est pas affecté.
 	 */
 	private void supprimerLot()
 	{
@@ -209,13 +222,24 @@ public class PanelLots extends JPanel
 	 */
 	private Lot getLotLigne(int row)
 	{
-		if (row < 0 || row >= lotsAffiches.size()) return null;
-		return lotsAffiches.get(row);
+		if (row < 0) return null;
+		String  filtre            = combFiltreStatut.getSelectedIndex() > 0
+			? (String) combFiltreStatut.getSelectedItem() : "";
+		String  recherche         = txtRecherche.getText().toLowerCase();
+		boolean inclureSousDouane = chkSousDouane != null && chkSousDouane.isSelected();
+		int compteur = 0;
+		for (Lot l : ctrl.getLots())
+		{
+			if (!inclureSousDouane && l.isEstSousDouane()) continue;
+			if (!passFiltres(l, filtre, recherche)) continue;
+			if (compteur == row) return l;
+			compteur++;
+		}
+		return null;
 	}
 
-
 	/**
-	 * Vérifie qu’un lot passe les filtres de statut et de recherche.
+	 * Vérifie qu'un lot passe les filtres de statut et de recherche.
 	 */
 	private boolean passFiltres(Lot l, String filtre, String recherche)
 	{
@@ -241,8 +265,6 @@ public class PanelLots extends JPanel
 	public void rafraichir()
 	{
 		modelLots.setRowCount(0);
-		lotsAffiches.clear();  // ← vider la liste de référence
-
 		String filtre = combFiltreStatut != null && combFiltreStatut.getSelectedIndex() > 0
 			? (String) combFiltreStatut.getSelectedItem() : "";
 		String recherche = txtRecherche != null ? txtRecherche.getText().toLowerCase() : "";
@@ -252,8 +274,6 @@ public class PanelLots extends JPanel
 		{
 			if (!inclureSousDouane && l.isEstSousDouane()) continue;
 			if (!passFiltres(l, filtre, recherche)) continue;
-
-			lotsAffiches.add(l);  // ← garder la référence
 
 			Societe soc = ctrl.getSocieteDuLot(l);
 			modelLots.addRow(new Object[]{
