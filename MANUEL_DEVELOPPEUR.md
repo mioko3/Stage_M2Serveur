@@ -16,7 +16,6 @@
 ## Vue d'ensemble
 
 **Planning Global Futura** est une application Java de gestion de planning et de fiches de route pour la gestion logistique. Elle supporte :
-- **Mode Solo** : une seule instance locale
 - **Mode Serveur/Client** : un serveur central + plusieurs clients connectés via réseau
 - **Persistance** : données stockées en JSON (chiffrement AES-256 en mode réseau)
 - **Interface Swing** : interface graphique desktop pour Windows/Linux
@@ -29,32 +28,31 @@
 ### 1. Architecture générale
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   Planning Global Futura                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌───────────────────────┐          ┌────────────────────┐  │
-│  │   Mode Solo           │          │ Mode Serveur/Client│  │
-│  ├───────────────────────┤          ├────────────────────┤  │
-│  │ Controleur (IHM)      │          │ ServeurHTTP        │  │
-│  │ ↓                     │          │ (HTTP REST API)    │  │
-│  │ PlanningGlobal        │          │ ↑↓                 │  │
-│  │ (métier)              │          │ ControleurClient   │  │
-│  │ ↓                     │          │ (clients réseau)   │  │
-│  │ DonneesSauvegarder    │          │ ↑↓                 │  │
-│  │ (JSON local)          │          │ Chiffrement AES    │  │
-│  └───────────────────────┘          └────────────────────┘  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────┐
+│     Planning Global Futura        │
+├───────────────────────────────────┤
+│                                   │
+│      ┌────────────────────┐       │
+│      │ Mode Serveur/Client│       │
+│      ├────────────────────┤       │
+│      │ ServeurHTTP        │       │
+│      │ (HTTP REST API)    │       │
+│      │ ↑↓                 │       │
+│      │ ControleurClient   │       │
+│      │ (clients réseau)   │       │
+│      │ ↑↓                 │       │
+│      │ Chiffrement AES    │       │
+│      └────────────────────┘       │
+│                                   │
+└───────────────────────────────────┘
 ```
 
 ### 2. Trois points d'entrée
 
-| Mode | Classe | Fichier | Usage |
-|------|--------|---------|-------|
-| **Solo** | `Controleur` | Mode développement / bureau unique |
-| **Serveur** | `ServeurHTTP` | PC central, gère les données |
-| **Client** | `ControleurClient` | Postes utilisateurs, se connecte au serveur |
+|     Mode    |        Classe      |                   Fichier                   | Usage |
+|-------------|--------------------|---------------------------------------------|-------|
+| **Serveur** |    `ServeurHTTP`   |         PC central, gère les données        |
+|  **Client** | `ControleurClient` | Postes utilisateurs, se connecte au serveur |
 
 ### 3. Flux de données en réseau
 
@@ -84,7 +82,6 @@ Client 1                    Serveur                    Client 2
 gestionNOZ/
 ├── app/                          ← Cœur de l'application
 │   ├── CheminApp.java            ← Résolution des chemins
-│   ├── Controleur.java           ← Contrôleur mode Solo
 │   ├── ControleurClient.java     ← Contrôleur mode Réseau Client
 │   ├── IControleur.java          ← Interface (dictionnaire de méthodes)
 │   ├── ServeurHTTP.java          ← Serveur HTTP REST
@@ -310,8 +307,6 @@ new ControleurClient(ip, port, identifiant, mdp)
 
 **Rôle** : Contrat commun pour `Controleur` et `ControleurClient`
 
-**Signature** : méthodes que l'IHM peut appeler indifféremment en Solo ou Réseau
-
 ```java
 List<Lot> getListeLots();
 List<Societe> getListeSocietes();
@@ -323,30 +318,6 @@ void sauvegarderSocietes(List<Societe>);
 ---
 
 ## Flux de données
-
-### 1. Démarrage en mode Solo
-
-```
-Ligne commande
-  ↓
-Controleur.main()
-  ↓
-new Controleur()
-  → new PlanningGlobal()
-  → new DonneesSauvegarder()
-  ↓
-FenetreLogin (saisie identifiant)
-  ↓
-lancerApp(identifiant, useExcel=true)
-  ↓
-chargerDepuisExcelInteractif()
-  → demanderFichierExcel()
-  → ExcelReader.lireLots()
-  → PlanningGlobal.chargerDepuisExcel()
-  ↓
-new FenetrePrincipale()
-  → Affichage interface Swing
-```
 
 ### 2. Démarrage en mode Serveur
 
@@ -400,12 +371,7 @@ FenetrePrincipale.validerModificationLot()
   ↓
 IControleur.modifierLot(lot)
   ↓
-SI mode Solo:
-  Controleur.modifierLot()
-    → PlanningGlobal.modifierLot()
-    → DonneesSauvegarder.sauvegarderLots()
-    → Écriture lots.json
-SINON mode Réseau:
+  mode Réseau:
   ControleurClient.modifierLot()
     → POST /lots (body: [lots] chiffré)
     → ServeurHTTP reçoit
@@ -440,7 +406,6 @@ IHM se rafraîchit
 **Étape 4 : IHM** (`app/ihm/`)
 - Ajouter bouton, menu, ou dialogue
 - Appeler `IControleur.exporterPDF()`
-- L'IHM ne sait pas si c'est Solo ou Réseau !
 
 ### 2. Cycle de compilation et test
 
@@ -453,11 +418,6 @@ javac @compile.list
 
 # Ou manuellement :
 javac -cp "jar/poi-bin-5.2.3/lib/*;." -d bin app/**/*.java
-```
-
-#### b. Test Solo
-```bash
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.Controleur
 ```
 
 #### c. Test Serveur
@@ -519,11 +479,6 @@ javac -cp "jar/poi-bin-5.2.3/lib/*:bin" \
 ```
 
 ### 2. Exécuter
-
-#### Mode Solo
-```bash
-cd gestionNOZ
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.Controleur
 ```
 
 #### Mode Serveur
@@ -663,7 +618,6 @@ System.out.println("[TIMEOUT] Clients : " + timeoutClients.keySet());
 ### Q4 : Comment tester sans serveur central ?
 
 **Réponse** : 
-- Mode Solo (`Controleur`) : aucun réseau, données locales
 - Mock HTTP : créer un `MockServeurHTTP` qui simule réponses
 
 ### Q5 : Le serveur se fige (hang) ?

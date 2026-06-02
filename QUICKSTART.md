@@ -54,12 +54,12 @@ java -cp "jar/poi-bin-5.2.3/lib/*;bin" app.ControleurClient
 
 ## 📚 Après les 5 minutes → Lire la suite
 
-| Temps | Lecture | Résultat |
-|-------|---------|----------|
-| 15 min | `MANUEL_DEVELOPPEUR.md` sec 1-2 | Comprendre archi |
-| 30 min | `MANUEL_DEVELOPPEUR.md` sec 3-4 | Maîtriser structure |
-| 1h | `GUIDE_COMMENTAIRES_CLASSES.md` | Classes clés expliquées |
-| 2h | Tous les manuels | Expert complet |
+|  Temps |             Lecture             |        Résultat         |
+|--------|---------------------------------|-------------------------|
+| 15 min | `MANUEL_DEVELOPPEUR.md` sec 1-2 |     Comprendre archi    |
+| 30 min | `MANUEL_DEVELOPPEUR.md` sec 3-4 |    Maîtriser structure  |
+|   1h   | `GUIDE_COMMENTAIRES_CLASSES.md` | Classes clés expliquées |
+|   2h   |         Tous les manuels        |     Expert complet      |
 
 ---
 
