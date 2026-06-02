@@ -215,6 +215,7 @@ public class ControleurClient implements IControleur
 
 	// ── Mode désynchronisé ────────────────────────────────────────────────
 	private volatile boolean   desynchronise = false;
+	private volatile boolean   enLigne       = true;
 	// Utilisé uniquement en mode désynchronisé pour sauvegarder localement
 	private DonneesSauvegarder savLocal;
 
@@ -281,6 +282,7 @@ public class ControleurClient implements IControleur
 	public String  getIdentifiant()  { return identifiant;   }
 	public boolean isAccesPAM()      { return accesPAM;      }
 	public boolean isDesynchronise() { return desynchronise; }
+	public boolean isPollingActif()  { return enLigne;       }
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  MODE DÉSYNCHRONISÉ
@@ -843,6 +845,7 @@ public class ControleurClient implements IControleur
 					// ── Retour en ligne ───────────────────────────────────
 					if (etaitHorsLigne) {
 						etaitHorsLigne = false;
+						enLigne = true;
 						if (fenetre != null)
 							fenetre.setStatutConnexion(true); // vert
 					}
@@ -860,6 +863,7 @@ public class ControleurClient implements IControleur
 						etaitHorsLigne = true;
 
 						// 1. Mettre l'indicateur visuel en rouge IMMÉDIATEMENT
+						enLigne = false;
 						if (fenetre != null)
 							fenetre.setStatutConnexion(false); // rouge
 
