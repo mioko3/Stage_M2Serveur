@@ -4,7 +4,7 @@
     {"identifiant":"EUP","motDePasse":"eup2026","accesPAM":true},
     {"identifiant":"CFP","motDePasse":"cfp2026","accesPAM":true},
     {"identifiant":"PA","motDePasse":"pa2026","accesPAM":true},
-    {"identifiant":"R-ONE","motDePasse":"erwan","accesPAM":false}
+    {"identifiant":"R-ONE","motDePasse":"erwan","accesPAM":false},
   ],
   "demandesCompte": [
   ]
