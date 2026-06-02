@@ -97,17 +97,6 @@ public class GestionComptes
 		String chemin = CheminApp.resoudre(CHEMIN_CONFIG);
 		File f = new File(chemin);
 
-		if (!f.exists())
-		{
-			// Créer config par défaut
-			utilisateurs = new ArrayList<>();
-			utilisateurs.add(new Utilisateur("PAM", "pam2026", true));
-			demandes = new ArrayList<>();
-			sauvegarder();
-			System.out.println("[GestionComptes] Config créée par défaut.");
-			return;
-		}
-
 		try
 		{
 			String json = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
@@ -119,9 +108,6 @@ public class GestionComptes
 		catch (Exception e)
 		{
 			System.err.println("[GestionComptes] Erreur chargement : " + e.getMessage());
-			utilisateurs = new ArrayList<>();
-			utilisateurs.add(new Utilisateur("PAM", "pam2026", true));
-			demandes = new ArrayList<>();
 		}
 	}
 
