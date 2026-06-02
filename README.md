@@ -1,22 +1,23 @@
 # Manuel d'utilisation — Planning Global Futura (Mode Serveur)
 
-> Ce document explique comment utiliser l'application **Planning Global Futura** en mode **serveur/client** : un ordinateur central (le serveur) tourne en permanence pendant les heures de travail, et les postes des équipes (les clients) s'y connectent via le réseau.
+> Ce document explique comment utiliser l'application **Planning Global Futura** en mode **serveur/client** : un ordinateur central (le serveur) tourne pendant les heures de travail, et les postes des équipes (les clients) s'y connectent via le réseau local.
 
 ---
 
 ## Sommaire
 
 1. [Architecture générale](#1-architecture-générale)
-2. [Démarrer le serveur le matin](#2-démarrer-le-serveur-le-matin)
-3. [Arrêter le serveur le soir](#3-arrêter-le-serveur-le-soir)
-4. [Connexion depuis un poste client](#4-connexion-depuis-un-poste-client)
-5. [Fenêtre de contrôle du serveur (FenetreServeur)](#5-fenêtre-de-contrôle-du-serveur-fenetreserveur)
-6. [Persistance des données — rien n'est perdu](#7-persistance-des-données--rien-nest-perdu)
-7. [Sauvegarder la semaine](#8-sauvegarder-la-semaine)
-8. [Charger une semaine précédente](#9-charger-une-semaine-précédente)
-9. [Démarrer une nouvelle semaine](#10-démarrer-une-nouvelle-semaine)
-10. [Fonctionnement du serveur — points clés](#11-fonctionnement-du-serveur--points-clés)
-11. [Questions fréquentes](#12-questions-fréquentes)
+2. [Prérequis](#2-prérequis)
+3. [Démarrer le serveur le matin](#3-démarrer-le-serveur-le-matin)
+4. [Arrêter le serveur le soir](#4-arrêter-le-serveur-le-soir)
+5. [Connexion depuis un poste client](#5-connexion-depuis-un-poste-client)
+6. [Fenêtre de contrôle du serveur (FenetreServeur)](#6-fenêtre-de-contrôle-du-serveur-fenetreserveur)
+7. [Persistance des données — rien n'est perdu](#7-persistance-des-données--rien-nest-perdu)
+8. [Sauvegarder la semaine](#8-sauvegarder-la-semaine)
+9. [Charger une semaine précédente](#9-charger-une-semaine-précédente)
+10. [Démarrer une nouvelle semaine](#10-démarrer-une-nouvelle-semaine)
+11. [Fonctionnement du serveur — points clés](#11-fonctionnement-du-serveur--points-clés)
+12. [Questions fréquentes](#12-questions-fréquentes)
 
 ---
 
@@ -24,72 +25,81 @@
 
 L'application fonctionne en **deux programmes distincts** :
 
-|      Programme       | Fichier de lancement |                           Rôle                                 |
-|----------------------|----------------------|----------------------------------------------------------------|
-|   **ServeurHTTP**    |   `run_SERVEUR.bat`  | Tourne sur un PC central, gère les données, répond aux clients |
-| **ControleurClient** |   `run_CLIENT.bat`   |  Tourne sur chaque poste utilisateur, se connecte au serveur   |
+|     Programme      |      Fichier       |                           Rôle                                 |
+|--------------------|--------------------|----------------------------------------------------------------|
+|  **FuturaServer**  | `FuturaServer.exe` | Tourne sur un PC central, gère les données, répond aux clients |
+|  **FuturaClient**  | `FuturaClient.exe` |  Tourne sur chaque poste utilisateur, se connecte au serveur   |
 
 ```
 [PC Serveur]  ←──réseau local──→  [Poste PAM]
-  run_SERVEUR.bat                  run_CLIENT.bat  (identifiant : PAM)
+FuturaServer.exe                  FuturaClient.exe  (identifiant : PAM)
 
-                                 [Poste Société A]
-                                  run_CLIENT.bat  (identifiant : nom société)
+                                  [Poste Société A]
+                                  FuturaClient.exe  (identifiant : nom société)
 
-                                 [Poste Société B]
-                                  run_CLIENT.bat  (identifiant : nom société)
+                                  [Poste Société B]
+                                  FuturaClient.exe  (identifiant : nom société)
 ```
 
-> ⚠️ **Un seul serveur** tourne à la fois. Tous les clients s'y connectent via l'adresse IP du PC serveur.
+> ⚠️ **Un seul serveur** tourne à la fois. Tous les clients s'y connectent via l'adresse IP du PC serveur sur le **port 8082**.
 
 ---
 
-## 2. Démarrer le serveur le matin
+## 2. Prérequis
 
-1. Sur le **PC serveur**, ouvrez le dossier du projet.
-2. **Double-cliquez sur `run_SERVEUR.bat`**.
-3. Une fenêtre noire (console) s'ouvre — **ne pas la fermer**.
-4. La fenêtre de contrôle du serveur (FenetreServeur) apparaît automatiquement.
-5. Le serveur est prêt dès que vous voyez la ligne :
+- **Aucune installation requise** — Java est embarqué directement dans les `.exe`.
+- Les postes clients doivent être sur le **même réseau local** que le serveur.
+- Le **port 8082** doit être ouvert dans le pare-feu Windows du PC serveur.
+
+---
+
+## 3. Démarrer le serveur le matin
+
+1. Sur le **PC serveur**, ouvrez le dossier `FuturaServer/`.
+2. **Double-cliquez sur `FuturaServer.exe`**.
+3. La fenêtre de contrôle du serveur (FenetreServeur) apparaît.
+4. Le serveur est prêt dès que l'indicateur affiche :
    ```
-   [Serveur] Démarré sur le port 8082
+   ● Serveur actif — Port 8082
    ```
 
-> 💡 Le serveur **recharge automatiquement les données** de la dernière session au démarrage. Aucune manipulation n'est nécessaire — vous reprenez exactement là où vous vous étiez arrêté.
+> 💡 Le serveur **recharge automatiquement les données** de la dernière session au démarrage. Vous reprenez exactement là où vous vous étiez arrêté — aucune manipulation nécessaire.
 
-> ⚠️ Java doit être installé. Pour vérifier, ouvrez une invite de commandes et tapez `java -version`.
-
----
-
-## 3. Arrêter le serveur le soir
-
-Les données sont **sauvegardées automatiquement en permanence** — vous pouvez fermer le serveur à tout moment sans risque de perte.
-
-**Méthode recommandée :**
-
-1. Dans la fenêtre de contrôle du serveur, cliquez sur **Sauvegarder** pour archiver la semaine en cours (optionnel mais conseillé).
-2. Fermez simplement la fenêtre FenetreServeur (croix en haut à droite), ou tapez `quitter` dans la console.
-
-> ⚠️ Ne fermez pas la fenêtre noire (console) directement — passez toujours par la fenêtre de contrôle ou la commande `quitter`.
+> 🔐 Au **tout premier démarrage**, un fichier `secret.key` est généré automatiquement dans le dossier `FuturaServer/`. Ce fichier chiffre toutes les données. **Ne jamais le supprimer ni le déplacer.**
 
 ---
 
-## 4. Connexion depuis un poste client
+## 4. Arrêter le serveur le soir
 
-1. Sur le poste utilisateur, **double-cliquez sur `run_CLIENT.bat`** (ou lancez `ControleurClient.exe`).
-2. La fenêtre de connexion réseau apparaît.
-3. Renseignez :
-   - **Identifiant** : `PAM` (accès administrateur complet) ou le **nom de votre société** (accès limité à vos lots)
-   - **IP du serveur** : l'adresse IP du PC serveur (affichée dans la barre en bas de FenetreServeur, ou trouvable avec `ipconfig` sur le serveur)
+1. Dans la **FenetreServeur**, cliquez sur le bouton **Quitter**.
+2. Confirmez l'arrêt si une boîte de dialogue apparaît.
+3. L'application se ferme.
+
+> ✅ Toutes les données sont déjà sauvegardées en temps réel dans `app/data/courutilisation/`. La fermeture du serveur **ne cause aucune perte de données**.
+
+> ⚠️ Évitez d'éteindre le PC serveur brutalement sans fermer l'application au préalable.
+
+---
+
+## 5. Connexion depuis un poste client
+
+1. Sur le **poste client**, ouvrez le dossier `FuturaClient/`.
+2. **Double-cliquez sur `FuturaClient.exe`**.
+3. Dans la fenêtre de connexion :
+   - **Adresse IP** : saisissez l'IP du PC serveur (visible dans FenetreServeur).
+   - **Identifiant** : votre nom d'utilisateur ou nom de société.
+   - **Mot de passe** : votre mot de passe.
 4. Cliquez sur **SE CONNECTER**.
 
 > 💡 L'application se synchronise automatiquement avec le serveur toutes les secondes. Si le serveur modifie des données, tous les clients se mettent à jour automatiquement.
 
-> ⚠️ Si le serveur n'est pas démarré, vous obtiendrez le message *"Connexion refusée — serveur démarré ?"*. Démarrez d'abord le serveur.
+> ⚠️ Si le serveur n'est pas démarré, vous obtiendrez *"Connexion refusée — serveur démarré ?"*. Démarrez d'abord le serveur.
+
+> 🔑 Les sessions expirent après **4 heures**. Si le message "Session expirée" apparaît, relancez le client et reconnectez-vous normalement.
 
 ---
 
-## 5. Fenêtre de contrôle du serveur (FenetreServeur)
+## 6. Fenêtre de contrôle du serveur (FenetreServeur)
 
 Cette fenêtre s'ouvre automatiquement sur le PC serveur. Elle affiche :
 
@@ -105,28 +115,49 @@ Cette fenêtre s'ouvre automatiquement sur le PC serveur. Elle affiche :
 
 |          Bouton         |                                 Action                              |
 |-------------------------|---------------------------------------------------------------------|
-| **Charger une semaine** | Charge les données d'une semaine archivée (dossier `S17/`, `S18 `…) |
+| **Charger une semaine** | Charge les données d'une semaine archivée (dossier `S17/`, `S18/`…) |
 |  **Nouvelle semaine**   |            Importe un nouveau fichier Excel de planning             |
 |     **Sauvegarder**     |  Archive les données de la semaine dans un sous-dossier par numéro  |
 |      **Heures sup**     |          Active ou désactive le mode heures supplémentaires         |
+|        **Quitter**      |              Arrête proprement le serveur                           |
 
 ---
 
-## 6. Persistance des données — rien n'est perdu
+## 7. Persistance des données — rien n'est perdu
 
 ### Sauvegarde automatique (en continu)
 
 Chaque modification effectuée par n'importe quel client (affectation, suivi de production, édition d'un lot…) est **immédiatement enregistrée** dans `app/data/courutilisation/` sur le PC serveur.
 
-**Conséquence pratique :** si le serveur est redémarré le lendemain matin, il recharge automatiquement ces fichiers et repart exactement dans l'état de la dernière modification. Aucune donnée ne peut être perdue par une fermeture normale ou inattendue.
+**Conséquence pratique :** si le serveur est redémarré le lendemain matin, il recharge automatiquement ces fichiers et repart exactement dans l'état de la dernière modification. **Aucune donnée ne peut être perdue** par une fermeture normale ou inattendue.
 
 ### Chiffrement des données
 
-Les fichiers JSON sur le disque sont **chiffrés en AES-256**. La clé est stockée dans `secret.key` (généré automatiquement au premier démarrage). Ne supprimez pas ce fichier.
+Les fichiers JSON sur le disque sont **chiffrés en AES-256**. La clé est stockée dans `secret.key` (généré automatiquement au premier démarrage).
+
+> ⛔ **Ne jamais supprimer `secret.key`.** Sans ce fichier, les données chiffrées existantes sont irrécupérables.
+
+### Structure des dossiers de données
+
+```
+FuturaServer/
+├── FuturaServer.exe
+├── secret.key                          ← Clé de chiffrement (NE PAS SUPPRIMER)
+└── app/data/
+    ├── courutilisation/                ← Session en cours (rechargée au démarrage)
+    │   ├── lots.json                   ← Tous les lots (chiffré AES-256)
+    │   └── societes.json               ← Sociétés et ACEs (chiffré AES-256)
+    ├── enregistrementparsemaine/       ← Archives manuelles par semaine
+    │   ├── S17/
+    │   ├── S18/
+    │   └── ...
+    ├── config.json                     ← Comptes utilisateurs
+    └── pastouche/methodes/             ← Fiches méthodes PDF
+```
 
 ---
 
-## 7. Sauvegarder la semaine
+## 8. Sauvegarder la semaine
 
 La sauvegarde manuelle sert à **archiver une semaine terminée** pour pouvoir la retrouver plus tard.
 
@@ -136,89 +167,68 @@ La sauvegarde manuelle sert à **archiver une semaine terminée** pour pouvoir l
 3. Entrez le numéro de semaine (ex : `19`).
 4. Un sous-dossier `S19/` est créé avec une copie des fichiers JSON.
 
-**Depuis la console headless :**
-```
-[Serveur] > sauvegarder
-  Dossier de destination : app/data/enregistrementparsemaine
-  Numéro de semaine      : 19
-  Sauvegarde effectuée dans S19
-```
-
-> 💡 Faites cette sauvegarde **chaque vendredi soir** ou en fin de semaine de travail.
+> 💡 Cette opération ne perturbe pas le travail en cours. Les clients restent connectés.
 
 ---
 
-## 8. Charger une semaine précédente
-
-Pour consulter ou reprendre les données d'une semaine archivée :
+## 9. Charger une semaine précédente
 
 **Depuis FenetreServeur :**
 1. Cliquez sur **Charger une semaine**.
-2. Naviguez jusqu'au dossier de la semaine souhaitée (ex : `S17/`).
-3. Confirmez — **tous les clients connectés basculeront automatiquement** sur ces données dans les 3 secondes.
+2. Naviguez vers le dossier archivé (ex : `app/data/enregistrementparsemaine/S17/`).
+3. Confirmez. Le serveur recharge les données de cette semaine.
 
-> ⚠️ Le chargement remplace les données en cours. Sauvegardez d'abord la semaine actuelle si besoin.
+> ⚠️ Cette action **remplace les données en cours**. Faites d'abord une sauvegarde si nécessaire.
 
 ---
 
-## 9. Démarrer une nouvelle semaine
-
-> ⚠️ **Sauvegardez la semaine en cours avant cette opération.**
+## 10. Démarrer une nouvelle semaine
 
 **Depuis FenetreServeur :**
 1. Cliquez sur **Nouvelle semaine**.
-2. Confirmez.
-3. Sélectionnez le fichier Excel du planning (lots) puis le fichier des heures ACE.
-4. Les données sont importées ; les clients se synchronisent automatiquement.
+2. Sélectionnez le fichier Excel (`.xlsx`) exporté depuis le système ERP.
+3. Le serveur importe les nouveaux lots et réinitialise le planning.
+
+> 💡 Les sociétés et ACEs existants sont conservés. Seuls les lots sont mis à jour depuis le fichier Excel.
 
 ---
 
-## 10. Fonctionnement du serveur — points clés
+## 11. Fonctionnement du serveur — points clés
 
-### Sécurité et sessions
-
-- Chaque client reçoit un **token de session** valable **4 heures** après connexion. Passé ce délai, il est redirigé vers la fenêtre de connexion.
-- Après **5 tentatives de connexion échouées**, une IP est bloquée pendant 5 minutes.
-- Toutes les communications entre clients et serveur sont **chiffrées en AES-256**.
-
-### Synchronisation automatique
-
-- Les clients interrogent le serveur **toutes les secondes** via un mécanisme de polling sur `/version`.
-- Si un client PAM modifie un lot, tous les autres clients voient le changement en moins d'une seconde.
-
-### Port réseau
-
-- Le serveur écoute sur le **port 8082**.
-- Si un pare-feu Windows est actif sur le PC serveur, autorisez le port 8082 en entrée.
-
-### Logs
-
-Tous les événements (connexions, modifications, erreurs) sont affichés dans la console noire du serveur. En cas de problème, c'est là qu'il faut regarder.
+|          Aspect             |                      Détail                           |
+|-----------------------------|-------------------------------------------------------|
+|         **Port**            |                     8082 (TCP)                        |
+|        **Protocole**        |                     HTTP/JSON                         |
+|      **Authentification**   |                 Token valide 4 heures                 |
+| **Synchronisation clients** |               Polling toutes les secondes             |
+|       **Sauvegarde**        |              Immédiate à chaque modification          |
+|       **Chiffrement**       |             AES-256 sur tous les fichiers JSON        |
+|           **Java**          | Embarqué dans le `.exe` — aucune installation requise |
 
 ---
 
-## 11. Questions fréquentes
+## 12. Questions fréquentes
 
 **Le serveur ne démarre pas.**
-→ Vérifiez que Java est installé (`java -version` dans une invite de commandes). Lisez le message d'erreur dans la console noire.
+→ Vérifiez que le dossier `FuturaServer/` est complet (notamment le dossier `app/data/`). Regardez les messages d'erreur dans la console qui s'ouvre brièvement.
 
 **Un client ne peut pas se connecter.**
-→ Vérifiez que le serveur est bien démarré et que l'IP saisie est correcte. Sur le PC serveur, ouvrez une invite de commandes et tapez `ipconfig` — utilisez la valeur "Adresse IPv4" de la carte réseau active. Vérifiez aussi que le port 8082 n'est pas bloqué par le pare-feu.
+→ Vérifiez que le serveur est bien démarré et que l'IP saisie est correcte. L'IP est affichée directement dans FenetreServeur. Vérifiez aussi que le port 8082 n'est pas bloqué par le pare-feu du PC serveur.
 
 **Le client affiche "Session expirée".**
-→ Les tokens durent 4 heures. Relancez le client et reconnectez-vous normalement.
+→ Les sessions durent 4 heures. Fermez et relancez `FuturaClient.exe`, puis reconnectez-vous.
 
 **J'ai fermé le serveur accidentellement, est-ce que les données sont perdues ?**
 → Non. La sauvegarde automatique est écrite à chaque modification dans `app/data/courutilisation/`. Au prochain démarrage, le serveur rechargera exactement l'état de la dernière modification.
 
 **Plusieurs clients voient des données différentes.**
-→ Le polling corrige cela en moins d'une seconde. Si le problème persiste, vérifiez la connexion réseau du poste concerné. Le client peut aussi cliquer sur le bouton **⟳** pour forcer une resynchronisation.
+→ La synchronisation corrige cela en moins d'une seconde. Si le problème persiste, vérifiez la connexion réseau du poste concerné.
 
-**Je veux utiliser le serveur sur Linux sans interface graphique.**
-→ Le mode headless est détecté automatiquement. Lancez le JAR normalement ; la console textuelle remplace FenetreServeur. Voir [section 6](#6-console-en-mode-headless-sans-écran).
+**Le fichier `secret.key` est absent.**
+→ Il est généré automatiquement au premier démarrage. Si vous le supprimez, les fichiers JSON existants (chiffrés avec l'ancienne clé) ne seront plus lisibles. **Ne jamais supprimer ce fichier.**
 
-**Le fichier `secret.key` est absent au démarrage.**
-→ Il est généré automatiquement au premier démarrage. Si vous le supprimez, les fichiers JSON existants (chiffrés avec l'ancienne clé) ne seront plus lisibles. Ne jamais supprimer ce fichier.
+**Je dois déplacer le serveur sur un autre PC.**
+→ Copiez l'intégralité du dossier `FuturaServer/` (y compris `secret.key` et `app/data/`). Sans `secret.key`, les données chiffrées seront illisibles sur le nouveau PC.
 
 ---
 
