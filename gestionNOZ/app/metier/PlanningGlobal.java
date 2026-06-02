@@ -182,6 +182,20 @@ public class PlanningGlobal
 	//  setestHeureSup, getTouteAces, modifierLotMethodeDistribution)
 	// ─────────────────────────────────────────────────────────────────────
 
+	/**
+	 * Met à jour les 5 drapeaux d'avancement de production d'un lot.
+	 *
+	 * Effet de bord sur {@code finit} :
+	 *   • Si {@code finit = true}  → {@code lot.dateFin} = date/heure courante
+	 *   • Si {@code finit = false} → {@code lot.dateFin} est effacée
+	 *
+	 * @param lot        le lot à mettre à jour
+	 * @param preTri     pré-tri effectué
+	 * @param surPiste   lot sur piste
+	 * @param sortieEtiq sortie étiquetage effectuée
+	 * @param tri        tri final effectué
+	 * @param finit      lot entièrement terminé
+	 */
 	public void modifierPhase(Lot lot, boolean preTri, boolean surPiste,
 	                          boolean sortieEtiq, boolean tri, boolean finit)
 	{
@@ -200,6 +214,19 @@ public class PlanningGlobal
 		else { lot.setdateFin(""); }
 	}
 
+	/**
+	 * Clôture un lot en passant son statut à "MC" (Mission Clôturée).
+	 *
+	 * Effets :
+	 *   • {@code lot.statut} = "MC"
+	 *   • La date de fin réelle ({@code lot.dateFin}) est renseignée si
+	 *     {@code phase.finit} est déjà à true ; sinon elle reste inchangée.
+	 *
+	 * ⚠️  Cette méthode ne désaffecte PAS le lot de sa société.
+	 * Pour retirer un lot de la production, appeler également {@code desaffecterLot()}.
+	 *
+	 * @param lot le lot à clôturer
+	 */
 	public void marquerLotTermine(Lot lot)
 	{
 		modifierPhase(lot, true, true, true, true, true);
@@ -223,6 +250,14 @@ public class PlanningGlobal
 		ace.setEffectifActuel(effectif);
 	}
 
+	/**
+	 * Démarre la production d'un lot :
+	 *   • {@code lot.statut} = "TC" (Travail Commencé)
+	 *   • {@code lot.dateDebut} = date/heure courante (format "dd/MM/yyyy HH:mm:ss")
+	 *   • {@code lot.dateFinTheorique} est recalculée depuis la nouvelle dateDebut
+	 *
+	 * @param lot le lot à démarrer
+	 */
 	public void commencerLot(Lot l)
 	{
 		String formatted = LocalDateTime.now()
@@ -231,6 +266,14 @@ public class PlanningGlobal
 		l.calculDateFinThéorique();
 	}
 
+	/**
+	 * Remet un lot en attente (annule son démarrage) :
+	 *   • {@code lot.statut} = "OU" (Ouvert / en attente)
+	 *   • {@code lot.dateDebut} est effacée
+	 *   • {@code lot.dateFinTheorique} est effacée
+	 *
+	 * @param lot le lot à remettre en attente
+	 */
 	public void annulerLot(Lot l)
 	{
 		l.setDateDebut("");
@@ -243,6 +286,13 @@ public class PlanningGlobal
 		l.getPhase().setFinit(false);
 	}
 
+	/**
+	 * Retourne la société à laquelle est actuellement affecté le lot.
+	 * Parcourt toutes les sociétés et leurs listes de lots.
+	 *
+	 * @param lot le lot recherché
+	 * @return la société du lot, ou {@code null} si le lot n'est affecté nulle part
+	 */
 	public Societe getSocieteDuLot(Lot lot)
 	{
 		if (lot == null) return null;
@@ -252,6 +302,13 @@ public class PlanningGlobal
 		return null;
 	}
 
+	/**
+	 * Retourne l'ACE auquel est affecté le lot.
+	 * Parcourt toutes les sociétés → ACE → lots.
+	 *
+	 * @param lot le lot recherché
+	 * @return l'ACE du lot, ou {@code null} si le lot n'a pas d'ACE
+	 */
 	public Ace getAceDuLot(Lot lot)
 	{
 		if (lot == null) return null;
@@ -262,6 +319,22 @@ public class PlanningGlobal
 		return null;
 	}
 
+	/**
+	 * Affecte un lot à une société et à un ACE.
+	 *
+	 * Si le lot était déjà affecté à une autre société, il en est retiré
+	 * (les heures sont restituées) avant d'être affecté à la nouvelle.
+	 * Si le lot est déjà affecté à la même société/ACE, rien ne se passe.
+	 *
+	 * Effets sur les heures :
+	 *   • {@code ancienneSociete.totalHeuresCE} += lot.heures (restitution)
+	 *   • {@code nouvelleSociete.totalHeuresCE} -= lot.heures (décompte)
+	 *
+	 * @param lot     le lot à affecter
+	 * @param societe la société destinataire
+	 * @param ace     l'ACE responsable (peut être null)
+	 * @return {@code true} si l'affectation a réussi, {@code false} sinon
+	 */
 	public boolean affecterLot(Lot lot, Societe societe, Ace ace)
 	{
 		Societe ancSociete = getSocieteDuLot(lot);
@@ -276,6 +349,14 @@ public class PlanningGlobal
 		return true;
 	}
 
+	/**
+	 * Retire un lot de sa société et de son ACE.
+	 * Restitue les heures du lot à la société.
+	 *
+	 * Si le lot n'est affecté à aucune société, sans effet.
+	 *
+	 * @param lot le lot à désaffecter
+	 */
 	public void desaffecterLot(Lot lot)
 	{
 		Societe soc = getSocieteDuLot(lot);
@@ -334,6 +415,7 @@ public class PlanningGlobal
 
 	public ArrayList<Societe> getSocietes()    { return societes; }
 	public ArrayList<Lot>     getLots()        { return lots;     }
+
 	public ArrayList<Ace>     getTouteAces()
 	{
 		ArrayList<Ace> tout = new ArrayList<>();

@@ -711,15 +711,18 @@ public class CarteLot extends JPanel implements ActionListener
 		JLabel v = new JLabel(texte);
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-		// une marge de 10% est tolérée pour être considéré "dans la cadReel"
-		
-		if (cadence < cadReel)
+		// une marge de 5% est tolérée pour être considéré "dans la cadReel"
+		if (cadReel > cadence)
 		{
-			v.setForeground(new Color(0, 150, 0));
+			v.setForeground(IhmUtils.VERT);
 		}
 		else 
 		{
-			v.setForeground(Color.RED);
+			v.setForeground(IhmUtils.ROUGE);
+		}
+		if (cadence >= cadReel * 0.95)
+		{
+			v.setForeground(IhmUtils.AMBER);
 		}
 
 		bloc.add(l, BorderLayout.NORTH);

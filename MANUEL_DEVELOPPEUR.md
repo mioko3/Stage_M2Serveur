@@ -1,643 +1,596 @@
-# Manuel de Développeur - Planning Global Futura
+# Manuel du développeur — Planning Global Futura
 
-## Table des matières
-
-1. [Vue d'ensemble du projet](#vue-densemble)
-2. [Architecture générale](#architecture)
-3. [Structure du code](#structure)
-4. [Composants principaux](#composants)
-5. [Flux de données](#flux)
-6. [Guide de développement](#guide)
-7. [Compilation et exécution](#compilation)
-8. [Mode de débogage](#debug)
+> Document de référence technique pour tout développeur qui reprend, maintient ou étend le projet.  
+> Version actuelle : architecture serveur/client HTTP sécurisé, chiffrement AES-256.
 
 ---
 
-## Vue d'ensemble
+## Sommaire
 
-**Planning Global Futura** est une application Java de gestion de planning et de fiches de route pour la gestion logistique. Elle supporte :
-- **Mode Serveur/Client** : un serveur central + plusieurs clients connectés via réseau
-- **Persistance** : données stockées en JSON (chiffrement AES-256 en mode réseau)
-- **Interface Swing** : interface graphique desktop pour Windows/Linux
-- **Communication HTTP** : REST API sur port 8082 (serveur)
+1. [Vue d'ensemble du projet](#1-vue-densemble-du-projet)
+2. [Structure des fichiers](#2-structure-des-fichiers)
+3. [Architecture logicielle](#3-architecture-logicielle)
+4. [Le serveur — ServeurHTTP.java](#4-le-serveur--serveurHTTPjava)
+5. [Le client — ControleurClient.java](#5-le-client--controleurchientjava)
+6. [L'interface IControleur](#6-linterface-icontroleur)
+7. [Sécurité](#7-sécurité)
+8. [Persistance des données](#8-persistance-des-données)
+9. [Référence des routes HTTP](#9-référence-des-routes-http)
+10. [Synchronisation et polling](#10-synchronisation-et-polling)
+11. [IHM — Fenêtres et panneaux](#11-ihm--fenêtres-et-panneaux)
+12. [Compilation et lancement](#12-compilation-et-lancement)
+13. [Limites connues et pistes d'amélioration](#13-limites-connues-et-pistes-damélioration)
 
 ---
 
-## Architecture
+## 1. Vue d'ensemble du projet
 
-### 1. Architecture générale
+**Planning Global Futura** est une application Java de gestion de planning de production. Elle fonctionne selon un modèle **serveur/client HTTP** :
 
-```
-┌───────────────────────────────────┐
-│     Planning Global Futura        │
-├───────────────────────────────────┤
-│                                   │
-│      ┌────────────────────┐       │
-│      │ Mode Serveur/Client│       │
-│      ├────────────────────┤       │
-│      │ ServeurHTTP        │       │
-│      │ (HTTP REST API)    │       │
-│      │ ↑↓                 │       │
-│      │ ControleurClient   │       │
-│      │ (clients réseau)   │       │
-│      │ ↑↓                 │       │
-│      │ Chiffrement AES    │       │
-│      └────────────────────┘       │
-│                                   │
-└───────────────────────────────────┘
-```
+- Un PC central fait tourner `ServeurHTTP` qui expose une API REST sur le port **8082**.
+- Chaque poste utilisateur fait tourner `ControleurClient` qui communique avec le serveur via HTTP.
+- L'ensemble des données est **chiffré en AES-256** sur le disque et en transit après l'échange de clé.
+- Le serveur peut être **arrêté chaque soir et relancé chaque matin sans aucune perte de données** grâce à la sauvegarde automatique continue dans `app/data/courutilisation/`.
 
-### 2. Trois points d'entrée
-
-|     Mode    |        Classe      |                   Fichier                   | Usage |
-|-------------|--------------------|---------------------------------------------|-------|
-| **Serveur** |    `ServeurHTTP`   |         PC central, gère les données        |
-|  **Client** | `ControleurClient` | Postes utilisateurs, se connecte au serveur |
-
-### 3. Flux de données en réseau
+### Cycle de vie quotidien
 
 ```
-Client 1                    Serveur                    Client 2
-   │                          │                          │
-   ├─ GET /version ──────────>│                          │
-   │<───── [version_json] ────┤                          │
-   │                          │<─ GET /version ──────────┤
-   │                          ├───── [version_json] ────>│
-   │                          │                          │
-   ├─ POST /lots ────────────>│                          │
-   │ (lots modifiés)          │                          │
-   │                    [sync]│                          │
-   │                          │<─ GET /lots ─────────────┤
-   │                          ├─ [lots] ────────────────>│
-   │                          │                          │
+Matin  → run_SERVEUR.bat → ServeurHTTP démarre → recharge app/data/courutilisation/
+                                                   ↓
+         run_CLIENT.bat (×N) → login → token → polling toutes les 1s
+
+Journée → modifications → autosave immédiat sur chaque POST
+        → polling détecte version++ → tous les clients rechargent
+
+Soir   → fermeture ServeurHTTP → données déjà persistées, rien n'est perdu
 ```
 
 ---
 
-## Structure du code
-
-### 1. Arborescence
+## 2. Structure des fichiers
 
 ```
 gestionNOZ/
-├── app/                          ← Cœur de l'application
-│   ├── CheminApp.java            ← Résolution des chemins
-│   ├── ControleurClient.java     ← Contrôleur mode Réseau Client
-│   ├── IControleur.java          ← Interface (dictionnaire de méthodes)
-│   ├── ServeurHTTP.java          ← Serveur HTTP REST
+├── compile.list                        ← ordre de compilation javac
+├── run_SERVEUR.bat                     ← lance ServeurHTTP
+├── run_CLIENT.bat                      ← lance ControleurClient
+├── secret.key                          ← clé AES-256 (générée au 1er démarrage, NE PAS SUPPRIMER)
+│
+├── app/
+│   ├── CheminApp.java                  ← résolution des chemins relatifs/absolus
+│   ├── IControleur.java                ← interface contrat (patron Strategy)
+│   ├── ServeurHTTP.java                ← serveur HTTP + tous les handlers REST
+│   ├── ControleurClient.java           ← client réseau (implémente IControleur)
 │   │
-│   ├── ihm/                      ← Interface utilisateur (Swing)
-│   │   ├── FenetrePrincipale.java
-│   │   ├── IhmUtils.java
-│   │   ├── diagrame/             ← Diagrammes (Gantt, etc.)
-│   │   ├── dialogue/             ← Boîtes de dialogue
-│   │   ├── ficheroute/           ← Fiches de route
-│   │   ├── gestionlot/           ← Gestion des lots
-│   │   ├── login/                ← Écran de connexion
-│   │   ├── map/                  ← Cartographie
-│   │   └── serveur/              ← Écran de contrôle serveur
-│   │
-│   ├── metier/                   ← Logique métier
-│   │   ├── PlanningGlobal.java   ← Gestion des lots et sociétés
-│   │   ├── collecte/             ← Chargement et sérialisation
-│   │   │   ├── ExcelReader.java  ← Lecteur de fichiers Excel
-│   │   │   ├── JsonSerialiser.java
-│   │   │   └── DonneesSauvegarder.java
-│   │   ├── ficheroute/           ← Fiches de route (métier)
-│   │   │   ├── FicheRoute.java
-│   │   │   ├── Phase.java
-│   │   │   └── SuivieProd.java
-│   │   ├── lot/                  ← Gestion des lots
+│   ├── metier/
+│   │   ├── PlanningGlobal.java         ← modèle métier central (lots + sociétés)
+│   │   ├── lot/
 │   │   │   ├── Lot.java
 │   │   │   ├── Methode.java
 │   │   │   └── LigneColisage.java
-│   │   └── personelle/           ← Personnes, sociétés
-│   │       ├── Ace.java
-│   │       └── Societe.java
+│   │   ├── personelle/
+│   │   │   ├── Societe.java
+│   │   │   └── Ace.java
+│   │   ├── ficheroute/
+│   │   │   ├── FicheRoute.java
+│   │   │   ├── Phase.java
+│   │   │   └── SuivieProd.java
+│   │   └── collecte/
+│   │       ├── DonneesSauvegarder.java ← lecture/écriture JSON (avec chiffrement)
+│   │       ├── JsonSerialiser.java     ← sérialisation/désérialisation JSON manuel
+│   │       └── ExcelReader.java        ← import fichier Excel (nouvelle semaine)
 │   │
-│   ├── securite/                 ← Chiffrement et sécurité
-│   │   └── ChiffrementAES.java   ← AES-256-CBC
+│   ├── securite/
+│   │   ├── ChiffrementAES.java         ← AES-256-CBC, IV aléatoire par message
+│   │   └── GestionComptes.java         ← utilisateurs + demandes de compte (JSON)
 │   │
-│   ├── data/                     ← Données persistantes
-│   │   ├── courutilisation/      ← Données en cours
-│   │   │   ├── lots.json
-│   │   │   ├── societes.json
-│   │   │   ├── lots_tmp.json     ← Temporaire
-│   │   │   └── societes_tmp.json
-│   │   ├── enregistrementparsemaine/
-│   │   │   └── S17/              ← Lots semaine 17
-│   │   └── pastouche/            ← Données de référence
-│   │       └── societes.json
-│   │
-│   └── jar/
-│       └── poi-bin-5.2.3/        ← Apache POI (Excel)
+│   └── ihm/
+│       ├── IhmUtils.java
+│       ├── FenetrePrincipale.java
+│       ├── login/
+│       │   ├── FenetreConnexionClient.java
+│       │   └── FenetreCreationCompte.java
+│       ├── serveur/
+│       │   ├── FenetreServeur.java     ← interface de contrôle du serveur
+│       │   └── PanelSemaineSuivante.java
+│       ├── diagrame/
+│       ├── dialogue/
+│       ├── ficheroute/
+│       ├── gestionlot/
+│       └── map/
 │
-├── bin/                          ← Classes compilées (.class)
-├── output/                       ← Exécutables JAR packaging
-├── tools/
-│   └── MergeFatJar.java          ← Outil de génération JAR
-│
-├── compile.list                  ← Liste des fichiers à compiler
-└── run_*.bat                     ← Scripts de lancement
-
+└── app/data/
+    ├── courutilisation/
+    │   ├── lots.json                   ← données courantes (chiffrées AES)
+    │   └── societes.json
+    ├── semaine_suivante/
+    │   ├── lots.json
+    │   └── societes.json
+    ├── enregistrementparsemaine/
+    │   ├── S17/
+    │   ├── S18/
+    │   └── ...
+    └── pastouche/
+        └── methodes/                   ← fichiers PDF des méthodes
 ```
 
 ---
 
-## Composants principaux
+## 3. Architecture logicielle
 
-### 1. **ServeurHTTP** (Mode Serveur)
+### Patron Strategy — IControleur
 
-**Fichier** : [app/ServeurHTTP.java](app/ServeurHTTP.java)
+L'IHM ne connaît **jamais** la nature du contrôleur utilisé. Elle manipule uniquement `IControleur`.
 
-**Rôle** : Serveur REST HTTP pour clients réseau (port 8082)
-
-**Endpoints principaux** :
-- `GET /version` : numéro de version actuelle (sync clients)
-- `GET /lots` : liste des lots
-- `GET /societes` : liste des sociétés
-- `GET /cle` : clé AES de chiffrement (après authentification)
-- `POST /lots` : mise à jour des lots
-- `POST /societes` : mise à jour des sociétés
-- `POST /login` : authentification, génération token
-- `POST /logout` : déconnexion
-
-**Sécurité** :
-- Tokens de session (X-Auth-Token)
-- Chiffrement AES-256-CBC des réponses et requêtes
-- Authentification par identifiant + mot de passe ACE
-
-**Gestion de la concurrence** :
-- `ReadWriteLock` : plusieurs lectures simultanées, écritures exclusives
-- Timeout clients : 30 secondes
-- Verrous toujours libérés dans `finally{}`
-
-**Modes d'exécution** :
-- **Mode graphique** : lance `FenetreServeur` (Windows)
-- **Mode headless** : console ASCII (Linux, serveurs)
-
----
-
-### 2. **ControleurClient** (Mode Client Réseau)
-
-**Fichier** : [app/ControleurClient.java](app/ControleurClient.java)
-
-**Rôle** : Client qui se connecte au `ServeurHTTP`
-
-**Caractéristiques** :
-- Implémente `IControleur` (même interface que `Controleur`)
-- Communication en HTTP/HTTPS
-- Chiffrement AES automatique des échanges
-- Polling toutes les 3 secondes (synchronisation)
-- Récupération locale des données au démarrage
-
-**Flux de connexion** :
 ```
-new ControleurClient(ip, port, identifiant, mdp)
-  → POST /login (sans chiffrement yet)
-  → Récup : sessionToken + timeout
-  → Chargement lots/sociétés (GET, sans chiffrement yet)
-  → GET /cle → réception clé AES
-  → À partir de là : tous les échanges chiffrés
-  → Thread polling démarre (GET /version toutes les 3s)
+FenetrePrincipale
+       │
+       ▼
+  IControleur (interface)
+   ┌───────────┴────────────┐
+   │                        │
+Controleur              ControleurClient
+(mode solo,             (mode réseau,
+ accès direct           HTTP vers
+ à PlanningGlobal)      ServeurHTTP)
 ```
 
-**Modes spéciaux** :
-- **Mode désynchronisé** (PAM) : préparer des semaines futures sans perturber les autres
-- **Resynchronisation** : recharger l'état du serveur
+Cela permet d'ajouter un mode démo, un mode test, ou un second protocole réseau sans toucher à l'IHM.
+
+### Flux de démarrage client
+
+```
+FenetreConnexionClient
+  └─ saisit IP / identifiant / mot de passe
+       └─ POST /login
+            └─ reçoit { "token": "...", "accesPAM": true/false }
+                 └─ new ControleurClient(ip, id, pam, token)
+                      ├─ Thread fond : chargerDepuisServeur()  → GET /lots + /societes
+                      ├─ Thread fond : recupererCle()          → GET /cle  → aes activé
+                      ├─ SwingUtilities.invokeLater → new FenetrePrincipale(this)
+                      └─ demarrerPolling()           → GET /version toutes les 1s
+```
+
+### Flux de démarrage serveur
+
+```
+ServeurHTTP()
+  ├─ ChiffrementAES.chargerOuCreer("secret.key")
+  ├─ DonneesSauvegarder.charger(metier, "app/data/courutilisation")
+  ├─ HttpServer.create(port 8082)  → enregistrement de tous les handlers
+  ├─ Thread session-cleaner (nettoyage tokens expirés toutes les heures)
+  └─ SwingUtilities.invokeLater → new FenetreServeur(this)
+     (ou menuConsole() si headless)
+```
 
 ---
 
-### 4. **PlanningGlobal** (Métier)
+## 4. Le serveur — ServeurHTTP.java
 
-**Fichier** : [app/metier/PlanningGlobal.java](app/metier/PlanningGlobal.java)
+### Constantes importantes
 
-**Rôle** : Logique métier centrale
+| Constante | Valeur | Rôle |
+|---|---|---|
+| `PORT` | `8082` | Port d'écoute HTTP |
+| `TOKEN_TTL_MS` | `4h` | Durée de vie d'un token de session |
+| `MAX_ECHECS` | `5` | Tentatives login avant blocage IP |
+| `BLOCAGE_MS` | `5 min` | Durée du blocage après trop de tentatives |
+| `TIMEOUT_CLIENT_MS` | `10s` | Délai d'inactivité d'un client |
 
-**Responsabilités** :
-- Gestion des `Lot` (ajout, modification, suppression)
-- Gestion des `Societe` (ajout, modification, suppression)
-- Calcul des plannings globaux
-- Validation des données
+### Gestion de la concurrence
 
-**Structures de données** :
-- `ArrayList<Lot> listeLots` : tous les lots
-- `ArrayList<Societe> listeSocietes` : toutes les sociétés
-- `int semaine` : semaine active
-- `int annee` : année active
+Toutes les modifications du modèle métier (`PlanningGlobal`) passent par un **verrou** (`ReadWriteLock` ou `synchronized(verrou)`). Les lectures utilisent le `readLock`, les écritures le `writeLock`. L'exécuteur HTTP utilise un pool de **8 threads** (`Executors.newFixedThreadPool(8)`).
 
-**Méthodes essentielles** :
-- `chargerDepuisExcel(String path, ...)` : remplir depuis Excel
-- `chargerLots(String pathJson)`, `chargerSocietes(String pathJson)` : charger JSON
-- `ajouterLot(Lot)`, `modifierLot(Lot)`, `supprimerLot(Lot)`
-- `ajouterSociete(Societe)`, `modifierSociete(Societe)`, `supprimerSociete(Societe)`
-- `calculerPlanning()`, `calculerCharges()`
+### Numéro de version
 
----
+`versionDonnees` est un `volatile long` initialisé à `System.currentTimeMillis()`. Il est incrémenté (mis à jour) à chaque écriture. Le handler `/version` l'expose aux clients pour déclencher le polling.
 
-### 5. **DonneesSauvegarder** (Persistance)
+### Autosauvegarde
 
-**Fichier** : [app/metier/collecte/DonneesSauvegarder.java](app/metier/collecte/DonneesSauvegarder.java)
+Chaque handler qui modifie des données appelle en fin de traitement `savDonnees.sauvegarderLots(...)` et/ou `savDonnees.sauvegarderSocietes(...)` dans `app/data/courutilisation/`. C'est ce mécanisme qui garantit la **zéro perte de données** au redémarrage.
 
-**Rôle** : Lecture/écriture fichiers JSON sur disque
+### Mode headless
 
-**Responsabilités** :
-- Sérialiser `ArrayList<Lot>` ↔ JSON
-- Sérialiser `ArrayList<Societe>` ↔ JSON
-- Chiffrement/déchiffrement AES
-- Gestion des fichiers temporaires
-
-**Méthodes clés** :
-- `sauvegarderLots(List<Lot>, String path)` : écrit en JSON
-- `sauvegarderSocietes(List<Societe>, String path)` : écrit en JSON
-- `chargerLots(String path)` : lit JSON → `ArrayList<Lot>`
-- `chargerSocietes(String path)` : lit JSON → `ArrayList<Societe>`
+Si `GraphicsEnvironment.isHeadless()` est vrai (serveur Linux sans écran), `FenetreServeur` n'est pas instanciée et `menuConsole()` prend le relais avec une interface texte en boucle.
 
 ---
 
-### 6. **JsonSerialiser** (Sérialisation)
+## 5. Le client — ControleurClient.java
 
-**Fichier** : [app/metier/collecte/JsonSerialiser.java](app/metier/collecte/JsonSerialiser.java)
+### Règle fondamentale
 
-**Rôle** : Construction de JSON et d'objets depuis JSON
+> **Cet objet est jetable.** À chaque déconnexion, créer une nouvelle instance. Ne jamais réutiliser un `ControleurClient` après déconnexion.
 
-**Méthodes essentielles** :
-- `toJson(Lot/Societe/...)` : objet → chaîne JSON
-- `fromJson(String, Class<T>)` : chaîne JSON → objet
-- Gestion complète des échappements JSON (`\t`, `\r`, `\\`, etc.)
+### Threading
 
----
+| Thread | Rôle |
+|---|---|
+| Thread Swing (EDT) | IHM, interactions utilisateur, appels `IControleur` |
+| Thread de fond (démarrage) | `chargerDepuisServeur()` + `recupererCle()` — bloquants |
+| Thread `polling-serveur` | `GET /version` toutes les 1s, daemon |
 
-### 7. **ChiffrementAES** (Sécurité)
+Les champs `aes`, `versionLocale`, `desynchronise`, `pollingActif` sont `volatile` pour assurer la visibilité inter-threads sans synchronisation lourde.
 
-**Fichier** : [app/securite/ChiffrementAES.java](app/securite/ChiffrementAES.java)
+### Stratégie optimiste
 
-**Rôle** : Chiffrement AES-256-CBC
+Pour chaque modification (ex. `ajouterLot`), le client :
+1. Met à jour **immédiatement** sa copie locale.
+2. Rafraîchit **immédiatement** la fenêtre (feedback instantané).
+3. Envoie la requête HTTP en **arrière-plan** (thread séparé).
+4. Remplace la copie locale par la réponse du serveur quand elle arrive.
 
-**Méthodes** :
-- `init(File key)` : charge/génère la clé secrète (secret.key)
-- `chiffrer(String plaintext)` : plaintext → Base64(IV + ciphertext)
-- `dechiffrer(String encrypted)` : Base64(IV + ciphertext) → plaintext
+### Mode désynchronisé (PAM uniquement)
 
-**Clé** :
-- Générée aléatoirement au premier démarrage
-- Stockée en `secret.key` (256 bits)
-- Partage proposée via API `GET /cle` sur le serveur
+Permet à PAM de préparer une semaine future pendant que les autres travaillent sur la semaine courante. En mode désynchronisé :
+- `desynchronise = true`
+- Le polling est suspendu (boucle active mais sans action).
+- Les modifications sont sauvegardées localement via `savLocal`.
+- À la resynchronisation, le serveur écrase les modifications locales. **C'est volontaire.**
 
----
+### Gestion des erreurs réseau
 
-### 8. **ExcelReader** (Import)
-
-**Fichier** : [app/metier/collecte/ExcelReader.java](app/metier/collecte/ExcelReader.java)
-
-**Rôle** : Lecture fichiers Excel/XLSX
-
-**Méthodes** :
-- `lireLots(String pathXlsx)` : → `ArrayList<Lot>`
-- `lireSocietes(String pathXlsx)` : → `ArrayList<Societe>`
-- `lireAces(String pathXlsx)` : → `ArrayList<Ace>`
-
-**Utilise** : Apache POI (`poi-bin-5.2.3/`)
+- Timeout de connexion : 10s (`HttpClient.connectTimeout`).
+- Après 3 échecs consécutifs de polling : affichage d'une alerte (une seule fois), `pollingActif = false`.
+- Réponse HTTP 401 : token expiré → `gererDeconnexion()` → retour à `FenetreConnexionClient`.
 
 ---
 
-### 9. **IControleur** (Interface)
+## 6. L'interface IControleur
 
-**Fichier** : [app/IControleur.java](app/IControleur.java)
+Toutes les méthodes publiques de l'application passent par cette interface. Voici les groupes fonctionnels :
 
-**Rôle** : Contrat commun pour `Controleur` et `ControleurClient`
-
+### Accès aux données
 ```java
-List<Lot> getListeLots();
-List<Societe> getListeSocietes();
-void sauvegarderLots(List<Lot>);
-void sauvegarderSocietes(List<Societe>);
-// ... etc
+ArrayList<Societe> getSocietes()
+ArrayList<Lot>     getLots()
+boolean            isAccesPAM()
+boolean            isPollingActif()
 ```
 
----
-
-## Flux de données
-
-### 2. Démarrage en mode Serveur
-
-```
-run_SERVEUR.bat
-  ↓
-ServeurHTTP.main()
-  ↓
-new ServeurHTTP()
-  → new PlanningGlobal()
-  → new DonneesSauvegarder()
-  → ChargementJSON
-  → Création HttpServer port 8082
-  → Enregistrement handlers (GET/POST)
-  ↓
-if (!headless) new FenetreServeur()
-  → Affichage tableau de bord
-else
-  → Menu console ASCII
-```
-
-### 3. Démarrage en mode Client
-
-```
-run_CLIENT.bat
-  ↓
-ControleurClient.main()
-  ↓
-FenetreLogin (IP serveur + identifiant)
-  ↓
-new ControleurClient(ip, port, identifiant, mdp)
-  ↓
-Threads parallèles:
-  (1) chargerDepuisServeur()
-      → GET /lots + /societes (sans chiffrement)
-  (2) recupererCle()
-      → GET /cle (échange clé AES)
-  (3) polling() toutes 3s
-      → GET /version (détecte changements)
-  ↓
-new FenetrePrincipale()
-  → Affichage interface Swing
-```
-
-### 4. Modification d'un lot (tous modes)
-
-```
-Utilisateur modifie lot dans IHM
-  ↓
-FenetrePrincipale.validerModificationLot()
-  ↓
-IControleur.modifierLot(lot)
-  ↓
-  mode Réseau:
-  ControleurClient.modifierLot()
-    → POST /lots (body: [lots] chiffré)
-    → ServeurHTTP reçoit
-    → Déchiffre + vérifie droits
-    → PlanningGlobal.modifierLot()
-    → DonneesSauvegarder.sauvegarderLots()
-    → Retour 200 OK
-    → Autres clients détectent via GET /version
-      → Leur polling les force à GET /lots
-  ↓
-IHM se rafraîchit
-```
-
----
-
-## Guide de développement
-
-### 1. Ajouter une nouvelle fonctionnalité
-
-**Étape 1 : Métier** (`app/metier/`)
-- Ajouter la méthode dans `PlanningGlobal.java`
-- Exemple : `public void exporterPDF(String path)` { ... }
-
-**Étape 2 : Contrôleur** (`app/Controleur.java` + `ControleurClient.java`)
-- Implémenter le delégation vers PlanningGlobal
-- Exemple : `exporterPDF()` { return metier.exporterPDF(...); }
-
-**Étape 3 : Réseau** (`ServeurHTTP.java`)
-- Ajouter l'endpoint HTTP si nécessaire
-- Exemple : `POST /exportPDF` → invoke métier + retour Base64
-
-**Étape 4 : IHM** (`app/ihm/`)
-- Ajouter bouton, menu, ou dialogue
-- Appeler `IControleur.exporterPDF()`
-
-### 2. Cycle de compilation et test
-
-#### a. Compilation
-```bash
-cd c:\Users\erwan\Documents\GitHub\Stage_M2Serveur\gestionNOZ
-
-# Compiler depuis compile.list
-javac @compile.list
-
-# Ou manuellement :
-javac -cp "jar/poi-bin-5.2.3/lib/*;." -d bin app/**/*.java
-```
-
-#### c. Test Serveur
-```bash
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ServeurHTTP
-# Ouvre FenetreServeur sur port 8082
-```
-
-#### d. Test Client
-```bash
-# Terminal 1 : serveur
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ServeurHTTP
-
-# Terminal 2 : client
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ControleurClient
-# Saisir IP=127.0.0.1, identifiant=PAM, mdp=admin
-```
-
-### 3. Débogage avec breakpoints
-
-#### IDEs supportées :
-- **IntelliJ IDEA** : Import projet → Run → Debug
-- **Eclipse** : File → Import → Debug as → Java Application
-- **VS Code** : Extension Debugger for Java
-
-#### Debugger en Serveur Multi-clients
-```
-# Terminal 1 : Serveur en debug
-java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 \
-     -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ServeurHTTP
-
-# IDE : Run → Debug → Remote → localhost:5005
-
-# Terminal 2/3/... : Clients normaux
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ControleurClient
-```
-
----
-
-## Compilation et exécution
-
-### 1. Compiler
-
-**Fichier** : `compile.list` contient tous les .java à compiler
-
-```bash
-cd gestionNOZ
-javac @compile.list -d bin
-```
-
-**Ou manuellement** (si compile.list est vide) :
-```bash
-javac -cp "jar/poi-bin-5.2.3/lib/*:bin" \
-      -d bin \
-      app/*.java \
-      app/ihm/**/*.java \
-      app/metier/**/*.java \
-      app/securite/*.java
-```
-
-### 2. Exécuter
-```
-
-#### Mode Serveur
-```bash
-cd gestionNOZ
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ServeurHTTP
-```
-
-#### Mode Client
-```bash
-cd gestionNOZ
-java -cp "jar/poi-bin-5.2.3/lib/*:bin" app.ControleurClient
-```
-
-### 3. Scripts batch
-
-**`run_Client.bat`** :
-```batch
-@echo off
-cd /d %~dp0
-java -cp "jar/poi-bin-5.2.3/lib/*;bin" app.ControleurClient
-pause
-```
-
-**`run_SERVEUR.bat`** :
-```batch
-@echo off
-cd /d %~dp0
-java -cp "jar/poi-bin-5.2.3/lib/*;bin" app.ServeurHTTP
-pause
-```
-
-### 4. Créer le JAR exécutable
-
-**Outil** : `tools/MergeFatJar.java`
-
-```bash
-javac tools/MergeFatJar.java
-java -cp tools MergeFatJar output/FuturaServer FuturaServer.jar \
-  jar/poi-bin-5.2.3/lib/* bin/
-java -jar output/FuturaServer.jar
-```
-
----
-
-## Mode de débogage
-
-### 1. Logs console
-
-**Pour activer** :
+### Gestion des lots
 ```java
-// Dans n'importe quelle classe
-System.out.println("[CLASSE] Message : " + variable);
-System.err.println("[ERREUR] Details : " + exception);
+void ajouterLot(Lot lot)
+void ajouterLot(int numCDE, String typo, ...)   // création depuis formulaire
+void supprimerLot(Lot lot)
+void modifierLot(Lot lot, ...)                   // champs de base (DialogEditLot)
+void modifierLotComplet(Lot lot, ...)             // tous les champs (CarteLot)
+void modifierPhase(Lot lot, ...)
+void marquerLotTermine(Lot lot)
+void commencerLot(Lot lot)
+void annulerLot(Lot lot)
 ```
 
-**Convention** : 
-```
-[CLASSE] ... → facile à filtrer dans les logs
-[ERREUR] ... → erreurs visibles
-[DEBUG]  ... → info verbose
-```
-
-### 2. Debugger avec breakpoints (IntelliJ/Eclipse)
-
-1. Ouvrir le projet en IDE
-2. Menu Debug → Breakpoints → Line Breakpoint
-3. Clic sur le numéro de ligne
-4. Menu Debug → Debug Application
-5. Poser des watches sur variables
-
-### 3. Tokens de session
-
-**Serveur** : chaque client reçoit un token unique après `/login`
-
-```
-POST /login {"identifiant":"PAM", "mdp":"admin"}
-→ Réponse : {"token":"abc123...", "timeout":30}
-
-Ensuite chaque requête a l'header:
-X-Auth-Token: abc123...
-```
-
-**Debug** : afficher les tokens dans `ServeurHTTP.java`
+### Affectation
 ```java
-System.out.println("[AUTH] Token généré : " + token);
+boolean affecterLot(Lot lot, Societe soc, Ace ace)
+void    desaffecterLot(Lot lot)
 ```
 
-### 4. Vérifier le chiffrement AES
-
-**Mode client** : impossible de lire les réponses HTTP brutes (chifffrées)
-
-**Solution** : 
-- Ajouter un interceptor de logs avant déchiffrement
-- Dans `ControleurClient.get()`, avant `aes.dechiffrer()`
+### Sociétés / ACE
 ```java
-if (encrypted != null) {
-    System.out.println("[CRYPT] Response chiffré : " + encrypted.substring(0, 50) + "...");
-}
+void    modifierSociete(Societe soc, ...)
+boolean mettreAJourAces(Societe soc, List<Ace> nouvellesAces)
+void    nouvelleHeurePourSociete(int semaine)
+void    semaineSup()
 ```
 
-### 5. Monitorer les threads clients
-
-**Dans `ServeurHTTP`** :
+### Suivi production
 ```java
-System.out.println("[THREADS] Actifs : " + Thread.activeCount());
-System.out.println("[TIMEOUT] Clients : " + timeoutClients.keySet());
+void mettreAJourSuiviProd(Lot lot, int nbPieceEtiq, int nbPieceRepart)
 ```
+
+### Persistance
+```java
+void sauvegarderDonnees(String cheminDossier, String semaine)
+void chargerDonnees(String chemin) throws IOException
+void nouveaux()       // import Excel (PAM uniquement)
+void autoSauvegarde()
+```
+
+### Recherche / Fiche de route
+```java
+Societe        getSocieteDuLot(Lot lot)
+Ace            getAceDuLot(Lot lot)
+ArrayList<Ace> getTouteAces()
+FicheRoute     genererFicheRoute(Societe societe)
+```
+
+> **Note sur `modifierLot` vs `modifierLotComplet`** : deux signatures coexistent pour maintenir la rétrocompatibilité. `modifierLot` est appelé par `DialogEditLot` (champs administratifs). `modifierLotComplet` est appelé par `CarteLot` et ajoute les champs logistiques (`formatCarton`, `collisage`, `distribution`, etc.).
 
 ---
 
-## FAQ Développement
+## 7. Sécurité
 
-### Q1 : Où stocker les configurations ?
+### Authentification par token
 
-**Réponse** : 
-- Config au démarrage → `CheminApp.resoudre("app/config.json")`
-- Propriétés Java → `System.getProperty("app.mode")`
-- Variables d'environnement → `System.getenv("APP_DEBUG")`
+1. `POST /login` valide identifiant + mot de passe via `GestionComptes`.
+2. En cas de succès, le serveur génère un token aléatoire 256 bits (`SecureRandom`) et crée une `SessionInfo`.
+3. Le token est envoyé dans l'en-tête `X-Auth-Token` de chaque requête suivante.
+4. Toutes les routes sauf `/login` et `/creer-compte` vérifient ce token via `exigerToken(ex)`.
+5. Les tokens expirent après **4 heures**. Un thread daemon les nettoie toutes les heures.
 
-### Q2 : Comment ajouter une nouvelle classe métier ?
+### Rate limiting
 
-**Réponse** :
-1. Créer `app/metier/Classe.java`
-2. Ajouter getters/setters
-3. Implémenter `toJson()` dans `JsonSerialiser`
-4. Ajouter champ `ArrayList<Classe>` dans `PlanningGlobal`
-5. Ajouter méthodes `charger`, `ajouter`, `modifier`, `supprimer`
+Après **5 tentatives de connexion échouées** depuis la même IP, cette IP est bloquée **5 minutes**. Les compteurs `loginEchecs` et `loginBlocage` sont des `ConcurrentHashMap`.
 
-### Q3 : Comment gérer les erreurs réseau ?
+### Chiffrement AES-256-CBC
 
-**Réponse** :
-- Timeout : `HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30))`
-- Retry : boucle avec attente exponentielle
-- Fallback : charger données locales en cas de déconnexion
+**Sur le disque :** `DonneesSauvegarder` chiffre les JSON avant écriture et les déchiffre à la lecture via `ChiffrementAES`. La clé est dans `secret.key` (Base64, AES-256 bits).
 
-### Q4 : Comment tester sans serveur central ?
+**En transit :** après l'échange de clé (`GET /cle`), tous les corps HTTP sont chiffrés. Le client chiffre les corps POST, le serveur chiffre les réponses.
 
-**Réponse** : 
-- Mock HTTP : créer un `MockServeurHTTP` qui simule réponses
+**Format d'un message chiffré :**
+```
+Base64( IV[16 octets] || données_AES_CBC )
+```
+L'IV est aléatoire à chaque message (sécurité renforcée, pas de réutilisation d'IV).
 
-### Q5 : Le serveur se fige (hang) ?
+**Migration transparente :** si les fichiers JSON existent en clair (avant l'activation du chiffrement), `DonneesSauvegarder.lire()` les détecte (commence par `[` ou `{`), les lit, puis les réécrit immédiatement chiffrés.
 
-**Réponse** :
-- Verrous non libérés → toujours `finally { rwLock.xxxLock().unlock() }`
-- Deadlock → vérifier l'ordre d'acquisition des verrous
-- Threads bloqués → utiliser `jstack <pid>` pour voir stack traces
+### Gestion des comptes
 
----
+`GestionComptes` (singleton) gère un fichier `app/data/courutilisation/comptes.json` (non exposé) contenant :
+- la liste des utilisateurs (identifiant, mot de passe, flag `accesPAM`)
+- les demandes de compte en attente (`statut: "attente" | "approuve" | "refuse"`)
 
-## Ressources utiles
+Les routes `/admin/demandes`, `/admin/demandes/approuver`, `/admin/demandes/refuser` sont réservées aux sessions avec `accesPAM = true`.
 
-- **Java Documentation** : https://docs.oracle.com/javase/
-- **Apache POI** : https://poi.apache.org/ (lecture/écriture Excel)
-- **Swing Tutorials** : https://docs.oracle.com/javase/tutorial/uiswing/
-- **Java HTTP Client** : https://docs.oracle.com/en/java/javase/11/docs/api/java.net.http/java/net/http/HttpClient.html
-- **AES Chiffrement** : https://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html
+### Protection path traversal
+
+Le handler `/sauvegarder` rejette tout chemin contenant `..` avant de créer les dossiers de destination.
 
 ---
 
-**Dernière mise à jour** : 28/05/2026
-**Version** : 1.0 - Manuel complet pour développeurs
+## 8. Persistance des données
+
+### Principe
+
+```
+Modification reçue par ServeurHTTP
+  └─ mise à jour de PlanningGlobal (en mémoire)
+       └─ savDonnees.sauvegarderLots(...)       → app/data/courutilisation/lots.json
+       └─ savDonnees.sauvegarderSocietes(...)   → app/data/courutilisation/societes.json
+       └─ versionDonnees = System.currentTimeMillis()
+```
+
+Au prochain démarrage du serveur, `charger()` relit ces deux fichiers et repart de l'état exact de la dernière modification.
+
+### Format JSON
+
+La sérialisation est **entièrement manuelle** (pas de bibliothèque externe). `JsonSerialiser` contient des méthodes `deserialiserLots(String json)`, `deserialiserSocietes(String json, lots)`, `serialiserLots(...)`, etc. Les helpers `extraireString`, `extraireBloc`, `extraireObjets` parsent le JSON caractère par caractère.
+
+> ⚠️ En cas d'évolution du modèle métier, mettre à jour **simultanément** `construireJsonLots` (dans `DonneesSauvegarder`) et `deserialiserLots` (dans `JsonSerialiser`).
+
+### Structure des dossiers de données
+
+| Dossier | Contenu |
+|---|---|
+| `app/data/courutilisation/` | Semaine en cours — écrasé à chaque modification |
+| `app/data/semaine_suivante/` | Préparation PAM de la semaine N+1 |
+| `app/data/enregistrementparsemaine/S17/` | Archive semaine 17 (manuel via bouton Sauvegarder) |
+
+### secret.key
+
+Généré automatiquement au premier démarrage si absent. **Supprimer ce fichier rend illisibles tous les fichiers JSON chiffrés existants.** À sauvegarder séparément du projet (ne pas versionner dans Git).
+
+---
+
+## 9. Référence des routes HTTP
+
+Toutes les routes sauf `/login` et `/creer-compte` exigent le header `X-Auth-Token`.
+
+### Authentification
+
+| Méthode | Route | Corps / Paramètre | Réponse | Notes |
+|---|---|---|---|---|
+| POST | `/login` | `{identifiant, motDePasse}` | `{token, accesPAM}` | Public |
+| POST | `/creer-compte` | `{identifiant, motDePasse}` | `{ok}` | Public |
+| GET | `/cle` | — | Base64 clé AES | Token requis |
+
+### Administration (PAM uniquement)
+
+| Méthode | Route | Réponse |
+|---|---|---|
+| GET | `/admin/demandes` | `{demandes:[...]}` |
+| POST | `/admin/demandes/approuver` | `{ok}` |
+| POST | `/admin/demandes/refuser` | `{ok}` |
+
+### Lots
+
+| Méthode | Route | Notes |
+|---|---|---|
+| GET | `/lots` | Retourne tous les lots (chiffrés) |
+| POST | `/lots/ajouter` | |
+| POST | `/lots/supprimer` | `{numCDE}` |
+| POST | `/lots/modifier` | Champs de base |
+| POST | `/lots/affecter` | `{numCDE, societe, ace}` — retourne lots + sociétés |
+| POST | `/lots/desaffecter` | `{numCDE}` — retourne lots + sociétés |
+| POST | `/lots/suiviprod` | `{numCDE, nbPieceEtiq, nbPieceRepart}` |
+| POST | `/lots/commencer` | `{numCDE}` |
+| POST | `/lots/annuler` | `{numCDE}` |
+| POST | `/lots/terminer` | `{numCDE}` |
+| POST | `/lots/phase` | `{numCDE, preTri, surPiste, ...}` |
+| POST | `/lots/lignecolisage/ajouter` | |
+| POST | `/lots/lignecolisage/supprimer` | |
+
+### Sociétés / ACE
+
+| Méthode | Route | Notes |
+|---|---|---|
+| GET | `/societes` | |
+| POST | `/societes/modifier` | |
+| POST | `/aces/modifier` | |
+| POST | `/aces/mettreajour` | Remplace la liste des ACE d'une société |
+
+### Semaine suivante
+
+| Méthode | Route | Notes |
+|---|---|---|
+| GET | `/semaine-suivante` | |
+| POST | `/semaine-suivante/sauvegarder` | |
+| POST | `/semaine-suivante/basculer` | PAM uniquement — bascule S+1 → courante |
+
+### Système
+
+| Méthode | Route | Notes |
+|---|---|---|
+| GET | `/version` | `{v, heureSup}` — polling |
+| POST | `/sauvegarder` | `{chemin, semaine}` — archive manuelle |
+| POST | `/nouvelleheure` | PAM uniquement |
+| POST | `/semainesup` | |
+| POST | `/autosave/lots` | Déclenché par le client toutes les N secondes |
+| POST | `/autosave/societes` | |
+| GET | `/ficheroute/{nomSociete}` | |
+
+### Routes bloquées (403)
+
+`/charger` et `/nouveaux` retournent toujours 403 depuis un client. Ces actions sont réservées au serveur (boutons de `FenetreServeur`).
+
+---
+
+## 10. Synchronisation et polling
+
+### Mécanisme
+
+Chaque client lance au démarrage un thread daemon `polling-serveur` qui appelle `GET /version` toutes les **1000 ms**.
+
+La réponse contient :
+```json
+{ "v": "1717500000000", "heureSup": false }
+```
+
+- Si `v != versionLocale` → `chargerDepuisServeur()` est appelé, `versionLocale` est mise à jour.
+- Si `heureSup` a changé → `PlanningGlobal.estHeureSup` est mis à jour.
+
+### Conséquence pratique
+
+Une modification effectuée par un client est visible par tous les autres en **moins de 2 secondes** (1s de polling + temps de chargement).
+
+### Gestion de la perte de connexion
+
+Après **3 échecs consécutifs** de `GET /version`, le client :
+1. Affiche une alerte modale (une seule fois).
+2. Passe `pollingActif = false`.
+3. L'IHM reflète visuellement l'état déconnecté (indicateur dans `FenetrePrincipale`).
+
+Le polling continue de tourner pour détecter le retour du serveur.
+
+---
+
+## 11. IHM — Fenêtres et panneaux
+
+### Côté serveur
+
+| Classe | Rôle |
+|---|---|
+| `FenetreServeur` | Tableau de bord : IP, port, clients actifs, semaine, boutons d'action |
+| `PanelSemaineSuivante` | Gestion de la semaine N+1 (PAM) |
+
+### Côté client
+
+| Classe | Rôle |
+|---|---|
+| `FenetreConnexionClient` | Saisie IP / identifiant / mot de passe, appel POST /login |
+| `FenetreCreationCompte` | Demande de création de compte (POST /creer-compte) |
+| `FenetrePrincipale` | Fenêtre principale, onglets, méthode `rafraichirTout()` |
+| `PanelLots` | Tableau filtrable des lots |
+| `PanelSocietes` | Vue des sociétés et de leurs ACE |
+| `PanelAffectation` | Drag-and-drop affectation lot ↔ société/ACE |
+| `PanelDiagrame` | Vue Gantt |
+| `PanelFicheRoute` | Récapitulatif par société (`FicheRoute`) |
+| `PanelMap` | Vue carte des emplacements |
+| `CarteLot` | Carte détaillée d'un lot (champs logistiques) |
+| `DialogAjoutLot` | Formulaire création lot |
+| `DialogEditLot` | Formulaire modification lot (champs de base) |
+| `DialogEditSociete` | Formulaire modification société + ACE |
+
+### Convention de rafraîchissement
+
+`FenetrePrincipale.rafraichirTout()` est la **seule méthode** à appeler pour mettre à jour l'affichage. Elle doit être appelée depuis le thread Swing (`SwingUtilities.invokeLater`). Les contrôleurs l'appellent après chaque modification locale (stratégie optimiste) et après réception de la réponse serveur.
+
+---
+
+## 12. Compilation et lancement
+
+### Prérequis
+
+- Java 11 minimum (utilise `java.net.http.HttpClient`).
+- Aucune dépendance externe (JSON, HTTP, AES : tout est implémenté manuellement ou via le JDK).
+
+### Compilation
+
+L'ordre de compilation est défini dans `compile.list`. Compiler avec :
+
+```bat
+javac -encoding UTF-8 -cp . @compile.list -d out/
+```
+
+### Lancement serveur
+
+```bat
+java -cp out app.ServeurHTTP
+```
+
+Ou via `run_SERVEUR.bat` (double-clic).
+
+### Lancement client
+
+```bat
+java -cp out app.ControleurClient
+```
+
+Ou via `run_CLIENT.bat` (double-clic).
+
+### Lancement headless (Linux sans écran)
+
+```bash
+java -Djava.awt.headless=true -cp out app.ServeurHTTP
+```
+
+`FenetreServeur` n'est pas instanciée ; la console textuelle (`menuConsole()`) prend le relais.
+
+### Premier démarrage
+
+Au premier lancement du serveur :
+- `secret.key` est généré automatiquement.
+- Les dossiers `app/data/courutilisation/`, `app/data/semaine_suivante/`, `app/data/enregistrementparsemaine/` sont créés.
+- Aucun lot ni société n'existe : importer via bouton **Nouvelle semaine** (fichier Excel).
+
+---
+
+## 13. Limites connues et pistes d'amélioration
+
+### Conflits d'écriture simultanée
+
+**Problème :** si deux clients modifient le même lot à la même seconde, la **dernière écriture gagne** et les modifications du premier sont silencieusement écrasées.
+
+**Solution envisageable :** ajouter un champ `dateModification` (timestamp) dans chaque lot. Le serveur compare avant d'appliquer et renvoie un code 409 (Conflict) si la version locale du client est dépassée.
+
+### Charge du polling
+
+**Problème :** avec 100 clients pollant toutes les secondes, le serveur reçoit 100 requêtes/seconde sur `/version`.
+
+**Solution envisageable :** remplacer le polling HTTP par des **Server-Sent Events (SSE)** ou des **WebSockets** (Java 11+ supporte SSE via `HttpServer`). Chaque client maintient une connexion longue durée ; le serveur pousse les changements à la demande.
+
+### Parsing JSON manuel
+
+**Problème :** `JsonSerialiser` est fragile face aux valeurs contenant des guillemets ou des caractères d'échappement inhabituels.
+
+**Solution envisageable :** intégrer une bibliothèque légère comme `org.json` ou `Gson` (ajouter le JAR dans le classpath, modifier `compile.list`).
+
+### Mot de passe en clair dans comptes.json
+
+**Problème :** les mots de passe sont actuellement stockés en texte brut (même si le fichier est chiffré AES).
+
+**Solution envisageable :** hacher les mots de passe avec `BCrypt` ou `PBKDF2` avant stockage. La vérification se fait alors par comparaison de hash.
+
+### Absence de logs persistants
+
+**Problème :** les logs serveur (`System.out.println`) ne sont visibles que dans la console courante et perdus à la fermeture.
+
+**Solution envisageable :** rediriger vers un fichier `logs/serveur_YYYY-MM-DD.log` avec rotation journalière (via `java.util.logging` ou redirection de `PrintStream`).
+
+---
+
+*Manuel rédigé pour les développeurs du projet Planning Global Futura.*  
+*Dernière mise à jour : juin 2026.*

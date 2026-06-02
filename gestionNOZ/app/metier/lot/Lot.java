@@ -114,9 +114,18 @@ public class Lot
 	private String  dateReception, datePaiement, commentaire, emplacement;
 
 	// -- fiche de route --
+	/** Suivi de production (pièces étiquetées/réparties, heures restantes). */
 	private SuivieProd suivieProd;
+	/** Étapes de production (preTri, surPiste, sortieEtiq, tri, finit). */
 	private Phase      phase;
+	/**
+	 * Méthode de production associée (lien vers un PDF dans app/data/pastouche/methodes/).
+	 * Null si aucune méthode n'est définie pour ce lot.
+	 */
 	private Methode    methode;
+	// ── Colisage principal ────────────────────────────────────────────────
+ 
+	/** Nombre total de palettes calculé depuis nbColisPrevue et formatCarton. */
 	private int    nbPalettes, nbColisPrevue, nbColisRecup, collisage, pcsUtiliser;
 	private String  distribution;
 	private String formatCarton, dateDebut, dateFin, dateFinTheorique; // "dd/MM/yyyy HH:mm:ss"
@@ -135,6 +144,8 @@ public class Lot
 		this.numCDE      = numCDE;
 		this.nbPieces    = nbPieces;
 		this.cadence     = cadence;
+		// cadenceReel est initialisé à cadence (valeur nominale du fichier XLSX).
+		// Il sera mis à jour si une vitesse réelle mesurée est saisie ultérieurement.
 		this.cadenceReel = cadence;
 		this.heures      = heures;
 		this.valeurVente = valeurVente;
@@ -156,6 +167,8 @@ public class Lot
 		this.dateDebut    = "";
 		this.dateFin      = "";
 		this.dateFinTheorique = "";
+		// pcsUtiliser = pièces encore disponibles pour créer des lignes de colisage.
+		// Au départ, toutes les pièces sont disponibles (= nbPieces).
 		this.pcsUtiliser  = this.nbPieces;
 		this.suivieProd   = new SuivieProd();
 		this.suivieProd.setLot(this);
@@ -202,6 +215,14 @@ public class Lot
 			this.suivieProd.miseAJJourAvancement();
 	}
 
+	/**
+	 * Calcule le nombre de cartons récupérables depuis le fournisseur.
+	 *
+	 * Formule :
+	 *   nbColisRecup = round(nbPieces × (poucentrecupCartonFour / 100))
+	 *
+	 * Appelé automatiquement par {@code setPoucentrecupCartonFour()}.
+	 */
 	public void calculColisRecup()
 	{
 		this.nbColisRecup = (int) Math.round(this.nbPieces * (this.poucentrecupCartonFour / 100.0));
@@ -450,6 +471,13 @@ public class Lot
 		return heures + "h " + minutes + "m";
 	}
 
+	/**
+	 * Calcule le prix unitaire = valeurVente / nbPieces, arrondi à 2 décimales.
+	 * Retourne 0 si nbPieces vaut 0 (protection division par zéro).
+	 * Appelé automatiquement par setValeurVente() et setNbPieces().
+	 *
+	 * @return prix unitaire arrondi à 2 décimales
+	 */
 	private double calculerPU()
 	{
 		double pu = 0.0;
@@ -460,6 +488,19 @@ public class Lot
 		return pu;
 	}
 
+	/**
+	 * Recalcule le nombre de colis prévus et le nombre de palettes
+	 * depuis les pièces disponibles ({@code pcsUtiliser}), le collisage
+	 * et le format de carton.
+	 *
+	 * Formules :
+	 *   nbColisPrevue = ceil(pcsUtiliser / collisage)
+	 *   nbPalettes    = ceil(nbColisPrevue / parPalette)
+	 *     avec parPalette : 1/16→64, 1/8→32, 1/4→16, 1/2→8, box→1
+	 *
+	 * ⚠️  Si collisage ≤ 0 ou formatCarton est vide, les deux champs sont mis à 0.
+	 * Appelé automatiquement par setFormatCarton() et setCollisage().
+	 */
 	public void recalculNbPalette()
 	{
 		if (collisage <= 0 || formatCarton == null || formatCarton.isEmpty())
@@ -485,6 +526,17 @@ public class Lot
 
 	public ArrayList<LigneColisage> getLignesColisage() { return lignesColisage; }
 
+	/**
+	 * Ajoute une ligne de colisage et décrémente les pièces disponibles.
+	 *
+	 * Effets :
+	 *   • {@code pcsUtiliser} -= pcs  (pièces "consommées" par cette ligne)
+	 *   • {@code ligne.recalculer(pcs)} recalcule nbColis et nbPalettes de la ligne
+	 *   • {@code recalculNbPalette()} met à jour les totaux du lot
+	 *
+	 * @param ligne la ligne de colisage à ajouter
+	 * @param pcs   nombre de pièces affectées à cette ligne
+	 */
 	public void ajouterLigneColisage(LigneColisage ligne, int pcs)
 	{
 		this.pcsUtiliser = this.pcsUtiliser - pcs;
@@ -493,6 +545,18 @@ public class Lot
 		recalculNbPalette();
 	}
 
+	/**
+	 * Supprime la ligne de colisage à l'index donné et restitue ses pièces.
+	 *
+	 * Effets :
+	 *   • {@code pcsUtiliser} += pcs de la ligne supprimée
+	 *   • La ligne est retirée de la liste
+	 *   • {@code recalculNbPalette()} met à jour les totaux du lot
+	 *
+	 * Sans effet si {@code index} est hors bornes.
+	 *
+	 * @param index position de la ligne dans {@code lignesColisage} (0-based)
+	 */
 	public void supprimerLigneColisage(int index)
 	{
 		if (index >= 0 && index < lignesColisage.size())
@@ -503,6 +567,10 @@ public class Lot
 		}
 	}
 
+	/**
+	 * Recalcule toutes les lignes de colisage après un changement de {@code nbPieces}.
+	 * Appelé automatiquement par {@code setNbPieces()}.
+	 */
 	public void recalculerLignesColisage()
 	{
 		for (LigneColisage l : lignesColisage)
@@ -584,13 +652,37 @@ public class Lot
 	public void setPhase(Phase v)           { this.phase      = v; }
 	public void setMethode(String methode)  { this.methode = Methode.getMetode(methode); }
 	public void setDistribution(String v)   { this.distribution = v; }
+	/**
+	 * Définit le format de carton et recalcule nbColisPrevue et nbPalettes.
+	 *
+	 * @param v format parmi : "", "1/16", "1/8", "1/4", "1/2", "box"
+	 */
 	public void setFormatCarton(String v)   { this.formatCarton = v; recalculNbPalette(); }
 	public void setHeuresAce(double v)      { this.heuresAce = v;    }
 	public void setNbPalettes(int v)        { this.nbPalettes = v;   }
 	public void setNbColisPrevue(int v)     { this.nbColisPrevue = v;}
 	public void setNbColisRecup(int v)      { this.nbColisRecup = v; }
+	/**
+	 * Définit le collisage (pièces/carton) et recalcule nbColisPrevue et nbPalettes.
+	 *
+	 * @param v nombre de pièces par carton (> 0 pour un calcul valide)
+	 */
 	public void setCollisage(int v)         { this.collisage = v; recalculNbPalette(); }
+	/**
+	 * Définit le pourcentage de récupération carton fournisseur et recalcule nbColisRecup.
+	 *
+	 * @param v pourcentage entre 0 et 100 inclus
+	 */
 	public void setPoucentrecupCartonFour(int v) { this.poucentrecupCartonFour = v; calculColisRecup(); }
+	/**
+	 * Définit la date/heure de début de production et déclenche le recalcul
+	 * de la date de fin théorique.
+	 *
+	 * Si la valeur est null ou vide, {@code dateFinTheorique} est également effacée.
+	 * Format attendu : "dd/MM/yyyy HH:mm:ss"
+	 *
+	 * @param v date/heure de début, ou "" / null pour effacer
+	 */
 	public void setDateDebut(String v)
 	{
 		this.dateDebut = v;
@@ -606,6 +698,13 @@ public class Lot
 	public void setdateFin(String v)        { this.dateFin = v;      }
 	public void setdateFinT(String v)       { this.dateFinTheorique = v; }
 	public void setEstMachine(boolean v)    { this.estMachine = v;   }
+
+	/**
+	 * Définit le nombre de personnes affectées à ce lot et recalcule
+	 * immédiatement les heures par personne (heuresAce) et la date de fin théorique.
+	 *
+	 * @param v nombre de personnes (doit être > 0 pour un calcul valide)
+	 */
 	public void setNbPers(int v)            { this.nbPers = v; this.calculHeuresPiste(v); }
 
 
