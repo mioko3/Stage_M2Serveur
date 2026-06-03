@@ -165,13 +165,11 @@ public class PanelAffectation extends JPanel
 		JButton btnRetirer  = IhmUtils.bouton("◀ Retirer",             new Color(200, 50, 50), Color.WHITE);
 		JButton btnEditer   = IhmUtils.bouton("✏ Modifier ce lot",      IhmUtils.BLEU,          Color.WHITE);
 		JButton btnAjouter  = IhmUtils.bouton("+ Nouveau lot",          new Color(60, 140, 60), Color.WHITE);
-		JButton btnNewLots  = IhmUtils.bouton("importer nouveau lots",  new Color(100, 20, 70), Color.WHITE);
 
 		btnAffecter.addActionListener(e -> affecterLot());
 		btnRetirer .addActionListener(e -> retirerAffectation());
 		btnEditer  .addActionListener(e -> ouvrirEditionLot());
 		btnAjouter .addActionListener(e -> new DialogAjoutLot(fenetre, ctrl, this).setVisible(true));
-		btnNewLots .addActionListener(e -> ctrl.exportNewLot());
 
 		lblStatut = new JLabel(" ");
 		lblStatut.setFont(new Font("SansSerif", Font.ITALIC, 11));
@@ -196,8 +194,6 @@ public class PanelAffectation extends JPanel
 		p.add(Box.createVerticalStrut(5));
 		p.add(btnAjouter);
 		p.add(Box.createVerticalStrut(5));
-		p.add(btnNewLots);
-		p.add(Box.createVerticalStrut(10));
 		p.add(lblStatut);
 
 		return p;
