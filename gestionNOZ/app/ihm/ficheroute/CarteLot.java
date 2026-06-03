@@ -717,7 +717,7 @@ public class CarteLot extends JPanel implements ActionListener
 		// en dessous de la cadence => rouge,
 		if (cadReel <= cadence)
 			v.setForeground(IhmUtils.ROUGE);
-		// proche de la cadence => ambre mais en dessous du seuil d'alerte
+		// proche de la cadence => ambre mais en dessous de 10%
 		if (cadReel < cadence && cadReel > cadence * 0.90)
 			v.setForeground(IhmUtils.AMBER);
 
