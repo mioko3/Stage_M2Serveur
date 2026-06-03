@@ -254,6 +254,7 @@ public class FenetrePrincipale extends JFrame
 			panelLots.rafraichir();
 			panelFicheRoute.rafraichir();
 			//panelMap.rafraichir();
+			panelDiagrame.actualiser();
 
 			if (lblInfo != null)
 				lblInfo.setText(buildInfo());

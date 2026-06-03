@@ -185,7 +185,7 @@ public class PanelGantt extends JPanel
 			drawCoucheReelle(g2, l, startX, y, widthT, estTermine);
 
 			// ── 3. TEXTE ────────────────────────────────────────────────
-			g2.setColor(Color.WHITE);
+			g2.setColor(Color.BLACK);
 			String txt = "[" + nomAce + "] CDE " + l.getNumCDE()
 				+ "  " + String.format("%02d:%02d", start.getHour(), start.getMinute())
 				+ " → " + String.format("%02d:%02d", endT.getHour(),  endT.getMinute());
@@ -202,7 +202,7 @@ public class PanelGantt extends JPanel
 			}
 
 			// ── 5. LABEL GAUCHE (nom du lot) ───────────────────────────
-			g2.setColor(Color.DARK_GRAY);
+			g2.setColor(Color.BLACK);
 			String labelGauche = "CDE " + l.getNumCDE();
 			g2.drawString(labelGauche, 5, y + BAR_H / 2 + 4);
 		}
@@ -332,10 +332,10 @@ public class PanelGantt extends JPanel
 	{
 		try
 		{
-			if (l.getdateFinT() != null && !l.getdateFinT().isEmpty())
-				return LocalDateTime.parse(l.getdateFinT(), fmt);
 			if (l.getdateFin() != null && !l.getdateFin().isEmpty())
 				return LocalDateTime.parse(l.getdateFin(), fmt);
+			if (l.getdateFinT() != null && !l.getdateFinT().isEmpty())
+				return LocalDateTime.parse(l.getdateFinT(), fmt);
 		}
 		catch (Exception ignored) {}
 		return safeStart(l).plusHours(1);
