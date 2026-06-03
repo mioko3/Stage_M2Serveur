@@ -17,7 +17,6 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -56,18 +55,13 @@ public class PanelSocietes extends JPanel
 	private JPanel creerBoutons()
 	{
 		JButton btnEdit = IhmUtils.bouton("✏ Modifier la société sélectionnée", IhmUtils.BLEU, Color.WHITE);
-		JButton btnNew  = new JButton("Nouvelle heure");
 		btnEdit.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		btnEdit.setAlignmentX(Component.LEFT_ALIGNMENT);
 		btnEdit.addActionListener(e -> ouvrirEdition());
-		btnNew.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		btnNew.setAlignmentX(Component.LEFT_ALIGNMENT);
-		btnNew.addActionListener(e -> ouvrirNouvelleHeure());
 
 		JPanel p = new JPanel(new BorderLayout());
 		p.setBackground(IhmUtils.FOND);
 		p.add(btnEdit, BorderLayout.WEST);
-		p.add(btnNew,  BorderLayout.EAST);
 		return p;
 	}
 
@@ -167,28 +161,6 @@ public class PanelSocietes extends JPanel
 		if (row < 0 || row >= ctrl.getSocietes().size()) return;
 		Societe soc = ctrl.getSocietes().get(row);
 		new DialogEditSociete(fenetre, ctrl, soc, this).setVisible(true);
-	}
-
-	private void ouvrirNouvelleHeure()
-	{
-		String input = JOptionPane.showInputDialog(fenetre,
-			"Entrez le numéro de semaine (1-53) :", "Semaine supplémentaire",
-			JOptionPane.PLAIN_MESSAGE);
-		if (input == null) return;
-		try
-		{
-			int sem = Integer.parseInt(input.trim());
-			if (sem < 1 || sem > 53) throw new NumberFormatException();
-			// Traitement métier à adapter selon votre contrôleur
-			this.fenetre.rafraichirTout();
-		}
-		catch (NumberFormatException ex)
-		{
-			JOptionPane.showMessageDialog(fenetre,
-				"Veuillez entrer un nombre entre 1 et 53.",
-				"Erreur", JOptionPane.ERROR_MESSAGE);
-		}
-		this.fenetre.rafraichirTout();
 	}
 
 	/**

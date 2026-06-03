@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Set;
 
 /**
  * Modèle métier central du planning.
@@ -51,10 +52,23 @@ public class PlanningGlobal
 	public void importerNouveauxLots(String cheminXlsx) throws IOException
 	{
 		ArrayList<Lot> nouveaux = ExcelReader.lireLots(cheminXlsx);
+
+		Set<Integer> dejaPresentsCDE = new java.util.HashSet<>();
 		for (Lot l : this.lots)
-			for (Lot ln : nouveaux)
-				if (!l.equals(ln)) this.lots.add(ln);
+			dejaPresentsCDE.add(l.getNumCDE());
+
+		int compteur = 0;
+		for (Lot ln : nouveaux)
+		{
+			if (!dejaPresentsCDE.contains(ln.getNumCDE()))
+			{
+				this.lots.add(ln);
+				dejaPresentsCDE.add(ln.getNumCDE()); // évite les doublons dans le fichier lui-même
+				compteur++;
+			}
+		}
 	}
+
 
 	public void mettreAJourHeuresSocietes(String cheminXlsx, int semaine) throws IOException
 	{

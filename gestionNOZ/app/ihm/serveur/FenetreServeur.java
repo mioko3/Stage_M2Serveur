@@ -271,6 +271,28 @@ public class FenetreServeur extends JFrame
 			"Importer…", C_ORANGE, e -> nouvelleSemaine()));
 		root.add(cardSemaines);
 
+				cardSemaines.add(buildActionRow(
+			"📥", "Importer des lots supplémentaires",
+			"Fusionne les lots d'un fichier Excel avec la liste en cours, sans écraser.",
+			"Importer…", C_GREEN, e -> importerLots()));
+		root.add(cardSemaines);
+
+		root.add(Box.createRigidArea(new Dimension(0, 20)));
+
+		// ── Section : Heures ──────────────────────────────────────────────────
+		// ── NOUVEAU ──────────────────────────────────────────────────────────
+		root.add(buildSectionTitre("Heures"));
+		root.add(Box.createRigidArea(new Dimension(0, 10)));
+		JPanel cardHeures = buildCard();
+		cardHeures.add(buildActionRow(
+			"⏰", "Nouvelle heure — import Excel",
+			"Ajoute les heures d'une semaine depuis le fichier TDB aux sociétés en cours.",
+			"Importer…", C_BLUE, e -> nouvelleHeure()));
+		root.add(cardHeures);
+
+		root.add(Box.createRigidArea(new Dimension(0, 20)));
+
+
 		root.add(Box.createRigidArea(new Dimension(0, 20)));
 
 		// ── Section : Sauvegarde ──────────────────────────────────────────
@@ -625,6 +647,34 @@ public class FenetreServeur extends JFrame
 		JOptionPane.showMessageDialog(this,
 			"Heures supplémentaires : " + (etat ? "ACTIVÉES ✓" : "DÉSACTIVÉES"),
 			"Heures sup", JOptionPane.INFORMATION_MESSAGE);
+	}
+
+	private void importerLots()
+	{
+		try {
+			serveur.importerLotsSupplementaires(this);
+			refresh();
+			JOptionPane.showMessageDialog(this,
+				"Import terminé. Les clients se synchroniseront dans les 3 secondes.",
+				"Import OK", JOptionPane.INFORMATION_MESSAGE);
+		} catch (Exception ex) {
+			JOptionPane.showMessageDialog(this,
+				"Erreur :\n" + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+
+	private void nouvelleHeure()
+	{
+		try {
+			serveur.nouvelleHeure(this);
+			refresh();
+			JOptionPane.showMessageDialog(this,
+				"Heures mises à jour. Les clients se synchroniseront dans les 3 secondes.",
+				"Heures OK", JOptionPane.INFORMATION_MESSAGE);
+		} catch (Exception ex) {
+			JOptionPane.showMessageDialog(this,
+				"Erreur :\n" + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	// ══════════════════════════════════════════════════════════════════════

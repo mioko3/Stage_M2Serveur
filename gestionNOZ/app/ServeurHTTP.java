@@ -691,6 +691,89 @@ public class ServeurHTTP
 		}
 	}
 
+	/**
+	 * Ajoute les heures d'un fichier Excel aux sociétés existantes.
+	 * Appelé par FenetreServeur.
+	 */
+	public void nouvelleHeure(Component parent) throws Exception
+	{
+		// Demander le numéro de semaine
+		String input = JOptionPane.showInputDialog(parent,
+			"Numéro de semaine (1-53) :", "Nouvelle heure", JOptionPane.PLAIN_MESSAGE);
+		if (input == null || input.isBlank()) return;
+		int semaine;
+		try {
+			semaine = Integer.parseInt(input.trim());
+			if (semaine < 1 || semaine > 53) throw new NumberFormatException();
+		} catch (NumberFormatException e) {
+			throw new Exception("Numéro de semaine invalide : " + input);
+		}
+
+		// Demander le fichier Excel
+		JFileChooser fc = new JFileChooser();
+		fc.setFileFilter(new FileNameExtensionFilter(
+			"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+		fc.setDialogTitle("Sélectionner le fichier des heures ACE");
+		File def = new File(CheminApp.resoudre("app/data"));
+		if (def.exists()) fc.setCurrentDirectory(def);
+		if (fc.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) return;
+		String cheminXlsx = fc.getSelectedFile().getAbsolutePath();
+
+		rwLock.writeLock().lock();
+		try {
+			metier.mettreAJourHeuresSocietes(cheminXlsx, semaine);
+			save();
+			versionDonnees = System.currentTimeMillis();
+			log("[Serveur] Nouvelle heure S" + semaine + " appliquée.");
+		} finally {
+			rwLock.writeLock().unlock();
+		}
+	}
+
+	/**
+	 * Fusionne les lots d'un fichier Excel avec la liste en cours.
+	 * Les lots déjà présents (même numCDE) ne sont pas touchés.
+	 * Appelé par FenetreServeur.
+	 */
+	public void importerLotsSupplementaires(Component parent) throws Exception
+	{
+		JFileChooser fc = new JFileChooser();
+		fc.setFileFilter(new FileNameExtensionFilter(
+			"Fichiers Excel (*.xlsx, *.xlsm)", "xlsx", "xlsm"));
+		fc.setDialogTitle("Sélectionner le fichier Excel des lots supplémentaires");
+		File def = new File(CheminApp.resoudre("app/data"));
+		if (def.exists()) fc.setCurrentDirectory(def);
+		if (fc.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) return;
+		String cheminXlsx = fc.getSelectedFile().getAbsolutePath();
+
+		ArrayList<Lot> nouveaux = ExcelReader.lireLots(cheminXlsx);
+		if (nouveaux.isEmpty())
+			throw new Exception("Aucun lot trouvé dans ce fichier.");
+
+		rwLock.writeLock().lock();
+		try {
+			Set<Integer> existants = new java.util.HashSet<>();
+			for (Lot l : metier.getLots()) existants.add(l.getNumCDE());
+
+			int compteur = 0;
+			for (Lot l : nouveaux) {
+				if (!existants.contains(l.getNumCDE())) {
+					metier.getLots().add(l);
+					existants.add(l.getNumCDE());
+					compteur++;
+				}
+			}
+			if (compteur == 0)
+				throw new Exception("Aucun nouveau lot : tous déjà présents.");
+
+			save();
+			versionDonnees = System.currentTimeMillis();
+			log("[Serveur] Import lots : " + compteur + " lot(s) ajouté(s).");
+		} finally {
+			rwLock.writeLock().unlock();
+		}
+	}
+
 	// ══════════════════════════════════════════════════════════════════════
 	//  HANDLERS — SEMAINE SUIVANTE
 	// ══════════════════════════════════════════════════════════════════════

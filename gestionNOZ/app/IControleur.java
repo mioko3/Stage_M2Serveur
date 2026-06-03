@@ -123,7 +123,6 @@ public interface IControleur
 	void    modifierSociete(Societe soc, String nom, String ce,
 	                        int totalHeuresCE, int effectif);
 	boolean mettreAJourAces(Societe soc, List<Ace> nouvellesAces);
-	void    nouvelleHeurePourSociete(int semaine);
 	void    semaineSup();
 
 	// ── Suivi production ──────────────────────────────────────────────────

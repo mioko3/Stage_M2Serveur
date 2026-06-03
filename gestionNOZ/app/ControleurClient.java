@@ -3,7 +3,6 @@ package app;
 import app.ihm.FenetrePrincipale;
 import app.metier.PlanningGlobal;
 import app.metier.collecte.DonneesSauvegarder;
-import app.metier.collecte.ExcelReader;
 import app.metier.collecte.JsonSerialiser;
 import app.metier.ficheroute.FicheRoute;
 import app.metier.lot.Lot;
@@ -658,32 +657,6 @@ public class ControleurClient implements IControleur
 				post("/aces/mettreajour", sb.toString()), this.lots);
 		});
 		return true;
-	}
-
-	@Override
-	public void nouvelleHeurePourSociete(int semaine) {
-		String xlsx = demanderFichierExcel("Sélectionner le fichier des heures ACE");
-		if (xlsx == null) { JOptionPane.showMessageDialog(null, "Aucun fichier.", "Nouvelle heure",
-			JOptionPane.INFORMATION_MESSAGE); return; }
-		async("nouvelleHeurePourSociete", () -> {
-			java.util.Map<String, Integer> heuresParSoc = ExcelReader.lireHeuresSocietes(xlsx, semaine);
-			if (heuresParSoc == null || heuresParSoc.isEmpty()) {
-				JOptionPane.showMessageDialog(null, "Aucune donnée.", "Nouvelle heure",
-					JOptionPane.WARNING_MESSAGE); return;
-			}
-			StringBuilder sb = new StringBuilder("{\"societes\":[");
-			boolean first = true;
-			for (java.util.Map.Entry<String, Integer> entry : heuresParSoc.entrySet()) {
-				if (!first) sb.append(",");
-				sb.append("{\"nom\":").append(e(entry.getKey()))
-				  .append(",\"heures\":").append(entry.getValue()).append("}");
-				first = false;
-			}
-			sb.append("]}");
-			this.societes = JsonSerialiser.deserialiserSocietes(
-				post("/nouvelleheure", sb.toString()), this.lots);
-			JOptionPane.showMessageDialog(null, "Heures ajoutées !", "OK", JOptionPane.INFORMATION_MESSAGE);
-		});
 	}
 
 	@Override
