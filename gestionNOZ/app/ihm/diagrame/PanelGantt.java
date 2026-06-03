@@ -140,8 +140,8 @@ public class PanelGantt extends JPanel
 			LocalDateTime start = safeStart(l);
 			LocalDateTime end = safeEnd(l);
 
-			int startX = LEFT + toWeekMinutes(start);
-			int endX = LEFT + toWeekMinutes(end);
+			int startX = LEFT + toWeekMinutes(start) + 15;
+			int endX = LEFT + toWeekMinutes(end) + 15;
 
 			// 🔥 correction si dépassement semaine
 			if (endX < startX)

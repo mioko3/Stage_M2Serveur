@@ -172,7 +172,7 @@ public class CarteLot extends JPanel implements ActionListener
 		droite.setBackground(bg);
 		if (lot.isEstSousDouane())              droite.add(badge("DOUANE",    new Color(120, 40, 180)));
 		if (lot.getPhase().isFinit())           droite.add(badge("✓ TERMINÉ", new Color(30, 130, 50)));
-		if (lot.estMachine())                   droite.add(badge("MACHINE",   new Color(0, 100, 160)));
+		if (lot.estMachine())                   droite.add(badge("MACHINE",   Color.GRAY));
 		if (!s(lot.getStatut()).isEmpty())       droite.add(badge(lot.getStatut(), new Color(70, 70, 70)));
 		if (!s(lot.getStatutEchant()).isEmpty()) droite.add(badge("Éch: " + lot.getStatutEchant(), new Color(50, 90, 160)));
 		return droite;
@@ -711,19 +711,15 @@ public class CarteLot extends JPanel implements ActionListener
 		JLabel v = new JLabel(texte);
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-		// une marge de 5% est tolérée pour être considéré "dans la cadReel"
+		// au-dessus de la cadence => vert  sinon ambre
 		if (cadReel > cadence)
-		{
 			v.setForeground(IhmUtils.VERT);
-		}
-		else 
-		{
+		// en dessous de la cadence => rouge,
+		if (cadReel <= cadence)
 			v.setForeground(IhmUtils.ROUGE);
-		}
-		if (cadence >= cadReel * 0.95)
-		{
+		// proche de la cadence => ambre mais en dessous du seuil d'alerte
+		if (cadReel < cadence && cadReel > cadence * 0.95)
 			v.setForeground(IhmUtils.AMBER);
-		}
 
 		bloc.add(l, BorderLayout.NORTH);
 		bloc.add(v, BorderLayout.CENTER);
