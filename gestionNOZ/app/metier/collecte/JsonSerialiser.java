@@ -14,11 +14,18 @@ import java.util.ArrayList;
  *  JsonSerialiser — Sérialisation bidirectionnelle Java ↔ JSON
  * ═══════════════════════════════════════════════════════════════════════════════════
  *
- *  CORRECTIF :
- *  • "estMachine" ajouté dans serialiserLotSeul()  → le champ est maintenant transmis
- *  • "estMachine" ajouté dans deserialiserLot()    → le champ est maintenant restauré
- *  Les deux champs "estSousDouane" et "estMachine" transitent désormais correctement
- *  dans les deux sens (client → serveur et serveur → client).
+ *  CORRECTIFS APPLIQUÉS :
+ *  ──────────────────────
+ *  1. deserialiserLot() — ordre de désérialisation corrigé :
+ *       • nbPers lu AVANT calculHeuresPiste()
+ *       • Phase restaurée AVANT SuivieProd (setLot() déclenche miseAJJourAvancement)
+ *       • calculHeuresPiste(nbPers) appelé si heuresAce absente ou nulle
+ *
+ *  2. "estMachine" lu et écrit dans les deux sens.
+ *
+ *  3. Clés phases : "ph_preTri", "ph_surPiste", etc. (cohérent avec DonneesSauvegarder)
+ *     → rétrocompatibilité : si "ph_preTri" absent, on tente "phase_preTri" (anciens fichiers)
+ * ═══════════════════════════════════════════════════════════════════════════════════
  */
 public class JsonSerialiser
 {
@@ -51,6 +58,7 @@ public class JsonSerialiser
 				lignes.append("{")
 					.append("\"formatCarton\":").append(esc(lc.getFormatCarton())).append(",")
 					.append("\"collisage\":").append(lc.getCollisage()).append(",")
+					.append("\"pcs\":").append(lc.getPcs()).append(",")
 					.append("\"nbColis\":").append(lc.getNbColis())
 					.append("}");
 			}
@@ -74,7 +82,6 @@ public class JsonSerialiser
 			+ "\"priorite\":"                + lot.getPriorite()                            + ","
 			+ "\"lotACharge\":"              + esc(lot.getLotACharge())                     + ","
 			+ "\"emplacement\":"             + esc(lot.getEmplacement())                    + ","
-			// ── CORRECTIF : estSousDouane ET estMachine tous les deux présents ──
 			+ "\"estSousDouane\":"           + lot.isEstSousDouane()                        + ","
 			+ "\"estMachine\":"              + lot.estMachine()                             + ","
 			+ "\"dateReception\":"           + esc(lot.getDateReception())                  + ","
@@ -95,6 +102,7 @@ public class JsonSerialiser
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
 			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
 			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? sp.getNbHeureRepartRestant() : 0) + ","
+			// ── phases : clé "ph_" (cohérent avec DonneesSauvegarder) ──
 			+ "\"ph_preTri\":"               + (ph != null && ph.isPreTri())               + ","
 			+ "\"ph_surPiste\":"             + (ph != null && ph.isSurPiste())             + ","
 			+ "\"ph_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())           + ","
@@ -102,8 +110,6 @@ public class JsonSerialiser
 			+ "\"ph_finit\":"                + (ph != null && ph.isFinit())
 			+ "}";
 	}
-
-	// ── Sociétés ──────────────────────────────────────────────────────────
 
 	public static String serialiserSocietes(ArrayList<Societe> societes)
 	{
@@ -159,17 +165,15 @@ public class JsonSerialiser
 			+ "}";
 	}
 
-	// ── Fiche de route ────────────────────────────────────────────────────
-
 	public static String serialiserFicheRoute(FicheRoute fdr)
 	{
 		String nomSoc = (fdr.getSociete() != null) ? fdr.getSociete().getNom() : "";
 		return "{"
-			+ "\"nomSociete\":"  + esc(nomSoc)             + ","
-			+ "\"sommeVVS\":"    + fdr.getSommeVVS()       + ","
-			+ "\"sommePieces\":" + fdr.getSommePieces()    + ","
-			+ "\"prixUnitMoy\":" + fdr.getPrixUntaireMoy() + ","
-			+ "\"effectif\":"    + fdr.getEffectif()
+			+ "\"societe\":"        + esc(nomSoc)                + ","
+			+ "\"sommeVVS\":"       + fdr.getSommeVVS()          + ","
+			+ "\"sommePieces\":"    + fdr.getSommePieces()       + ","
+			+ "\"prixUnitaire\":"   + fdr.getPrixUntaireMoy()    + ","
+			+ "\"effectif\":"       + fdr.getEffectif()
 			+ "}";
 	}
 
@@ -181,14 +185,8 @@ public class JsonSerialiser
 	{
 		ArrayList<Lot> liste = new ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
-		ArrayList<String> objets = extraireObjets(json);
-		for (int idx = 0; idx < objets.size(); idx++) {
-			try {
-				liste.add(deserialiserLot(objets.get(idx)));
-			}
-			catch (Throwable e) {
-				System.err.println("[Json] Lot #" + idx + " ignoré : " + e.getMessage());
-			}
+		for (String obj : extraireObjets(json)) {
+			try { liste.add(deserialiserLot(obj)); } catch (Exception ignored) {}
 		}
 		return liste;
 	}
@@ -204,6 +202,7 @@ public class JsonSerialiser
 			getString(obj, "statut"),
 			getString(obj, "statutEchant")
 		);
+
 		String id = getString(obj, "id");
 		if (!id.isBlank()) lot.setId(id);
 
@@ -229,38 +228,20 @@ public class JsonSerialiser
 		lot.setCollisage    (getInt   (obj, "collisage"));
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
 
-		// ── CORRECTIF ORDRE : nbPers AVANT calculHeuresPiste ─────────────────
+		// ── CORRECTIF ORDRE : nbPers AVANT calculHeuresPiste ─────────────
 		int nbPers = getInt(obj, "nbPers");
 		lot.setNbPers(nbPers);
 
-		// ── CORRECTIF CALCUL : recalculer heuresAce si elle est absente/nulle ─
+		// ── CORRECTIF CALCUL : recalculer heuresAce si absente/nulle ─────
 		double heuresAce = getDouble(obj, "heuresAce");
 		if (heuresAce > 0 && heuresAce < 1_000_000)
 			lot.setHeuresAce(heuresAce);          // valeur sauvegardée : on la restaure
 		else if (nbPers > 0)
-			lot.calculHeuresPiste(nbPers);         // pas de valeur sauvegardée : on recalcule
+			lot.calculHeuresPiste(nbPers);         // pas de valeur sauvegardée : recalcul
 		else
-			lot.recalculerHeures();               // fallback : recalcul heures seules
+			lot.recalculerHeures();               // fallback
 
-		// ── Phase — restaurée AVANT SuivieProd pour que setLot() soit cohérent
-		Phase ph = new Phase();
-		ph.setPreTri    (getBool(obj, "ph_preTri"));
-		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
-		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
-		ph.setTri       (getBool(obj, "ph_tri"));
-		ph.setFinit     (getBool(obj, "ph_finit"));
-		lot.setPhase(ph);
-
-		// ── SuivieProd — en dernier, quand heuresAce ET phase sont déjà corrects
-		SuivieProd sp = new SuivieProd();
-		sp.setLot(lot);   // déclenche miseAJJourAvancement() avec toutes les valeurs correctes
-		sp.setNbPieceEtiq         (getInt   (obj, "sp_nbPieceEtiq"));
-		sp.setNbPieceRepart       (getInt   (obj, "sp_nbPieceRepart"));
-		sp.setNbHeureEtiqRestant  (Math.min(getDouble(obj, "sp_nbHeureEtiqRestant"),   999999));
-		sp.setNbHeureRepartRestant(Math.min(getDouble(obj, "sp_nbHeureRepartRestant"), 999999));
-		lot.setSuivieProd(sp);
-
-		// ── Lignes de colisage ────────────────────────────────────────────────
+		// ── Lignes de colisage ────────────────────────────────────────────
 		String blocsLignes = extraireBloc(obj, "\"lignesColisage\"");
 		if (blocsLignes != null) {
 			for (String objLigne : extraireObjets(blocsLignes)) {
@@ -269,10 +250,34 @@ public class JsonSerialiser
 						getString(objLigne, "formatCarton"),
 						getInt   (objLigne, "collisage")
 					);
+					int pcs = getInt(objLigne, "pcs");
+					if (pcs <= 0) pcs = getInt(objLigne, "nbColis") * lc.getCollisage();
+					if (pcs > 0) lc.recalculer(pcs);
 					lot.getLignesColisage().add(lc);
 				} catch (Exception ignored) {}
 			}
 		}
+
+		// ── CORRECTIF ORDRE : Phase AVANT SuivieProd ─────────────────────
+		// setLot() dans SuivieProd déclenche miseAJJourAvancement()
+		// → la phase doit déjà être correcte quand ça arrive
+		Phase ph = new Phase();
+		// Rétrocompatibilité : on accepte "ph_preTri" (nouveau) ET "phase_preTri" (ancien)
+		ph.setPreTri    (getBoolCompat(obj, "ph_preTri",     "phase_preTri"));
+		ph.setSurPiste  (getBoolCompat(obj, "ph_surPiste",   "phase_surPiste"));
+		ph.setSortieEtiq(getBoolCompat(obj, "ph_sortieEtiq", "phase_sortieEtiq"));
+		ph.setTri       (getBoolCompat(obj, "ph_tri",        "phase_tri"));
+		ph.setFinit     (getBoolCompat(obj, "ph_finit",      "phase_finit"));
+		lot.setPhase(ph);
+
+		// ── SuivieProd en dernier — toutes les valeurs sont prêtes ───────
+		SuivieProd sp = new SuivieProd();
+		sp.setLot(lot);   // déclenche miseAJJourAvancement() avec phase + heuresAce corrects
+		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
+		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
+		sp.setNbHeureEtiqRestant  (Math.min(getDouble(obj, "sp_nbHeureEtiqRestant"),   999999));
+		sp.setNbHeureRepartRestant(Math.min(getDouble(obj, "sp_nbHeureRepartRestant"), 999999));
+		lot.setSuivieProd(sp);
 
 		return lot;
 	}
@@ -315,25 +320,23 @@ public class JsonSerialiser
 				);
 				soc.setEffectifTotal(getInt(obj, "effectifTotal"));
 
-				// 3. Lots affectés
-				String lotsIdsStr = extraireTableauPrimitif(obj, "lotsIds");
-				if (lotsIdsStr != null)
-					for (int id : parseIntArray(lotsIdsStr)) {
+				// 3. Lots de la société
+				String lotsStr = extraireTableauPrimitif(obj, "lotsIds");
+				if (lotsStr != null)
+					for (int id : parseIntArray(lotsStr)) {
 						Lot l = trouverLot(lots, id);
-						if (l != null) soc.getLots().add(l);
+						if (l != null && !soc.getLots().contains(l)) soc.getLots().add(l);
 					}
 
 				liste.add(soc);
-			} catch (Exception e) {
-				System.err.println("[Json] Société ignorée : " + e.getMessage());
-			}
+			} catch (Exception ignored) {}
 		}
 		return liste;
 	}
 
-	public static ArrayList<Ace> deserialiserAces(String json)
+	public static java.util.ArrayList<Ace> deserialiserAces(String json)
 	{
-		ArrayList<Ace> liste = new ArrayList<>();
+		java.util.ArrayList<Ace> liste = new java.util.ArrayList<>();
 		if (json == null || json.isBlank()) return liste;
 		for (String obj : extraireObjets(json))
 			try {
@@ -353,7 +356,7 @@ public class JsonSerialiser
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  UTILITAIRES D'EXTRACTION
+	//  HELPERS D'EXTRACTION JSON
 	// ══════════════════════════════════════════════════════════════════════
 
 	public static String getString(String obj, String cle)
@@ -361,77 +364,85 @@ public class JsonSerialiser
 		String pattern = "\"" + cle + "\"";
 		int pos = obj.indexOf(pattern);
 		if (pos < 0) return "";
-		pos = obj.indexOf('"', pos + pattern.length() + 1);
-		if (pos < 0) return "";
-		StringBuilder sb = new StringBuilder();
+		pos += pattern.length();
+		while (pos < obj.length() && obj.charAt(pos) != ':') pos++;
 		pos++;
-		while (pos < obj.length()) {
-			char c = obj.charAt(pos);
-			if (c == '\\' && pos + 1 < obj.length()) {
-				char nx = obj.charAt(pos + 1);
-				if (nx == '"')  { sb.append('"');  pos += 2; continue; }
-				if (nx == 'n')  { sb.append('\n'); pos += 2; continue; }
-				if (nx == '\\') { sb.append('\\'); pos += 2; continue; }
+		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
+		if (pos >= obj.length()) return "";
+		if (obj.charAt(pos) == '"')
+		{
+			pos++;
+			StringBuilder sb = new StringBuilder();
+			while (pos < obj.length())
+			{
+				char c = obj.charAt(pos);
+				if (c == '\\' && pos + 1 < obj.length())
+				{ sb.append(obj.charAt(pos + 1) == 'n' ? '\n' : obj.charAt(pos + 1)); pos += 2; }
+				else if (c == '"') break;
+				else { sb.append(c); pos++; }
 			}
-			if (c == '"') break;
-			sb.append(c); pos++;
+			return sb.toString();
 		}
-		return sb.toString();
+		return "";
 	}
 
 	public static int getInt(String obj, String cle)
 	{
-		String p = "\"" + cle + "\":";
-		int pos = obj.indexOf(p);
+		String pattern = "\"" + cle + "\"";
+		int pos = obj.indexOf(pattern);
 		if (pos < 0) return 0;
-		pos += p.length();
+		pos += pattern.length();
+		while (pos < obj.length() && obj.charAt(pos) != ':') pos++;
+		pos++;
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
-		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-'
-			|| obj.charAt(end) == '.' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
-		String val = obj.substring(pos, end);
-		try {
-			if (val.contains(".") || val.contains("E") || val.contains("e")) {
-				double d = Double.parseDouble(val);
-				if (d > Integer.MAX_VALUE || d < Integer.MIN_VALUE) return 0;
-				return (int) d;
-			}
-			return Integer.parseInt(val);
-		} catch (NumberFormatException e) { return 0; }
+		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '-')) end++;
+		try { return Integer.parseInt(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0; }
 	}
 
 	public static double getDouble(String obj, String cle)
 	{
-		String p = "\"" + cle + "\":";
-		int pos = obj.indexOf(p);
+		String pattern = "\"" + cle + "\"";
+		int pos = obj.indexOf(pattern);
 		if (pos < 0) return 0.0;
-		pos += p.length();
+		pos += pattern.length();
+		while (pos < obj.length() && obj.charAt(pos) != ':') pos++;
+		pos++;
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		int end = pos;
-		while (end < obj.length() && (Character.isDigit(obj.charAt(end)) || obj.charAt(end) == '.'
-			|| obj.charAt(end) == '-' || obj.charAt(end) == '+' || obj.charAt(end) == 'E' || obj.charAt(end) == 'e')) end++;
-		try {
-			double d = Double.parseDouble(obj.substring(pos, end));
-			if (Double.isInfinite(d) || Double.isNaN(d)) return 0.0;
-			return Math.round(d * 100.0) / 100.0;
-		} catch (NumberFormatException e) { return 0.0; }
+		while (end < obj.length() && (Character.isDigit(obj.charAt(end))
+				|| obj.charAt(end) == '-' || obj.charAt(end) == '.')) end++;
+		try { return Double.parseDouble(obj.substring(pos, end)); } catch (NumberFormatException e) { return 0.0; }
 	}
 
 	public static boolean getBool(String obj, String cle)
 	{
-		String p = "\"" + cle + "\":";
-		int pos = obj.indexOf(p);
+		String pattern = "\"" + cle + "\"";
+		int pos = obj.indexOf(pattern);
 		if (pos < 0) return false;
-		pos += p.length();
+		pos += pattern.length();
+		while (pos < obj.length() && obj.charAt(pos) != ':') pos++;
+		pos++;
 		while (pos < obj.length() && obj.charAt(pos) == ' ') pos++;
 		return obj.startsWith("true", pos);
 	}
 
-	// ── Alias pour ServeurHTTP et ControleurClient ────────────────────────
-	public static int     extraireInt   (String json, String cle) { return getInt   (json, cle); }
-	public static String  extraireString(String json, String cle) { return getString (json, cle); }
-	public static boolean extraireBool  (String json, String cle) { return getBool   (json, cle); }
-	public static double  extraireDouble(String json, String cle) { return getDouble (json, cle); }
+	/**
+	 * Lit un booléen en essayant d'abord la clé principale,
+	 * puis la clé de repli (rétrocompatibilité anciens fichiers).
+	 */
+	private static boolean getBoolCompat(String obj, String cleNouvelle, String cleAncienne)
+	{
+		// Si la clé nouvelle est présente, on l'utilise
+		if (obj.contains("\"" + cleNouvelle + "\"")) return getBool(obj, cleNouvelle);
+		// Sinon on tente l'ancienne (fichiers sauvegardés avant le correctif)
+		return getBool(obj, cleAncienne);
+	}
+
+	public static String extraireString(String obj, String cle) { return getString(obj, cle); }
+	public static int    extraireInt   (String obj, String cle) { return getInt(obj, cle);    }
+	public static double extraireDouble(String obj, String cle) { return getDouble(obj, cle); }
+	public static boolean extraireBool (String obj, String cle) { return getBool(obj, cle);   }
 
 	public static String extraireBloc(String json, String cle)
 	{
@@ -479,7 +490,7 @@ public class JsonSerialiser
 	private static ArrayList<Integer> parseIntArray(String tableau)
 	{
 		ArrayList<Integer> liste = new ArrayList<>();
-		String contenu = tableau.replace("[","").replace("]","").trim();
+		String contenu = tableau.replace("[", "").replace("]", "").trim();
 		if (contenu.isEmpty()) return liste;
 		for (String s : contenu.split(","))
 			try { liste.add(Integer.parseInt(s.trim())); } catch (NumberFormatException ignored) {}
@@ -492,11 +503,6 @@ public class JsonSerialiser
 		return null;
 	}
 
-
-	/**
-	 * Sérialise une liste de LigneColisage en JSON array.
-	 * Appelé par ControleurClient pour construire le corps de la requête.
-	 */
 	public static String serialiserLignesColisage(ArrayList<LigneColisage> lignes)
 	{
 		if (lignes == null) return "[]";
@@ -507,6 +513,7 @@ public class JsonSerialiser
 			sb.append("{")
 				.append("\"formatCarton\":").append(esc(lc.getFormatCarton())).append(",")
 				.append("\"collisage\":").append(lc.getCollisage()).append(",")
+				.append("\"pcs\":").append(lc.getPcs()).append(",")
 				.append("\"nbColis\":").append(lc.getNbColis())
 				.append("}");
 		}
@@ -516,7 +523,7 @@ public class JsonSerialiser
 	public static String esc(String s)
 	{
 		if (s == null) return "\"\"";
-		return "\"" + s.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n") + "\"";
+		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
 	}
 
 	private static double d2(double v)

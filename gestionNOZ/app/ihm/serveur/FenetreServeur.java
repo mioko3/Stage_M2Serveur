@@ -59,6 +59,7 @@ public class FenetreServeur extends JFrame
 	private JPanel               panelDemandesContenu;
 	private JLabel               lblBadgeDemandes;
 	private PanelSemaineSuivante panelSemSuiv;
+	private PanelAffectationServeur  panelAffServeur;
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  CONSTRUCTEUR
@@ -83,7 +84,7 @@ public class FenetreServeur extends JFrame
 
 		setSize(860, 680);
 		setMinimumSize(new Dimension(640, 520));
-		setLocationRelativeTo(null);
+	 	setLocationRelativeTo(null);
 		setResizable(true);
 		getContentPane().setBackground(C_BG);
 		setLayout(new BorderLayout(0, 0));
@@ -227,22 +228,27 @@ public class FenetreServeur extends JFrame
 		tabs.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		tabs.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-		tabs.addTab("  Opérations  ",     buildPanelOperations());
+		tabs.addTab("  Opérations  ",      buildPanelOperations());
 
-		panelSemSuiv = new PanelSemaineSuivante(serveur);
+		panelAffServeur = new PanelAffectationServeur(serveur);
+		panelSemSuiv    = new PanelSemaineSuivante(serveur, panelAffServeur);
 		tabs.addTab("  Semaine suivante  ", panelSemSuiv);
+		tabs.addTab("  Pré-affectation  ",  panelAffServeur);
 
-		tabs.addTab("  Demandes  ",        buildPanelDemandes());
+		tabs.addTab("  Demandes  ",         buildPanelDemandes());
 
-		tabs.addChangeListener(e -> {
+		 tabs.addChangeListener(e -> {
 			if (tabs.getSelectedIndex() == 1 && panelSemSuiv != null)
 				panelSemSuiv.chargerEtat();
-			if (tabs.getSelectedIndex() == 2)
+			  if (tabs.getSelectedIndex() == 2 && panelAffServeur != null)
+				panelAffServeur.chargerDonnees();
+			  if (tabs.getSelectedIndex() == 3)
 				rafraichirDemandes();
 		});
 
 		return tabs;
 	}
+
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  ONGLET OPÉRATIONS

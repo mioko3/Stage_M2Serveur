@@ -3,6 +3,7 @@ package app.metier.collecte;
 import app.metier.PlanningGlobal;
 import app.metier.ficheroute.Phase;
 import app.metier.lot.Lot;
+import app.metier.lot.LigneColisage;
 import app.metier.personelle.Ace;
 import app.metier.personelle.Societe;
 import app.securite.ChiffrementAES;
@@ -14,27 +15,20 @@ import java.util.ArrayList;
 
 /**
  * ══════════════════════════════════════════════════════════════
- *  DonneesSauvegarder — version chiffrée (correctif fichiers JSON)
+ *  DonneesSauvegarder — correctif clés phases + lignesColisage
  * ══════════════════════════════════════════════════════════════
  *
- *  CHANGEMENTS PAR RAPPORT À L'ORIGINAL :
- *  ───────────────────────────────────────
- *  • ajout d'un ChiffrementAES optionnel via setCrypte(aes)
- *  • si setCrypte() a été appelé :
- *      - sauvegarderLots / sauvegarderSocietes chiffrent le JSON avant d'écrire
- *      - charger lit le fichier et le déchiffre avant de parser
- *  • si setCrypte() N'a PAS été appelé → comportement identique à l'original
- *    (rétrocompatibilité totale, le mode solo sans chiffrement continue de fonctionner)
+ *  CORRECTIFS APPLIQUÉS :
+ *  ──────────────────────
+ *  • Les clés des phases utilisaient "phase_preTri" etc. dans construireJsonLots()
+ *    mais JsonSerialiser.deserialiserLot() les lisait avec "ph_preTri" etc.
+ *    → HARMONISATION : toutes les clés sont maintenant "ph_preTri", "ph_surPiste",
+ *      "ph_sortieEtiq", "ph_tri", "ph_finit" dans les DEUX fichiers.
  *
- *  COMMENT ACTIVER LE CHIFFREMENT dans ServeurHTTP :
- *  ──────────────────────────────────────────────────
- *      ChiffrementAES aes = ChiffrementAES.chargerOuCreer(
- *          CheminApp.resoudre("secret.key"));
- *      this.savDonnees.setCrypte(aes);   // ← une seule ligne à ajouter
+ *  • Les lignesColisage étaient sauvegardées comme "[]" vide systématiquement.
+ *    → CORRECTIF : les lignes réelles sont maintenant sérialisées.
  *
- *  Après ça, tous les appels existants à sauvegarderLots(), sauvegarderSocietes()
- *  et charger() fonctionnent exactement comme avant, mais les fichiers sur le
- *  disque sont chiffrés.
+ *  • Champ "poucentrecup" ajouté dans construireJsonLots() (était absent).
  * ══════════════════════════════════════════════════════════════
  */
 public class DonneesSauvegarder
@@ -64,7 +58,7 @@ public class DonneesSauvegarder
 	}
 
 	public void sauvegarderSocietes(ArrayList<Societe> societes, ArrayList<Lot> lots,
-									String cheminFichier) throws IOException
+	                                String cheminFichier) throws IOException
 	{
 		String chemin = cheminFichier.endsWith(".json") ? cheminFichier : cheminFichier + ".json";
 		String json   = construireJsonSocietes(societes, lots);
@@ -84,7 +78,6 @@ public class DonneesSauvegarder
 			throw new IOException("Fichier introuvable : " + cheminSocietes);
 
 		String jsonLots     = lire(cheminLots);
-
 		String jsonSocietes = lire(cheminSocietes);
 
 		metier.getLots()    .clear();
@@ -93,33 +86,26 @@ public class DonneesSauvegarder
 		ArrayList<Lot> lots = JsonSerialiser.deserialiserLots(jsonLots);
 		metier.getLots().addAll(lots);
 		metier.getSocietes().addAll(JsonSerialiser.deserialiserSocietes(jsonSocietes, lots));
-
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  LECTURE / ÉCRITURE avec chiffrement transparent
 	// ══════════════════════════════════════════════════════════════════════
 
-	/**
-	 * Écrit le contenu dans le fichier.
-	 * Si le chiffrement est activé, le fichier contiendra du Base64 chiffré.
-	 * Sinon, le fichier contient du JSON brut lisible (comportement original).
-	 */
 	private void ecrire(String chemin, String contenu) throws IOException
 	{
 		if (aes != null)
 		{
-			// Mode chiffré : on chiffre le JSON et on écrit le Base64 résultant
 			try {
-				String chiffré = aes.chiffrer(contenu);
-				Files.writeString(Paths.get(chemin), chiffré);
+				String chiffre = aes.chiffrer(contenu);
+				Files.writeString(Paths.get(chemin), chiffre);
 			} catch (Exception e) {
-				throw new IOException("Erreur de chiffrement lors de l'écriture de " + chemin + " : " + e.getMessage(), e);
+				throw new IOException("Erreur de chiffrement lors de l'écriture de "
+					+ chemin + " : " + e.getMessage(), e);
 			}
 		}
 		else
 		{
-			// Mode original : écriture JSON brut
 			try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
 					new FileOutputStream(chemin), StandardCharsets.UTF_8)))
 			{
@@ -128,30 +114,13 @@ public class DonneesSauvegarder
 		}
 	}
 
-	/**
-	 * Lit le contenu d'un fichier.
-	 *
-	 * GESTION DE LA MIGRATION JSON → CHIFFRÉ :
-	 * ──────────────────────────────────────────
-	 * Quand le chiffrement est activé pour la première fois, les fichiers
-	 * lots.json et societes.json existent déjà en JSON brut (non chiffré).
-	 * Si on essaie de les déchiffrer directement → erreur "Illegal base64
-	 * character 5b" car '[' (= 0x5b) n'est pas un caractère Base64 valide.
-	 *
-	 * Solution : détecter si le contenu est du JSON brut AVANT de déchiffrer.
-	 * Un fichier chiffré contient du Base64 pur (pas d'accolades ni crochets).
-	 * Un fichier JSON commence toujours par '[' ou '{'.
-	 *
-	 * Si c'est du JSON brut et que le chiffrement est actif → on le lit tel quel
-	 * ET on le réécrit chiffré immédiatement pour migrer le fichier.
-	 */
 	private String lire(String chemin) throws IOException
 	{
 		String contenu = Files.readString(Paths.get(chemin), StandardCharsets.UTF_8).trim();
 
 		if (aes == null) return contenu;
 
-		// JSON brut non chiffré (migration)
+		// JSON brut non chiffré (migration transparente)
 		if (contenu.startsWith("[") || contenu.startsWith("{"))
 		{
 			try {
@@ -164,8 +133,7 @@ public class DonneesSauvegarder
 
 		// Fichier chiffré : déchiffrer
 		try {
-			String resultat = aes.dechiffrer(contenu);
-			return resultat;
+			return aes.dechiffrer(contenu);
 		} catch (Exception e) {
 			throw new IOException("Erreur déchiffrement de " + chemin
 				+ " (clé incorrecte ou fichier corrompu) : " + e.getMessage(), e);
@@ -173,7 +141,7 @@ public class DonneesSauvegarder
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
-	//  CONSTRUCTION JSON (identique à l'original)
+	//  CONSTRUCTION JSON
 	// ══════════════════════════════════════════════════════════════════════
 
 	private String construireJsonLots(ArrayList<Lot> lots)
@@ -181,48 +149,71 @@ public class DonneesSauvegarder
 		StringBuilder sb = new StringBuilder("[\n");
 		for (int i = 0; i < lots.size(); i++)
 		{
-			Lot l = lots.get(i);
+			Lot   l = lots.get(i);
 			Phase p = l.getPhase();
+
+			// ── Lignes de colisage ──────────────────────────────────────
+			StringBuilder lignesJson = new StringBuilder("[]");
+			if (l.getLignesColisage() != null && !l.getLignesColisage().isEmpty())
+			{
+				lignesJson = new StringBuilder("[");
+				for (int k = 0; k < l.getLignesColisage().size(); k++)
+				{
+					if (k > 0) lignesJson.append(",");
+					LigneColisage lc = l.getLignesColisage().get(k);
+					lignesJson.append("{")
+						.append("\"formatCarton\":").append(esc(lc.getFormatCarton())).append(",")
+						.append("\"collisage\":").append(lc.getCollisage()).append(",")
+						.append("\"pcs\":").append(lc.getPcs()).append(",")
+						.append("\"nbColis\":").append(lc.getNbColis())
+						.append("}");
+				}
+				lignesJson.append("]");
+			}
+
 			sb.append("  {\n");
-			sb.append("    \"id\": "                       ).append(esc(l.getId()))                                     .append(",\n");
-			sb.append("    \"numCDE\": "                   ).append(l.getNumCDE())                                      .append(",\n");
-			sb.append("    \"semaine\": "                  ).append(esc(l.getSemaine()))                                .append(",\n");
-			sb.append("    \"priorite\": "                 ).append(l.getPriorite())                                    .append(",\n");
-			sb.append("    \"typologie\": "                ).append(esc(l.getTypologie()))                              .append(",\n");
-			sb.append("    \"affaire\": "                  ).append(esc(l.getAffaire()))                                .append(",\n");
-			sb.append("    \"valeurVente\": "              ).append(l.getValeurVente())                                 .append(",\n");
-			sb.append("    \"nbPieces\": "                 ).append(l.getNbPieces())                                    .append(",\n");
-			sb.append("    \"cadence\": "                  ).append(l.getCadence())                                     .append(",\n");
-			sb.append("    \"heures\": "                   ).append(l.getHeures())                                      .append(",\n");
-			sb.append("    \"statut\": "                   ).append(esc(l.getStatut()))                                 .append(",\n");
-			sb.append("    \"statutEchant\": "             ).append(esc(l.getStatutEchant()))                           .append(",\n");
-			sb.append("    \"lotACharge\": "               ).append(esc(l.getLotACharge()))                             .append(",\n");
-			sb.append("    \"estSousDouane\": "            ).append(l.isEstSousDouane())                                .append(",\n");
-			sb.append("    \"dateReception\": "            ).append(esc(l.getDateReception()))                          .append(",\n");
-			sb.append("    \"datePaiement\": "             ).append(esc(l.getDatePaiement()))                           .append(",\n");
-			sb.append("    \"commentaire\": "              ).append(esc(l.getCommentaire()))                            .append(",\n");
-			sb.append("    \"emplacement\": "              ).append(esc(l.getEmplacement()))                            .append(",\n");
-			sb.append("    \"sp_nbPieceEtiq\": "           ).append(l.getSuivieProd().getNbPieceEtiq())                 .append(",\n");
-			sb.append("    \"sp_nbPieceRepart\": "         ).append(l.getSuivieProd().getNbPieceRepart())               .append(",\n");
-			sb.append("    \"sp_nbHeureEtiqRestant\": "    ).append(l.getSuivieProd().getNbHeureEtiqRestant())          .append(",\n");
-			sb.append("    \"sp_nbHeureRepartRestant\": "  ).append(l.getSuivieProd().getNbHeureRepartRestant())        .append(",\n");
-			sb.append("    \"methode\": "                  ).append(esc(l.getMethode() == null ? "" : l.getMethode().getNom())).append(",\n");
-			sb.append("    \"distribution\": "             ).append(esc(l.getDistribution()))                           .append(",\n");
-			sb.append("    \"formatCarton\": "             ).append(esc(l.getFormatCarton()))                           .append(",\n");
-			sb.append("    \"dateDebut\": "                ).append(esc(l.getDateDebut()))                              .append(",\n");
-			sb.append("    \"dateFin\": "                  ).append(esc(l.getdateFin()))                                .append(",\n");
-			sb.append("    \"dateFinTheorique\": "         ).append(esc(l.getdateFinT()))                               .append(",\n");
-			sb.append("    \"heuresAce\": "                ).append(l.getHeuresAce())                                   .append(",\n");
-			sb.append("    \"collisage\": "                ).append(l.getCollisage())                                   .append(",\n");
-			sb.append("    \"estMachine\": "               ).append(l.estMachine())                                        .append(",\n");
-			sb.append("    \"nbPers\": "                   ).append(l.getNbPers())                                      .append(",\n");
-			sb.append("    \"cadenceReel\": "              ).append(l.getCadenceReel())                                 .append(",\n");
-			sb.append("    \"lignesColisage\": []"         )                                                            .append(",\n");
-			sb.append("    \"phase_preTri\": "             ).append(p != null && p.isPreTri())                          .append(",\n");
-			sb.append("    \"phase_surPiste\": "           ).append(p != null && p.isSurPiste())                        .append(",\n");
-			sb.append("    \"phase_sortieEtiq\": "         ).append(p != null && p.isSortieEtiq())                      .append(",\n");
-			sb.append("    \"phase_tri\": "                ).append(p != null && p.isTri())                             .append(",\n");
-			sb.append("    \"phase_finit\": "              ).append(p != null && p.isFinit())                           .append("\n");
+			sb.append("    \"id\": "                      ).append(esc(l.getId()))                                     .append(",\n");
+			sb.append("    \"numCDE\": "                  ).append(l.getNumCDE())                                      .append(",\n");
+			sb.append("    \"semaine\": "                 ).append(esc(l.getSemaine()))                                .append(",\n");
+			sb.append("    \"priorite\": "                ).append(l.getPriorite())                                    .append(",\n");
+			sb.append("    \"typologie\": "               ).append(esc(l.getTypologie()))                              .append(",\n");
+			sb.append("    \"affaire\": "                 ).append(esc(l.getAffaire()))                                .append(",\n");
+			sb.append("    \"valeurVente\": "             ).append(l.getValeurVente())                                 .append(",\n");
+			sb.append("    \"nbPieces\": "                ).append(l.getNbPieces())                                    .append(",\n");
+			sb.append("    \"cadence\": "                 ).append(l.getCadence())                                     .append(",\n");
+			sb.append("    \"heures\": "                  ).append(l.getHeures())                                      .append(",\n");
+			sb.append("    \"prixUnitaire\": "            ).append(l.getPrixUnitaire())                                .append(",\n");
+			sb.append("    \"statut\": "                  ).append(esc(l.getStatut()))                                 .append(",\n");
+			sb.append("    \"statutEchant\": "            ).append(esc(l.getStatutEchant()))                           .append(",\n");
+			sb.append("    \"lotACharge\": "              ).append(esc(l.getLotACharge()))                             .append(",\n");
+			sb.append("    \"estSousDouane\": "           ).append(l.isEstSousDouane())                                .append(",\n");
+			sb.append("    \"estMachine\": "              ).append(l.estMachine())                                     .append(",\n");
+			sb.append("    \"dateReception\": "           ).append(esc(l.getDateReception()))                          .append(",\n");
+			sb.append("    \"datePaiement\": "            ).append(esc(l.getDatePaiement()))                           .append(",\n");
+			sb.append("    \"commentaire\": "             ).append(esc(l.getCommentaire()))                            .append(",\n");
+			sb.append("    \"emplacement\": "             ).append(esc(l.getEmplacement()))                            .append(",\n");
+			sb.append("    \"sp_nbPieceEtiq\": "          ).append(l.getSuivieProd().getNbPieceEtiq())                 .append(",\n");
+			sb.append("    \"sp_nbPieceRepart\": "        ).append(l.getSuivieProd().getNbPieceRepart())               .append(",\n");
+			sb.append("    \"sp_nbHeureEtiqRestant\": "   ).append(l.getSuivieProd().getNbHeureEtiqRestant())          .append(",\n");
+			sb.append("    \"sp_nbHeureRepartRestant\": " ).append(l.getSuivieProd().getNbHeureRepartRestant())        .append(",\n");
+			sb.append("    \"methode\": "                 ).append(esc(l.getMethode() == null ? "" : l.getMethode().getNom())).append(",\n");
+			sb.append("    \"distribution\": "            ).append(esc(l.getDistribution()))                           .append(",\n");
+			sb.append("    \"formatCarton\": "            ).append(esc(l.getFormatCarton()))                           .append(",\n");
+			sb.append("    \"dateDebut\": "               ).append(esc(l.getDateDebut()))                              .append(",\n");
+			sb.append("    \"dateFin\": "                 ).append(esc(l.getdateFin()))                                .append(",\n");
+			sb.append("    \"dateFinTheorique\": "        ).append(esc(l.getdateFinT()))                               .append(",\n");
+			sb.append("    \"heuresAce\": "               ).append(l.getHeuresAce())                                   .append(",\n");
+			sb.append("    \"collisage\": "               ).append(l.getCollisage())                                   .append(",\n");
+			sb.append("    \"nbPers\": "                  ).append(l.getNbPers())                                      .append(",\n");
+			sb.append("    \"cadenceReel\": "             ).append(l.getCadenceReel())                                 .append(",\n");
+			sb.append("    \"poucentrecup\": "            ).append(l.getPoucentrecupCartonFour())                      .append(",\n");
+			sb.append("    \"lignesColisage\": "          ).append(lignesJson)                                         .append(",\n");
+			// ── CORRECTIF PHASES : clés "ph_" au lieu de "phase_" ──────
+			sb.append("    \"ph_preTri\": "               ).append(p != null && p.isPreTri())                          .append(",\n");
+			sb.append("    \"ph_surPiste\": "             ).append(p != null && p.isSurPiste())                        .append(",\n");
+			sb.append("    \"ph_sortieEtiq\": "           ).append(p != null && p.isSortieEtiq())                      .append(",\n");
+			sb.append("    \"ph_tri\": "                  ).append(p != null && p.isTri())                             .append(",\n");
+			sb.append("    \"ph_finit\": "                ).append(p != null && p.isFinit())                           .append("\n");
 			sb.append("  }");
 			if (i < lots.size() - 1) sb.append(",");
 			sb.append("\n");
@@ -243,11 +234,14 @@ public class DonneesSauvegarder
 			sb.append("    \"totalHeuresCE\": ").append(s.getTotalHeuresCE())   .append(",\n");
 			sb.append("    \"effectifTotal\": ").append(s.getEffectifTotal())   .append(",\n");
 
-			// IDs des lots affectés à la société
+			// Lots de la société (ids)
 			sb.append("    \"lotsIds\": [");
-			for (int j = 0; j < s.getLots().size(); j++) {
-				if (j > 0) sb.append(",");
-				sb.append(s.getLots().get(j).getNumCDE());
+			boolean firstLot = true;
+			for (Lot l : s.getLots())
+			{
+				if (!firstLot) sb.append(",");
+				sb.append(l.getNumCDE());
+				firstLot = false;
 			}
 			sb.append("],\n");
 
@@ -257,14 +251,17 @@ public class DonneesSauvegarder
 			{
 				Ace a = s.getAces().get(j);
 				sb.append("      {\n");
-				sb.append("        \"nom\": "         ).append(esc(a.getNom()))           .append(",\n");
-				sb.append("        \"nbPers\": "      ).append(a.getNbPers())             .append(",\n");
-				sb.append("        \"totalHeures\": " ).append(a.getTotalHeures())        .append(",\n");
-				sb.append("        \"effectif\": "    ).append(a.getEffectifActuel())     .append(",\n");
+				sb.append("        \"nom\": "         ).append(esc(a.getNom()))          .append(",\n");
+				sb.append("        \"nbPers\": "      ).append(a.getNbPers())            .append(",\n");
+				sb.append("        \"totalHeures\": " ).append(a.getTotalHeures())       .append(",\n");
+				sb.append("        \"effectif\": "    ).append(a.getEffectifActuel())    .append(",\n");
 				sb.append("        \"lotsIds\": [");
-				for (int k = 0; k < a.getLots().size(); k++) {
-					if (k > 0) sb.append(",");
-					sb.append(a.getLots().get(k).getNumCDE());
+				boolean firstAceLot = true;
+				for (Lot l : a.getLots())
+				{
+					if (!firstAceLot) sb.append(",");
+					sb.append(l.getNumCDE());
+					firstAceLot = false;
 				}
 				sb.append("]\n");
 				sb.append("      }");
@@ -283,6 +280,6 @@ public class DonneesSauvegarder
 	private static String esc(String s)
 	{
 		if (s == null) return "\"\"";
-		return "\"" + s.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n") + "\"";
+		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
 	}
 }

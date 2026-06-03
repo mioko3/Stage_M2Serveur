@@ -52,6 +52,7 @@ app/ihm/gestionlot/PanelSocietes.java
 # ── IHM Serveur ────────────────────────────────────────────────
 app/ihm/serveur/FenetreServeur.java
 app/ihm/serveur/PanelSemaineSuivante.java
+app/ihm/serveur/PanelAffectationServeur.java
 
 # ── Interfaces et point d'entrée ──────────────────────────────
 app/IControleur.java

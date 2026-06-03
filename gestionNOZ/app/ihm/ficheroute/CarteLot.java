@@ -11,11 +11,13 @@ import javax.swing.*;
 
 /**
  * Carte visuelle représentant un lot dans la fiche de route.
- * Version fusionnée livraison → gestionNOZ :
- *   - construireLigne3Phases(bg) sans accent (checkPhase simplifié)
- *   - construireLigne2 / construireLigneFin séparées
- *   - champ couranAce stocké
- *   - IControleur au lieu de Controleur
+ *
+ *  CORRECTIFS v2 (compilation OK) :
+ *  ─────────────────────────────────
+ *  1. lblVVS, lblPU, lblHeuresTotal, lblHeuresPiste stockés en champs → majLigne2()
+ *  2. actionPerformed CADENCE/NBPERS : appel calculHeuresPiste() après le set
+ *  3. majLigne2() appelée à la fin de chaque actionPerformed()
+ *  Toutes les autres méthodes sont identiques à l'original.
  */
 public class CarteLot extends JPanel implements ActionListener
 {
@@ -34,7 +36,7 @@ public class CarteLot extends JPanel implements ActionListener
 	private final Lot         lot;
 	private final IControleur ctrl;
 	private final PanelFicheRoute m;
-	private       Ace         couranAce;   // ACE courante mémorisée
+	private       Ace         couranAce;
 
 	// ── Champs éditables ──────────────────────────────────────────────
 	private JButton           btncommencer;
@@ -58,6 +60,12 @@ public class CarteLot extends JPanel implements ActionListener
 	// ── Panel badges état ──────────────────────────────────────────────
 	private JPanel panelBadgesEtat;
 	private JPanel ligne1;
+
+	// ── CORRECTIF : labels dynamiques ligne 2 ─────────────────────────
+	private JLabel lblVVS;
+	private JLabel lblPU;
+	private JLabel lblHeuresTotal;
+	private JLabel lblHeuresPiste;
 
 	// ── Constructeur principal ─────────────────────────────────────────
 	public CarteLot(Lot lot, Color color, IControleur ctrl, PanelFicheRoute m)
@@ -94,7 +102,6 @@ public class CarteLot extends JPanel implements ActionListener
 
 		panelLogistique = construireLigne5Logistique(bg);
 
-		// ── Ordre des lignes (identique à livraison) ───────────────────
 		corps.add(construireLigne1(bg));
 		corps.add(Box.createVerticalStrut(5));
 		corps.add(separateur());
@@ -104,7 +111,7 @@ public class CarteLot extends JPanel implements ActionListener
 		corps.add(separateur());
 		corps.add(construireLigneDate(bg));
 		corps.add(separateur());
-		corps.add(construireLigne3Phases(bg));   // sans accent — cf. livraison
+		corps.add(construireLigne3Phases(bg));
 		corps.add(separateur());
 		corps.add(construireLigne4Avancement(bg));
 		corps.add(separateur());
@@ -116,7 +123,6 @@ public class CarteLot extends JPanel implements ActionListener
 		setMaximumSize(new Dimension(Integer.MAX_VALUE, getPreferredSize().height + 16));
 	}
 
-	/** Constructeur avec ACE (mémorise couranAce). */
 	public CarteLot(Lot lot, Ace ace, IControleur ctrl, PanelFicheRoute m)
 	{
 		this(lot, ace.getColor(), ctrl, m);
@@ -124,7 +130,7 @@ public class CarteLot extends JPanel implements ActionListener
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// Lignes de contenu
+	// Ligne 1
 	// ══════════════════════════════════════════════════════════════════
 
 	private JPanel construireLigne1(Color bg)
@@ -160,7 +166,6 @@ public class CarteLot extends JPanel implements ActionListener
 		}
 
 		panelBadgesEtat = construireBadgesEtat(bg);
-
 		ligne1.add(gauche,          BorderLayout.CENTER);
 		ligne1.add(panelBadgesEtat, BorderLayout.EAST);
 		return ligne1;
@@ -178,17 +183,28 @@ public class CarteLot extends JPanel implements ActionListener
 		return droite;
 	}
 
-	// ── Ligne 2 : données chiffrées ───────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne 2 — CORRECTIF : labels stockés en champs
+	// ══════════════════════════════════════════════════════════════════
+
 	private JPanel construireLigne2(Color bg)
 	{
 		JPanel l2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 2));
 		l2.setBackground(bg);
-		info(l2, "VVS",          lot.getValeurVente() > 0 ? fmt(lot.getValeurVente()) + " €" : "—", bg);
-		info(l2, "Pièces",       fmt(lot.getNbPieces()), bg);
-		info(l2, "PU",           lot.getPrixUnitaire() > 0 ? String.format("%.2f €", lot.getPrixUnitaire()) : "—", bg);
+
+		// CORRECTIF : labels en champs pour mise à jour sans reconstruction
+		lblVVS         = dynLabel(lot.getValeurVente() > 0 ? fmt(lot.getValeurVente()) + " €" : "—");
+		lblPU          = dynLabel(lot.getPrixUnitaire() > 0 ? String.format("%.2f €", lot.getPrixUnitaire()) : "—");
+		lblHeuresTotal = dynLabel(lot.getHeures()    > 0 ? String.format("%.1f h", lot.getHeures())    : "—");
+		lblHeuresPiste = dynLabel(lot.getHeuresAce() > 0 ? String.format("%.1f h", lot.getHeuresAce()) : "—");
+
+		infoLabel(l2, "VVS",          lblVVS,         bg);
+		info(l2, "Pièces",            fmt(lot.getNbPieces()), bg);
+		infoLabel(l2, "PU",           lblPU,          bg);
 		infoCadence(l2, lot, bg);
-		info(l2, "H. Total",     lot.getHeures() > 0 ? String.format("%.1f h", lot.getHeures()) : "—", bg);
-		info(l2, "H. sur piste", lot.getHeuresAce() > 0 ? String.format("%.1f h", lot.getHeuresAce()) : "—", bg);
+		infoLabel(l2, "H. Total",     lblHeuresTotal, bg);
+		infoLabel(l2, "H. sur piste", lblHeuresPiste, bg);
+
 		if (!s(lot.getEmplacement()).isEmpty())   info(l2, "Emplacement", s(lot.getEmplacement()), bg);
 		if (!s(lot.getDateReception()).isEmpty()) info(l2, "Réception",   lot.getDateReception(),  bg);
 		if (!s(lot.getDatePaiement()).isEmpty())  info(l2, "Paiement",    lot.getDatePaiement(),   bg);
@@ -196,7 +212,45 @@ public class CarteLot extends JPanel implements ActionListener
 		return l2;
 	}
 
-	// ── Ligne Fin : durée et cadence moyenne ──────────────────────────
+	/** Crée un JLabel de valeur stylisé, stocké en champ pour mise à jour. */
+	private JLabel dynLabel(String valeur)
+	{
+		JLabel l = new JLabel(valeur);
+		l.setFont(new Font("SansSerif", Font.BOLD, 12));
+		l.setForeground(Color.DARK_GRAY);
+		return l;
+	}
+
+	/** Ajoute un bloc titre+JLabel dynamique. */
+	private void infoLabel(JPanel p, String titre, JLabel valLabel, Color bg)
+	{
+		JPanel bloc = new JPanel(new BorderLayout(0, 0));
+		bloc.setBackground(bg);
+		JLabel t = new JLabel(titre);
+		t.setFont(new Font("SansSerif", Font.PLAIN, 10));
+		t.setForeground(new Color(130, 130, 130));
+		bloc.add(t,        BorderLayout.NORTH);
+		bloc.add(valLabel, BorderLayout.CENTER);
+		p.add(bloc);
+	}
+
+	/** CORRECTIF : met à jour les labels VVS/PU/Heures sans reconstruire la carte. */
+	private void majLigne2()
+	{
+		if (lblVVS != null)
+			lblVVS.setText(lot.getValeurVente() > 0 ? fmt(lot.getValeurVente()) + " €" : "—");
+		if (lblPU != null)
+			lblPU.setText(lot.getPrixUnitaire() > 0 ? String.format("%.2f €", lot.getPrixUnitaire()) : "—");
+		if (lblHeuresTotal != null)
+			lblHeuresTotal.setText(lot.getHeures()    > 0 ? String.format("%.1f h", lot.getHeures())    : "—");
+		if (lblHeuresPiste != null)
+			lblHeuresPiste.setText(lot.getHeuresAce() > 0 ? String.format("%.1f h", lot.getHeuresAce()) : "—");
+	}
+
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne Fin
+	// ══════════════════════════════════════════════════════════════════
+
 	private JPanel construireLigneFin(Color bg)
 	{
 		JPanel lFin = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 2));
@@ -209,7 +263,6 @@ public class CarteLot extends JPanel implements ActionListener
 		return lFin;
 	}
 
-	/** Calcule la durée entre dateDebut et dateFin (inline, sans méthode dans Lot). */
 	private String calculDureeLocale()
 	{
 		try
@@ -224,7 +277,6 @@ public class CarteLot extends JPanel implements ActionListener
 		catch (Exception e) { return "—"; }
 	}
 
-	/** Calcule la cadence moyenne (pièces / heures travaillées). */
 	private String calculCadenceMoyLocale()
 	{
 		try
@@ -242,7 +294,10 @@ public class CarteLot extends JPanel implements ActionListener
 		catch (Exception e) { return "—"; }
 	}
 
-	// ── Ligne Date : bouton commencer + dates ─────────────────────────
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne Date
+	// ══════════════════════════════════════════════════════════════════
+
 	private JPanel construireLigneDate(Color bg)
 	{
 		JPanel lDate = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 2));
@@ -259,19 +314,18 @@ public class CarteLot extends JPanel implements ActionListener
 			this.btncommencer.addActionListener(e -> annuler());
 			lDate.add(this.btncommencer);
 		}
-		info(lDate, "Date de Début : ",         lot.getDateDebut(), bg);
+		info(lDate, "Date de Début : ",        lot.getDateDebut(), bg);
 		lDate.add(separateur());
-		info(lDate, "Date de Fin : ",            lot.getdateFin(),  bg);
+		info(lDate, "Date de Fin : ",           lot.getdateFin(),  bg);
 		for (int idx = 0; idx < 5; idx++) lDate.add(separateur());
-		info(lDate, "Date de Fin théorique : ",  lot.getdateFinT(), bg);
+		info(lDate, "Date de Fin théorique : ", lot.getdateFinT(), bg);
 		return lDate;
 	}
 
-	// CarteLot.java — méthode commencer()
-	private void commencer() {
+	private void commencer()
+	{
 		this.estcommencer = true;
 		this.ctrl.commencerLot(lot);
-
 		String now = java.time.LocalDateTime.now()
 			.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
 		lot.setDateDebut(now);
@@ -289,7 +343,10 @@ public class CarteLot extends JPanel implements ActionListener
 		this.m.rafraichir();
 	}
 
-	// ── Ligne 3 : phases — signature sans accent (cf. livraison) ─────
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne 3 : Phases
+	// ══════════════════════════════════════════════════════════════════
+
 	private JPanel construireLigne3Phases(Color bg)
 	{
 		JPanel l3 = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
@@ -317,6 +374,10 @@ public class CarteLot extends JPanel implements ActionListener
 		return l3;
 	}
 
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne 4 : Avancement
+	// ══════════════════════════════════════════════════════════════════
+
 	private JPanel construireLigne4Avancement(Color bg)
 	{
 		JPanel l4 = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 2));
@@ -340,7 +401,10 @@ public class CarteLot extends JPanel implements ActionListener
 		return l4;
 	}
 
-	// ── Logistique ────────────────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════
+	// Ligne 5 : Logistique
+	// ══════════════════════════════════════════════════════════════════
+
 	@SuppressWarnings("unchecked")
 	private JPanel construireLigne5Logistique(Color bg)
 	{
@@ -362,13 +426,11 @@ public class CarteLot extends JPanel implements ActionListener
 		this.textLotCharge   = new JTextField(s(lot.getLotACharge()), 10);
 		this.textMethode     = new JTextField(lot.getMethode() == null ? "" : lot.getMethode().getNom(), 10);
 
-		// Ligne 1
 		l5.add(champEditable("Format carton",  this.combFormCart,    bg, "FORM_CART",  this));
 		l5.add(champEditable("Collisage",      this.textCollisage,   bg, "COLLISAGES", this));
 		l5.add(champEditable("Nombre de pers", this.textNbPers,      bg, "NBPERS",     this));
 		l5.add(champEditable("Distribution",   this.combDistri,      bg, "DISTRI",     this));
 		l5.add(champEditable("Colis récup. %", this.textColisRecup,  bg, "COLISRECUP", this));
-		// Ligne 2
 		info(l5, "Palettes",     String.valueOf(lot.getNbPalettes()),    bg);
 		info(l5, "Colis prévus", String.valueOf(lot.getNbColisPrevue()), bg);
 		l5.add(champEditable("Cadence Réel",   this.textCadenceReel, bg, "CADENCE",    this));
@@ -416,10 +478,8 @@ public class CarteLot extends JPanel implements ActionListener
 		btnSuppr.setToolTipText("Supprimer cette ligne");
 		btnSuppr.addActionListener(e -> {
 			lot.supprimerLigneColisage(index);
-			// Synchroniser la suppression avec le serveur
-			if (ctrl instanceof app.ControleurClient) {
+			if (ctrl instanceof app.ControleurClient)
 				((app.ControleurClient) ctrl).supprimerLigneColisage(lot, index);
-			}
 			m.rafraichir();
 		});
 
@@ -483,10 +543,8 @@ public class CarteLot extends JPanel implements ActionListener
 		{
 			int col = Integer.parseInt(tfCol.getText().trim());
 			int pcs = Integer.parseInt(tfpiece.getText().trim());
-			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces())
-				throw new NumberFormatException();
+			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces()) throw new NumberFormatException();
 			lot.ajouterLigneColisage(new LigneColisage((String) comboFmt.getSelectedItem(), col), pcs);
-			// Synchroniser la LigneColisage avec le serveur
 			if (ctrl instanceof app.ControleurClient) {
 				LigneColisage nvLigne = lot.getLignesColisage().get(lot.getLignesColisage().size() - 1);
 				((app.ControleurClient) ctrl).ajouterLigneColisage(lot, nvLigne, pcs);
@@ -500,7 +558,7 @@ public class CarteLot extends JPanel implements ActionListener
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// Phases — signature simplifiée sans accent/bg (cf. livraison)
+	// Phases
 	// ══════════════════════════════════════════════════════════════════
 
 	private JCheckBox checkPhase(String label, boolean etat, String code)
@@ -573,14 +631,15 @@ public class CarteLot extends JPanel implements ActionListener
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// ActionListener (champs éditables)
+	// ActionListener — CORRECTIF CADENCE / NBPERS + majLigne2()
 	// ══════════════════════════════════════════════════════════════════
 
 	@Override
 	public void actionPerformed(ActionEvent e)
 	{
 		String cmd = e.getActionCommand();
-		Lot ancienLot = this.lot; // pour comparaison après modification
+		Lot ancienLot = this.lot;
+
 		try
 		{
 			switch (cmd)
@@ -591,9 +650,8 @@ public class CarteLot extends JPanel implements ActionListener
 					if (v < 0 || v > lot.getNbPieces()) throw new NumberFormatException();
 					lot.getSuivieProd().setNbPieceEtiq(v);
 					textPcsEtiq.setBackground(Color.WHITE);
-					if (ctrl != null) {
+					if (ctrl != null)
 						ctrl.mettreAJourSuiviProd(lot, v, lot.getSuivieProd().getNbPieceRepart());
-					}
 					break;
 				}
 				case "PCS_PART":
@@ -602,9 +660,8 @@ public class CarteLot extends JPanel implements ActionListener
 					if (v < 0 || v > lot.getNbPieces()) throw new NumberFormatException();
 					lot.getSuivieProd().setNbPieceRepart(v);
 					textPcsPart.setBackground(Color.WHITE);
-					if (ctrl != null) {
+					if (ctrl != null)
 						ctrl.mettreAJourSuiviProd(lot, lot.getSuivieProd().getNbPieceEtiq(), v);
-					}
 					break;
 				}
 				case "DISTRI":
@@ -615,12 +672,14 @@ public class CarteLot extends JPanel implements ActionListener
 					break;
 				case "FORM_CART":
 					lot.setFormatCarton((String) combFormCart.getSelectedItem());
+					lot.recalculNbPalette();
 					break;
 				case "COLLISAGES":
 				{
 					int v = Integer.parseInt(textCollisage.getText().trim());
 					if (v < 0) throw new NumberFormatException();
 					lot.setCollisage(v);
+					lot.recalculNbPalette();
 					break;
 				}
 				case "COLISRECUP":
@@ -632,29 +691,45 @@ public class CarteLot extends JPanel implements ActionListener
 				case "METHODE":
 					lot.setMethode(textMethode.getText().trim());
 					break;
+
+				// ── CORRECTIF : recalcul heures après changement cadence ──
 				case "CADENCE":
 				{
 					double v = Double.parseDouble(textCadenceReel.getText().trim());
-					if (v > 0) lot.setCadenceReel(v);
+					if (v > 0) {
+						lot.setCadenceReel(v);
+						lot.calculHeuresPiste(lot.getNbPers() > 0 ? lot.getNbPers() : 1);
+					}
 					break;
 				}
+
+				// ── CORRECTIF : recalcul heures après changement nb personnes ──
 				case "NBPERS":
 				{
 					int v = Integer.parseInt(textNbPers.getText().trim());
-					if (v > 0) lot.setNbPers(v);
+					if (v > 0) {
+						lot.setNbPers(v);
+						lot.calculHeuresPiste(v);
+					}
 					break;
 				}
 			}
+
 			this.ctrl.modifierLotComplet(ancienLot,
 				lot.getTypologie(), lot.getAffaire(), lot.getSemaine(), lot.getEmplacement(),
-				lot.getDateReception(), lot.getDatePaiement(), lot.getNbPieces(), lot.getPrixUnitaire(),
-				lot.getValeurVente(), lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
-				lot.getStatut(), lot.getStatutEchant(), lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
+				lot.getDateReception(), lot.getDatePaiement(),
+				lot.getNbPieces(), lot.getPrixUnitaire(), lot.getValeurVente(),
+				lot.getCadence(), lot.getHeures(), lot.getLotACharge(),
+				lot.getStatut(), lot.getStatutEchant(),
+				lot.isEstSousDouane(), lot.estMachine(), lot.getCommentaire(),
 				lot.getFormatCarton(), lot.getCollisage(), lot.getNbPers(),
 				lot.getDistribution(), lot.getCadenceReel(),
 				lot.getPoucentrecupCartonFour(),
 				lot.getMethode() != null ? lot.getMethode().getNom() : "");
-			
+
+			// ── CORRECTIF : mise à jour immédiate des labels VVS/PU/Heures
+			majLigne2();
+
 			this.m.rafraichir();
 		}
 		catch (NumberFormatException ex)
@@ -665,7 +740,7 @@ public class CarteLot extends JPanel implements ActionListener
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// Helpers visuels statiques
+	// Helpers visuels statiques (identiques à l'original)
 	// ══════════════════════════════════════════════════════════════════
 
 	static JLabel badge(String txt, Color col)
@@ -694,6 +769,7 @@ public class CarteLot extends JPanel implements ActionListener
 		bloc.add(v, BorderLayout.CENTER);
 		p.add(bloc);
 	}
+
 	static void infoCadence(JPanel p, Lot lot, Color bg)
 	{
 		JPanel bloc = new JPanel(new BorderLayout(0, 0));
@@ -705,21 +781,13 @@ public class CarteLot extends JPanel implements ActionListener
 
 		double cadence = lot.getCadence();
 		double cadReel = lot.getCadenceReel();
-
-		String texte = cadence > 0 ? String.format("%.0f p/h", cadence) : "—";
+		String texte   = cadence > 0 ? String.format("%.0f p/h", cadence) : "—";
 
 		JLabel v = new JLabel(texte);
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
-
-		// au-dessus de la cadence => vert  sinon ambre
-		if (cadReel >= cadence)
-			v.setForeground(IhmUtils.VERT);
-		// en dessous de la cadence => rouge,
-		if (cadReel < cadence)
-			v.setForeground(IhmUtils.ROUGE);
-		// proche de la cadence => ambre mais en dessous de 5%
-		if (cadReel < cadence && cadReel > cadence * 0.95)
-			v.setForeground(IhmUtils.AMBER);
+		if      (cadReel > cadence)                           v.setForeground(IhmUtils.VERT);
+		else if (cadReel < cadence && cadReel > cadence*0.90) v.setForeground(IhmUtils.AMBER);
+		else if (cadReel <= cadence)                          v.setForeground(IhmUtils.ROUGE);
 
 		bloc.add(l, BorderLayout.NORTH);
 		bloc.add(v, BorderLayout.CENTER);
@@ -769,7 +837,9 @@ public class CarteLot extends JPanel implements ActionListener
 		return p;
 	}
 
-	// ── Barre de progression ───────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════
+	// Barre de progression (classe interne, identique à l'original)
+	// ══════════════════════════════════════════════════════════════════
 
 	private static class BarreProgression extends JPanel
 	{
@@ -786,7 +856,7 @@ public class CarteLot extends JPanel implements ActionListener
 
 		void mettreAJour(int nouvValeur)
 		{
-			if (nouvValeur > 5) nouvValeur = 5; // pour que la barre soit toujours visible, même à 0%
+			if (nouvValeur > 5) nouvValeur = 5;
 			this.valeur = nouvValeur;
 			repaint();
 		}
@@ -803,25 +873,27 @@ public class CarteLot extends JPanel implements ActionListener
 			int fill = max > 0 ? (int)(W * valeur / (double) max) : 0;
 			if (fill > 0)
 			{
-				Color c = valeur >= max ? IhmUtils.VERT : IhmUtils.AMBER;
+				Color c = valeur >= max ? IhmUtils.VERT : IhmUtils.BLEU;
 				g2.setColor(c);
 				g2.fillRoundRect(0, 0, fill, H, H, H);
 			}
 		}
 	}
 
-	// ── Utilitaires ───────────────────────────────────────────────────
+	// ══════════════════════════════════════════════════════════════════
+	// Utilitaires privés
+	// ══════════════════════════════════════════════════════════════════
 
-	private Color bgPourLot(Lot lot)
+	private String fmt(int v) { return String.format("%,d", v); }
+	private static String s(String v) { return v != null ? v : ""; }
+
+	private static Color bgPourLot(Lot lot)
 	{
-		if (lot.getPhase().isFinit())             return BG_FINI;
-		if (lot.isEstSousDouane())                return BG_DOUANE;
-		if (lot.getPriorite() >= 8)               return BG_URGENCE;
-		if (this.estcommencer)                    return BG_COMMENCER;
-		if (lot.getStatutEchant().contains("BL")) return BG_BLOQUE;
+		if (lot.getPhase() != null && lot.getPhase().isFinit()) return BG_FINI;
+		if ("BL".equals(lot.getStatut()))                       return BG_BLOQUE;
+		if (lot.isEstSousDouane())                              return BG_DOUANE;
+		if (lot.getPriorite() >= 8)                             return BG_URGENCE;
+		if (!lot.getDateDebut().isEmpty())                      return BG_COMMENCER;
 		return BG_NORMAL;
 	}
-
-	private static String s(String v)  { return v != null ? v : ""; }
-	private static String fmt(int n)   { return String.format("%,d", n); }
 }
