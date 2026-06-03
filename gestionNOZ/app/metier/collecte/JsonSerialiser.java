@@ -210,15 +210,10 @@ public class JsonSerialiser
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
-
-		double heuresAce = getDouble(obj, "heuresAce");
-		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
-
 		lot.setSemaine      (getString(obj, "semaine"));
 		lot.setPriorite     (getInt   (obj, "priorite"));
 		lot.setLotACharge   (getString(obj, "lotACharge"));
 		lot.setEmplacement  (getString(obj, "emplacement"));
-		// ── CORRECTIF : estSousDouane ET estMachine lus tous les deux ──
 		lot.setEstSousDouane(getBool  (obj, "estSousDouane"));
 		lot.setEstMachine   (getBool  (obj, "estMachine"));
 		lot.setDateReception(getString(obj, "dateReception"));
@@ -232,10 +227,40 @@ public class JsonSerialiser
 		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
 		lot.setCollisage    (getInt   (obj, "collisage"));
-		lot.setNbPers       (getInt   (obj, "nbPers"));
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
 
-		// Lignes de colisage
+		// ── CORRECTIF ORDRE : nbPers AVANT calculHeuresPiste ─────────────────
+		int nbPers = getInt(obj, "nbPers");
+		lot.setNbPers(nbPers);
+
+		// ── CORRECTIF CALCUL : recalculer heuresAce si elle est absente/nulle ─
+		double heuresAce = getDouble(obj, "heuresAce");
+		if (heuresAce > 0 && heuresAce < 1_000_000)
+			lot.setHeuresAce(heuresAce);          // valeur sauvegardée : on la restaure
+		else if (nbPers > 0)
+			lot.calculHeuresPiste(nbPers);         // pas de valeur sauvegardée : on recalcule
+		else
+			lot.recalculerHeures();               // fallback : recalcul heures seules
+
+		// ── Phase — restaurée AVANT SuivieProd pour que setLot() soit cohérent
+		Phase ph = new Phase();
+		ph.setPreTri    (getBool(obj, "ph_preTri"));
+		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
+		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
+		ph.setTri       (getBool(obj, "ph_tri"));
+		ph.setFinit     (getBool(obj, "ph_finit"));
+		lot.setPhase(ph);
+
+		// ── SuivieProd — en dernier, quand heuresAce ET phase sont déjà corrects
+		SuivieProd sp = new SuivieProd();
+		sp.setLot(lot);   // déclenche miseAJJourAvancement() avec toutes les valeurs correctes
+		sp.setNbPieceEtiq         (getInt   (obj, "sp_nbPieceEtiq"));
+		sp.setNbPieceRepart       (getInt   (obj, "sp_nbPieceRepart"));
+		sp.setNbHeureEtiqRestant  (Math.min(getDouble(obj, "sp_nbHeureEtiqRestant"),   999999));
+		sp.setNbHeureRepartRestant(Math.min(getDouble(obj, "sp_nbHeureRepartRestant"), 999999));
+		lot.setSuivieProd(sp);
+
+		// ── Lignes de colisage ────────────────────────────────────────────────
 		String blocsLignes = extraireBloc(obj, "\"lignesColisage\"");
 		if (blocsLignes != null) {
 			for (String objLigne : extraireObjets(blocsLignes)) {
@@ -244,27 +269,10 @@ public class JsonSerialiser
 						getString(objLigne, "formatCarton"),
 						getInt   (objLigne, "collisage")
 					);
-					// nbColis est recalculé automatiquement par LigneColisage
 					lot.getLignesColisage().add(lc);
 				} catch (Exception ignored) {}
 			}
 		}
-
-		SuivieProd sp = new SuivieProd();
-		sp.setLot(lot);
-		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
-		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
-		sp.setNbHeureEtiqRestant  (Math.min(getInt(obj, "sp_nbHeureEtiqRestant"),   999999));
-		sp.setNbHeureRepartRestant(Math.min(getInt(obj, "sp_nbHeureRepartRestant"), 999999));
-		lot.setSuivieProd(sp);
-
-		Phase ph = new Phase();
-		ph.setPreTri    (getBool(obj, "ph_preTri"));
-		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
-		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
-		ph.setTri       (getBool(obj, "ph_tri"));
-		ph.setFinit     (getBool(obj, "ph_finit"));
-		lot.setPhase(ph);
 
 		return lot;
 	}

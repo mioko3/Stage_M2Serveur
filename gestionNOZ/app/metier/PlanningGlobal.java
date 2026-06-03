@@ -57,14 +57,12 @@ public class PlanningGlobal
 		for (Lot l : this.lots)
 			dejaPresentsCDE.add(l.getNumCDE());
 
-		int compteur = 0;
 		for (Lot ln : nouveaux)
 		{
 			if (!dejaPresentsCDE.contains(ln.getNumCDE()))
 			{
 				this.lots.add(ln);
 				dejaPresentsCDE.add(ln.getNumCDE()); // évite les doublons dans le fichier lui-même
-				compteur++;
 			}
 		}
 	}

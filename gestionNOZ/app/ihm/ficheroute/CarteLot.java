@@ -712,10 +712,10 @@ public class CarteLot extends JPanel implements ActionListener
 		v.setFont(new Font("SansSerif", Font.BOLD, 12));
 
 		// au-dessus de la cadence => vert  sinon ambre
-		if (cadReel > cadence)
+		if (cadReel >= cadence)
 			v.setForeground(IhmUtils.VERT);
 		// en dessous de la cadence => rouge,
-		if (cadReel <= cadence)
+		if (cadReel < cadence)
 			v.setForeground(IhmUtils.ROUGE);
 		// proche de la cadence => ambre mais en dessous de 10%
 		if (cadReel < cadence && cadReel > cadence * 0.90)
