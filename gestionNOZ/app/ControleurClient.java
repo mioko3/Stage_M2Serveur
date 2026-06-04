@@ -400,80 +400,69 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void modifierLot(Lot lot, String typo, String affaire,
-						int nbPieces, double cadence, int valeurVente,
-						String statut, String statutEchant, String semaine, int priorite,
-						String lotACharge, String emplacement, boolean sousDouane, boolean machine,
-						String dateReception, String datePaiement, String commentaire)
+				int nbPieces, double cadence, int valeurVente,
+				String statut, String statutEchant, String semaine, int priorite,
+				String lotACharge, String emplacement, boolean sousDouane, boolean machine,
+				String dateReception, String datePaiement, String commentaire)
 	{
+		lot.setPriorite(priorite);
+	
 		modifierLotComplet(lot,
 			typo, affaire, semaine, emplacement, dateReception, datePaiement,
 			nbPieces, lot.getPrixUnitaire(), valeurVente, cadence, lot.getHeures(),
 			lotACharge, statut, statutEchant, sousDouane, machine, commentaire,
-			lot.getFormatCarton() != null ? lot.getFormatCarton() : "",
+			lot.getFormatCarton()  != null ? lot.getFormatCarton()  : "",
 			lot.getCollisage(), lot.getNbPers(),
-			lot.getDistribution() != null ? lot.getDistribution() : "",
+			lot.getDistribution()  != null ? lot.getDistribution()  : "",
 			lot.getCadenceReel(), lot.getPoucentrecupCartonFour(),
 			lot.getMethode() != null ? lot.getMethode().getNom() : "");
 	}
 
+
 	/** Signature COMPLÈTE — CarteLot. Champs administratifs + logistiques. */
 	@Override
 	public void modifierLotComplet(Lot lot,
-							String typologie, String affaire,
-							String semaine, String emplacement,
-							String dateReception, String datePaiement,
-							int nbPieces, double prixUnitaire, int valeurVente,
-							double cadence, double heures,
-							String lotACharge,
-							String statut, String statutEchant,
-							boolean sousDouane, boolean machine,
-							String commentaire,
-							String formatCarton, int collisage, int nbPers,
-							String distribution, double cadenceReel,
-							int poucentrecupCartonFour, String methode)
+								String typologie, String affaire,
+								String semaine, String emplacement,
+								String dateReception, String datePaiement,
+								int nbPieces, double prixUnitaire, int valeurVente,
+								double cadence, double heures,
+								String lotACharge,
+								String statut, String statutEchant,
+								boolean sousDouane, boolean machine,
+								String commentaire,
+								String formatCarton, int collisage, int nbPers,
+								String distribution, double cadenceReel,
+									int poucentrecupCartonFour, String methode)
 	{
-		// 1. Mise à jour locale IMMÉDIATE
-		lot.setTypologie(typologie);          lot.setAffaire(affaire);
-		lot.setSemaine(semaine);              lot.setEmplacement(emplacement);
-		lot.setDateReception(dateReception);  lot.setDatePaiement(datePaiement);
-		lot.setNbPieces(nbPieces);            lot.setValeurVente(valeurVente);
-		lot.setCadence(cadence);              lot.setLotACharge(lotACharge);
-		lot.setStatut(statut);                lot.setStatutEchant(statutEchant);
-		lot.setEstSousDouane(sousDouane);     lot.setEstMachine(machine);     lot.setCommentaire(commentaire);
-		lot.setFormatCarton(formatCarton);    lot.setCollisage(collisage);
-		lot.setNbPers(nbPers);                lot.setDistribution(distribution);
-		lot.setCadenceReel(cadenceReel);
-		lot.setPoucentrecupCartonFour(poucentrecupCartonFour);
-		lot.setMethode(methode);
-		if (fenetre != null) fenetre.rafraichirTout();
-
-		// 2. Synchronisation serveur
-		String c = "{\"numCDE\":"                   + lot.getNumCDE()
-			+ ",\"typologie\":"               + e(typologie)
-			+ ",\"affaire\":"                 + e(affaire)
-			+ ",\"semaine\":"                 + e(semaine)
-			+ ",\"emplacement\":"             + e(emplacement)
-			+ ",\"dateReception\":"           + e(dateReception)
-			+ ",\"datePaiement\":"            + e(datePaiement)
-			+ ",\"nbPieces\":"                + nbPieces
-			+ ",\"prixUnitaire\":"            + prixUnitaire
-			+ ",\"valeurVente\":"             + valeurVente
-			+ ",\"cadence\":"                 + cadence
-			+ ",\"heures\":"                  + heures
-			+ ",\"lotACharge\":"              + e(lotACharge)
-			+ ",\"statut\":"                  + e(statut)
-			+ ",\"statutEchant\":"            + e(statutEchant)
-			+ ",\"estSousDouane\":"              + sousDouane
-		+ ",\"estMachine\":"              + machine
-			+ ",\"commentaire\":"             + e(commentaire)
-			+ ",\"formatCarton\":"            + e(formatCarton)
-			+ ",\"collisage\":"               + collisage
-			+ ",\"nbPers\":"                  + nbPers
-			+ ",\"distribution\":"            + e(distribution)
-			+ ",\"cadenceReel\":"             + cadenceReel
-			+ ",\"poucentrecupCartonFour\":"  + poucentrecupCartonFour
-			+ ",\"lignesColisage\":"         + JsonSerialiser.serialiserLignesColisage(lot.getLignesColisage())
-			+ ",\"methode\":"                 + e(methode) + "}";
+		String c = "{\"numCDE\":"                  + lot.getNumCDE()
+			+ ",\"priorite\":"                     + lot.getPriorite()
+			+ ",\"typologie\":"                    + e(typologie)
+			+ ",\"affaire\":"                      + e(affaire)
+			+ ",\"semaine\":"                      + e(semaine)
+			+ ",\"emplacement\":"                  + e(emplacement)
+			+ ",\"dateReception\":"                + e(dateReception)
+			+ ",\"datePaiement\":"                 + e(datePaiement)
+			+ ",\"nbPieces\":"                     + nbPieces
+			+ ",\"prixUnitaire\":"                 + prixUnitaire
+			+ ",\"valeurVente\":"                  + valeurVente
+			+ ",\"cadence\":"                      + cadence
+			+ ",\"heures\":"                       + heures
+			+ ",\"lotACharge\":"                   + e(lotACharge)
+			+ ",\"statut\":"                       + e(statut)
+			+ ",\"statutEchant\":"                 + e(statutEchant)
+			+ ",\"estSousDouane\":"                + sousDouane
+			+ ",\"estMachine\":"                   + machine
+			+ ",\"commentaire\":"                  + e(commentaire)
+			+ ",\"formatCarton\":"                 + e(formatCarton)
+			+ ",\"collisage\":"                    + collisage
+			+ ",\"nbPers\":"                       + nbPers
+			+ ",\"distribution\":"                 + e(distribution)
+			+ ",\"cadenceReel\":"                  + cadenceReel
+			+ ",\"poucentrecupCartonFour\":"       + poucentrecupCartonFour
+			+ ",\"lignesColisage\":"               + JsonSerialiser.serialiserLignesColisage(lot.getLignesColisage())
+			+ ",\"methode\":"                      + e(methode) + "}";
+	
 		new Thread(() -> {
 			try { majDual(post("/lots/modifier", c)); }
 			catch (Exception ex) { err("modifierLotComplet", ex); }

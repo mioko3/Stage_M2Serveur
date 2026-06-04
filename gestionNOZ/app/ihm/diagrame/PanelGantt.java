@@ -1,10 +1,11 @@
 package app.ihm.diagrame;
-
+ 
 import app.IControleur;
 import app.ihm.IhmUtils;
 import app.metier.lot.Lot;
 import app.metier.personelle.Ace;
 import java.awt.*;
+import java.awt.event.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -54,10 +55,54 @@ public class PanelGantt extends JPanel
 	private static final int BAR_H      = 28;  // hauteur totale
 	private static final int REAL_H     = 10;  // hauteur couche réelle (en bas de la barre)
 
+
+	// ── Tooltip ───────────────────────────────────────────────────────────
+	// Index du lot survolé (-1 = aucun), position souris
+	private int   lotSurvole  = -1;
+	private int   tooltipX    = 0;
+	private int   tooltipY    = 0;
+	// ── Rectangles des barres (pour hit-test souris) ───────────────────────
+	// Calculés dans drawLots(), réutilisés dans le MouseMotionListener
+	private final List<Rectangle> barreRects = new ArrayList<>();
+
 	public PanelGantt(IControleur ctrl)
 	{
 		setBackground(Color.WHITE);
 		this.ctrl = ctrl;
+		initMouseListener();
+	}
+
+	// ── Mouse ─────────────────────────────────────────────────────────────
+ 
+	private void initMouseListener()
+	{
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			public void mouseMoved(MouseEvent e)
+			{
+				int ancien = lotSurvole;
+				lotSurvole = -1;
+				for (int i = 0; i < barreRects.size(); i++)
+				{
+					if (barreRects.get(i).contains(e.getPoint()))
+					{
+						lotSurvole = i;
+						tooltipX   = e.getX();
+						tooltipY   = e.getY();
+						break;
+					}
+				}
+				if (lotSurvole != ancien) repaint();
+			}
+		});
+ 
+		addMouseListener(new MouseAdapter()
+		{
+			public void mouseExited(MouseEvent e)
+			{
+				if (lotSurvole != -1) { lotSurvole = -1; repaint(); }
+			}
+		});
 	}
 
 	// ================= DATA =================
@@ -90,6 +135,8 @@ public class PanelGantt extends JPanel
 		drawGrid(g2);
 		drawLots(g2);
 		drawNowLine(g2); // ligne verticale "maintenant"
+		if (lotSurvole >= 0 && lotSurvole < lots.size())
+			drawTooltip(g2, lots.get(lotSurvole));
 	}
 
 	// ================= GRID =================
@@ -152,61 +199,169 @@ public class PanelGantt extends JPanel
 	private void drawLots(Graphics2D g2)
 	{
 		g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-
+		FontMetrics fm = g2.getFontMetrics();
+ 
+		// Reconstruire les rectangles à chaque repaint
+		barreRects.clear();
+ 
 		for (int i = 0; i < lots.size(); i++)
 		{
-			Lot    l        = lots.get(i);
-			Ace    a        = ctrl.getAceDuLot(l);
-			String nomAce   = (a != null) ? a.getNom() : "—";
-			Color  colorAce = (a != null) ? a.getColor() : Color.LIGHT_GRAY;
-
+			Lot    l         = lots.get(i);
+			Ace    a         = ctrl.getAceDuLot(l);
+			String nomAce    = (a != null) ? a.getNom() : "—";
+			Color  colorAce  = (a != null) ? a.getColor() : Color.LIGHT_GRAY;
+ 
 			LocalDateTime start = safeStart(l);
-			LocalDateTime endT  = safeEndTheorique(l); // fin théorique
-
+			LocalDateTime endT  = safeEndTheorique(l);
+ 
 			int startX = LEFT + toWeekMinutes(start) + 15;
 			int endX   = LEFT + toWeekMinutes(endT)  + 15;
-
-			if (endX < startX)
-				endX = LEFT + DAYS.length * DAY_WIDTH + 50;
-
+			if (endX < startX) endX = LEFT + DAYS.length * DAY_WIDTH + 50;
+ 
 			int widthT = Math.max(10, endX - startX);
 			int y      = TOP + i * ROW + 8;
-
-			// ── 1. BARRE THÉORIQUE (fond) ──────────────────────────────
-			boolean estTermine = l.getdateFin() != null && !l.getdateFin().isEmpty();
-			Color couleurBarre = estTermine ? IhmUtils.VERT : colorAce;
-
+ 
+			// Mémoriser le rectangle pour le hit-test souris
+			barreRects.add(new Rectangle(startX, y, widthT, BAR_H));
+ 
+			// ── 1. BARRE THÉORIQUE ─────────────────────────────────────
+			boolean estTermine   = l.getdateFin() != null && !l.getdateFin().isEmpty();
+			Color   couleurBarre = estTermine ? IhmUtils.VERT : colorAce;
+ 
+			// Légèrement mise en valeur si survolée
+			if (i == lotSurvole)
+				couleurBarre = couleurBarre.brighter();
+ 
 			g2.setColor(couleurBarre);
 			g2.fillRoundRect(startX, y, widthT, BAR_H, 10, 10);
 			g2.setColor(couleurBarre.darker());
 			g2.drawRoundRect(startX, y, widthT, BAR_H, 10, 10);
-
-			// ── 2. COUCHE RÉELLE (par-dessus, en bas de la barre) ──────
+ 
+			// ── 2. COUCHE RÉELLE ──────────────────────────────────────
 			drawCoucheReelle(g2, l, startX, y, widthT, estTermine);
-
-			// ── 3. TEXTE ────────────────────────────────────────────────
+ 
+			// ── 3. TEXTE DANS LA BARRE ────────────────────────────────
+			// Réserver la place du % à droite si la barre est assez large
+			int    pct    = calculPctAvancement(l);
+			String pctTxt = pct > 0 ? pct + "%" : "";
+			int    pctW   = pctTxt.isEmpty() ? 0 : fm.stringWidth(pctTxt) + 8;
+ 
+			int MARGE     = 5;
+			int zoneW     = widthT - MARGE * 2 - pctW;
+ 
 			g2.setColor(Color.BLACK);
-			String txt = "[" + nomAce + "] CDE " + l.getNumCDE()
-				+ "  " + String.format("%02d:%02d", start.getHour(), start.getMinute())
-				+ " → " + String.format("%02d:%02d", endT.getHour(),  endT.getMinute());
-			g2.drawString(txt, startX + 5, y + 14);
-
-			// ── 4. POURCENTAGE D'AVANCEMENT (texte) ────────────────────
-			int pct = calculPctAvancement(l);
-			if (pct > 0)
+ 
+			if (zoneW > 10)
+			{
+				// Priorité 1 : heures + ACE  (info la plus utile)
+				String txtHeuresAce = String.format("%02d:%02d→%02d:%02d",
+					start.getHour(), start.getMinute(),
+					endT.getHour(),  endT.getMinute())
+					+ " [" + nomAce + "]";
+ 
+				// Priorité 2 : heures seules
+				String txtHeures = String.format("%02d:%02d→%02d:%02d",
+					start.getHour(), start.getMinute(),
+					endT.getHour(),  endT.getMinute());
+ 
+				// Priorité 3 : texte complet avec CDE
+				String txtComplet = "CDE " + l.getNumCDE()
+					+ "  " + String.format("%02d:%02d", start.getHour(), start.getMinute())
+					+ "→"  + String.format("%02d:%02d", endT.getHour(),  endT.getMinute())
+					+ " [" + nomAce + "]";
+ 
+				String txt;
+				if      (fm.stringWidth(txtComplet)  <= zoneW) txt = txtComplet;
+				else if (fm.stringWidth(txtHeuresAce) <= zoneW) txt = txtHeuresAce;
+				else if (fm.stringWidth(txtHeures)    <= zoneW) txt = txtHeures;
+				else                                             txt = "";  // tooltip suffira
+ 
+				if (!txt.isEmpty())
+				{
+					Shape clip = g2.getClip();
+					g2.clipRect(startX + MARGE, y, zoneW, BAR_H);
+					g2.drawString(txt, startX + MARGE, y + 14);
+					g2.setClip(clip);
+				}
+			}
+ 
+			// ── 4. POURCENTAGE (à droite) ─────────────────────────────
+			if (!pctTxt.isEmpty() && widthT >= pctW + 10)
 			{
 				g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
 				g2.setColor(Color.WHITE);
-				g2.drawString(pct + "%", startX + widthT - 34, y + 14);
+				g2.drawString(pctTxt, startX + widthT - pctW + 4, y + 14);
 				g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 			}
-
-			// ── 5. LABEL GAUCHE (nom du lot) ───────────────────────────
+ 
+			// ── 5. LABEL GAUCHE ───────────────────────────────────────
 			g2.setColor(Color.BLACK);
-			String labelGauche = "CDE " + l.getNumCDE();
-			g2.drawString(labelGauche, 5, y + BAR_H / 2 + 4);
+			g2.drawString("CDE " + l.getNumCDE(), 5, y + BAR_H / 2 + 4);
 		}
 	}
+
+	// ── Tooltip ───────────────────────────────────────────────────────────
+
+	private void drawTooltip(Graphics2D g2, Lot l)
+	{
+		Ace    a      = ctrl.getAceDuLot(l);
+		String nomAce = (a != null) ? a.getNom() : "—";
+
+		LocalDateTime start = safeStart(l);
+		LocalDateTime endT  = safeEndTheorique(l);
+
+		int pct = calculPctAvancement(l);
+
+		// Lignes du tooltip
+		String[] lignes = {
+			"CDE " + l.getNumCDE() + "  —  " + l.getAffaire(),
+			"ACE : " + nomAce,
+			"Début  : " + String.format("%02d:%02d", start.getHour(), start.getMinute()),
+			"Fin th. : " + String.format("%02d:%02d", endT.getHour(), endT.getMinute()),
+			pct > 0 ? "Avancement : " + pct + "%" : null
+		};
+
+		// Mesures
+		g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+		FontMetrics fm = g2.getFontMetrics();
+
+		int PAD    = 8;
+		int LIGNE  = fm.getHeight() + 2;
+		int nbL    = 0;
+		int maxW   = 0;
+		for (String s : lignes)
+		{
+			if (s == null) continue;
+			nbL++;
+			maxW = Math.max(maxW, fm.stringWidth(s));
+		}
+
+		int tw = maxW + PAD * 2;
+		int th = nbL * LIGNE + PAD * 2;
+
+		// Position : juste à droite et en dessous du curseur, avec bord écran
+		int tx = tooltipX + 14;
+		int ty = tooltipY + 14;
+		if (tx + tw > getWidth()  - 4) tx = tooltipX - tw - 4;
+		if (ty + th > getHeight() - 4) ty = tooltipY - th - 4;
+
+		// Fond
+		g2.setColor(new Color(30, 30, 30, 220));
+		g2.fillRoundRect(tx, ty, tw, th, 8, 8);
+		g2.setColor(new Color(100, 100, 100));
+		g2.drawRoundRect(tx, ty, tw, th, 8, 8);
+
+		// Texte
+		g2.setColor(Color.WHITE);
+		int rowY = ty + PAD + fm.getAscent();
+		for (String s : lignes)
+		{
+			if (s == null) continue;
+			g2.drawString(s, tx + PAD, rowY);
+			rowY += LIGNE;
+		}
+	}
+
 
 	/**
 	 * Dessine la couche d'avancement réel à l'intérieur de la barre théorique.
