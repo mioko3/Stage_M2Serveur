@@ -20,6 +20,7 @@ import java.util.Set;
  */
 public class PlanningGlobal
 {
+	/** Vrai si les équipes sont en heure supplémentaire (fin de journée Lu-Je = 17h15 au lieu de 16h15). */
 	public static boolean estHeureSup;
 
 	private ArrayList<Societe>    societes;

@@ -100,13 +100,23 @@ public class Ace
 		trouverColor();
 	}
 
+	/**
+	 * Génère une couleur déterministe depuis le nom de l'ACE.
+	 *   R = longueur_nom × 20          (varie selon la taille du nom)
+	 *   G = code ASCII du 1er char × 2 (varie selon la première lettre)
+	 *   B = code ASCII du dernier char  (valeur du dernier caractère itéré)
+	 *
+	 * ⚠️  La composante B est le code ASCII du DERNIER caractère du nom, pas une somme,
+	 * car la boucle écrase c à chaque itération (c*(3/2) == c car 3/2 == 1 en entier).
+	 * Ne pas modifier sans recalculer les valeurs acceptables (risque Color hors [0,255]).
+	 */
 	private void trouverColor()
 	{
 		Color colr;
 		int a = this.nom.length() * 20;
 		int b = (int)this.nom.charAt(0) * 2;
 		int c = 0;
-		for (int cpt=0;cpt<this.nom.length();cpt++) 
+		for (int cpt=0;cpt<this.nom.length();cpt++)
 			c = (int)this.nom.charAt(cpt);
 		colr = new Color(a,b,c*(3/2));
 		this.col = colr;

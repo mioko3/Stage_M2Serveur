@@ -6,14 +6,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Représente la méthode de production ou de conditionnement d’un lot.
+ * Méthode de production associée à un lot.
  *
- * Contient les paramètres qui influencent les temps et les ressources.
+ * Chaque méthode correspond à un fichier PDF dans app/data/pastouche/methodes/.
+ * Les instances sont mises en cache (une par nom) : appeler getMetode() plusieurs
+ * fois avec le même nom retourne toujours le même objet.
+ *
+ * Retourne null si le PDF n’existe pas sur le disque — jamais de méthode fantôme.
  */
 public class Methode {
 
+	/** Dossier contenant les PDF des méthodes de production. */
 	private static final String LIEN_DOSIER = "app/data/pastouche/methodes/";
 
+	/** Cache nom → instance pour éviter de recréer un objet à chaque appel. */
 	private static final Map<String, Methode> CACHE = new HashMap<>();
 
 	private String nom;
@@ -25,6 +31,13 @@ public class Methode {
 		this.lien = LIEN_DOSIER + nom +".pdf";
 	}
 
+	/**
+	 * Retourne la méthode correspondant au nom donné, ou null si le PDF est absent.
+	 * Le résultat est mis en cache : deux appels avec le même nom renvoient le même objet.
+	 *
+	 * @param nom nom du fichier PDF sans extension (ex: "coupe-reglette")
+	 * @return la Methode, ou null si app/data/pastouche/methodes/{nom}.pdf n’existe pas
+	 */
 	public static Methode getMetode(String nom)
 	{
 		if (!verifExist(nom))
@@ -35,6 +48,7 @@ public class Methode {
 		return CACHE.computeIfAbsent(nom,Methode::new);
 	}
 
+	/** Vérifie que le fichier PDF correspondant existe physiquement sur le disque. */
 	private static boolean verifExist(String nom)
 	{
 		File fichier = new File(LIEN_DOSIER, nom + ".pdf");
