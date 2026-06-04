@@ -202,8 +202,9 @@ public class CarteLot extends JPanel implements ActionListener
 		info(l2, "Pièces",            fmt(lot.getNbPieces()), bg);
 		infoLabel(l2, "PU",           lblPU,          bg);
 		infoCadence(l2, lot, bg);
-		infoLabel(l2, "H. Total",     lblHeuresTotal, bg);
-		infoLabel(l2, "H. sur piste", lblHeuresPiste, bg);
+		info(l2, "Heures",       IhmUtils.fmtH(lot.getHeures()),    bg);
+		info(l2, "H. sur piste", IhmUtils.fmtH(lot.getHeuresAce()), bg);
+
 
 		if (!s(lot.getEmplacement()).isEmpty())   info(l2, "Emplacement", s(lot.getEmplacement()), bg);
 		if (!s(lot.getDateReception()).isEmpty()) info(l2, "Réception",   lot.getDateReception(),  bg);
@@ -257,41 +258,10 @@ public class CarteLot extends JPanel implements ActionListener
 		lFin.setBackground(bg);
 		if (!lot.getdateFin().isEmpty())
 		{
-			info(lFin, "Temps : ",       calculDureeLocale(),       bg);
-			info(lFin, "Cadence Moy : ", calculCadenceMoyLocale(),  bg);
+			info(lFin, "Temps : ",       lot.calculDuree(),                              bg);
+			info(lFin, "Cadence Moy : ", String.valueOf(lot.calculCadenceMoyenne()),     bg);
 		}
 		return lFin;
-	}
-
-	private String calculDureeLocale()
-	{
-		try
-		{
-			java.time.format.DateTimeFormatter fmt =
-				java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-			java.time.LocalDateTime debut = java.time.LocalDateTime.parse(lot.getDateDebut(), fmt);
-			java.time.LocalDateTime fin   = java.time.LocalDateTime.parse(lot.getdateFin(),   fmt);
-			long totalMin = java.time.Duration.between(debut, fin).toMinutes();
-			return (totalMin / 60) + "h " + (totalMin % 60) + "m";
-		}
-		catch (Exception e) { return "—"; }
-	}
-
-	private String calculCadenceMoyLocale()
-	{
-		try
-		{
-			java.time.format.DateTimeFormatter fmt =
-				java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-			java.time.LocalDateTime debut = java.time.LocalDateTime.parse(lot.getDateDebut(), fmt);
-			java.time.LocalDateTime fin   = java.time.LocalDateTime.parse(lot.getdateFin(),   fmt);
-			double heures = java.time.Duration.between(debut, fin).toMinutes() / 60.0;
-			if (heures <= 0) return "—";
-			int nbPers = lot.getNbPers() > 0 ? lot.getNbPers() : 1;
-			double cadence = lot.getNbPieces() / (heures * nbPers);
-			return String.format("%.0f p/h", cadence);
-		}
-		catch (Exception e) { return "—"; }
 	}
 
 	// ══════════════════════════════════════════════════════════════════

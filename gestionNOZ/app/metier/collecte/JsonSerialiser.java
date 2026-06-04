@@ -48,8 +48,8 @@ public class JsonSerialiser
 		SuivieProd sp = lot.getSuivieProd();
 		Phase      ph = lot.getPhase();
 		String nomMethode = (lot.getMethode() != null) ? lot.getMethode().getNom() : "";
-
-		// Lignes de colisage
+	
+		// Lignes de colisage — "pcs" ajouté pour pouvoir restaurer pcsUtiliser
 		StringBuilder lignes = new StringBuilder("[");
 		if (lot.getLignesColisage() != null) {
 			for (int i = 0; i < lot.getLignesColisage().size(); i++) {
@@ -58,13 +58,13 @@ public class JsonSerialiser
 				lignes.append("{")
 					.append("\"formatCarton\":").append(esc(lc.getFormatCarton())).append(",")
 					.append("\"collisage\":").append(lc.getCollisage()).append(",")
-					.append("\"pcs\":").append(lc.getPcs()).append(",")
+					.append("\"pcs\":").append(lc.getPcs()).append(",")          // ← AJOUT
 					.append("\"nbColis\":").append(lc.getNbColis())
 					.append("}");
 			}
 		}
 		lignes.append("]");
-
+	
 		return "{"
 			+ "\"numCDE\":"                  + lot.getNumCDE()                              + ","
 			+ "\"id\":"                      + esc(lot.getId())                             + ","
@@ -97,19 +97,20 @@ public class JsonSerialiser
 			+ "\"collisage\":"               + lot.getCollisage()                           + ","
 			+ "\"nbPers\":"                  + lot.getNbPers()                              + ","
 			+ "\"poucentrecup\":"            + lot.getPoucentrecupCartonFour()              + ","
+			+ "\"pcsUtiliser\":"             + lot.getPcsUtiliser()                         + ","  // ← AJOUT
 			+ "\"lignesColisage\":"          + lignes                                       + ","
 			+ "\"sp_nbPieceEtiq\":"          + (sp != null ? sp.getNbPieceEtiq()          : 0) + ","
 			+ "\"sp_nbPieceRepart\":"        + (sp != null ? sp.getNbPieceRepart()        : 0) + ","
-			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? sp.getNbHeureEtiqRestant()   : 0) + ","
-			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? sp.getNbHeureRepartRestant() : 0) + ","
-			// ── phases : clé "ph_" (cohérent avec DonneesSauvegarder) ──
-			+ "\"ph_preTri\":"               + (ph != null && ph.isPreTri())               + ","
-			+ "\"ph_surPiste\":"             + (ph != null && ph.isSurPiste())             + ","
-			+ "\"ph_sortieEtiq\":"           + (ph != null && ph.isSortieEtiq())           + ","
-			+ "\"ph_tri\":"                  + (ph != null && ph.isTri())                  + ","
-			+ "\"ph_finit\":"                + (ph != null && ph.isFinit())
+			+ "\"sp_nbHeureEtiqRestant\":"   + (sp != null ? d2(sp.getNbHeureEtiqRestant())   : 0) + ","
+			+ "\"sp_nbHeureRepartRestant\":" + (sp != null ? d2(sp.getNbHeureRepartRestant()) : 0) + ","
+			+ "\"ph_preTri\":"               + (ph != null ? ph.isPreTri()     : false)    + ","
+			+ "\"ph_surPiste\":"             + (ph != null ? ph.isSurPiste()   : false)    + ","
+			+ "\"ph_sortieEtiq\":"           + (ph != null ? ph.isSortieEtiq() : false)    + ","
+			+ "\"ph_tri\":"                  + (ph != null ? ph.isTri()        : false)    + ","
+			+ "\"ph_finit\":"                + (ph != null ? ph.isFinit()      : false)
 			+ "}";
 	}
+
 
 	public static String serialiserSocietes(ArrayList<Societe> societes)
 	{
@@ -202,13 +203,16 @@ public class JsonSerialiser
 			getString(obj, "statut"),
 			getString(obj, "statutEchant")
 		);
-
 		String id = getString(obj, "id");
 		if (!id.isBlank()) lot.setId(id);
-
+	
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
+	
+		double heuresAce = getDouble(obj, "heuresAce");
+		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
+	
 		lot.setSemaine      (getString(obj, "semaine"));
 		lot.setPriorite     (getInt   (obj, "priorite"));
 		lot.setLotACharge   (getString(obj, "lotACharge"));
@@ -226,59 +230,56 @@ public class JsonSerialiser
 		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
 		lot.setCollisage    (getInt   (obj, "collisage"));
+		lot.setNbPers       (getInt   (obj, "nbPers"));
 		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
-
-		// ── CORRECTIF ORDRE : nbPers AVANT calculHeuresPiste ─────────────
-		int nbPers = getInt(obj, "nbPers");
-		lot.setNbPers(nbPers);
-
-		// ── CORRECTIF CALCUL : recalculer heuresAce si absente/nulle ─────
-		double heuresAce = getDouble(obj, "heuresAce");
-		if (heuresAce > 0 && heuresAce < 1_000_000)
-			lot.setHeuresAce(heuresAce);          // valeur sauvegardée : on la restaure
-		else if (nbPers > 0)
-			lot.calculHeuresPiste(nbPers);         // pas de valeur sauvegardée : recalcul
-		else
-			lot.recalculerHeures();               // fallback
-
-		// ── Lignes de colisage ────────────────────────────────────────────
+	
+		// ── CORRECTIF : restaurer pcsUtiliser avant les lignes ──────────
+		// Si absent du JSON (ancien fichier), on part de nbPieces par défaut
+		int pcsUtiliserSauve = getInt(obj, "pcsUtiliser");
+		if (pcsUtiliserSauve > 0) {
+			lot.setPcsUtiliser(pcsUtiliserSauve);          // ← AJOUT
+		}
+		// ────────────────────────────────────────────────────────────────
+	
+		// Lignes de colisage — restaurées avec recalcul depuis "pcs"
 		String blocsLignes = extraireBloc(obj, "\"lignesColisage\"");
 		if (blocsLignes != null) {
 			for (String objLigne : extraireObjets(blocsLignes)) {
 				try {
-					LigneColisage lc = new LigneColisage(
-						getString(objLigne, "formatCarton"),
-						getInt   (objLigne, "collisage")
-					);
-					int pcs = getInt(objLigne, "pcs");
-					if (pcs <= 0) pcs = getInt(objLigne, "nbColis") * lc.getCollisage();
-					if (pcs > 0) lc.recalculer(pcs);
-					lot.getLignesColisage().add(lc);
+					String fmt = getString(objLigne, "formatCarton");
+					int    col = getInt   (objLigne, "collisage");
+					int    pcs = getInt   (objLigne, "pcs");
+	
+					// Fallback rétrocompat : anciens JSON sans "pcs"
+					if (pcs <= 0) pcs = getInt(objLigne, "nbColis") * col;
+	
+					LigneColisage lc = new LigneColisage(fmt, col);
+					if (pcs > 0) lc.recalculer(pcs);           // recalcule nbColis + nbPalettes
+					lot.getLignesColisage().add(lc);            // add direct, pcsUtiliser déjà restauré
 				} catch (Exception ignored) {}
 			}
 		}
-
-		// ── CORRECTIF ORDRE : Phase AVANT SuivieProd ─────────────────────
-		// setLot() dans SuivieProd déclenche miseAJJourAvancement()
-		// → la phase doit déjà être correcte quand ça arrive
-		Phase ph = new Phase();
-		// Rétrocompatibilité : on accepte "ph_preTri" (nouveau) ET "phase_preTri" (ancien)
-		ph.setPreTri    (getBoolCompat(obj, "ph_preTri",     "phase_preTri"));
-		ph.setSurPiste  (getBoolCompat(obj, "ph_surPiste",   "phase_surPiste"));
-		ph.setSortieEtiq(getBoolCompat(obj, "ph_sortieEtiq", "phase_sortieEtiq"));
-		ph.setTri       (getBoolCompat(obj, "ph_tri",        "phase_tri"));
-		ph.setFinit     (getBoolCompat(obj, "ph_finit",      "phase_finit"));
-		lot.setPhase(ph);
-
-		// ── SuivieProd en dernier — toutes les valeurs sont prêtes ───────
+	
+		// Recalculer les totaux du lot (nbPalettes + nbColisPrevue)
+		// en tenant compte du pcsUtiliser restauré
+		lot.recalculNbPalette();                               // ← AJOUT
+	
 		SuivieProd sp = new SuivieProd();
-		sp.setLot(lot);   // déclenche miseAJJourAvancement() avec phase + heuresAce corrects
+		sp.setLot(lot);
 		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
 		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
 		sp.setNbHeureEtiqRestant  (Math.min(getDouble(obj, "sp_nbHeureEtiqRestant"),   999999));
 		sp.setNbHeureRepartRestant(Math.min(getDouble(obj, "sp_nbHeureRepartRestant"), 999999));
 		lot.setSuivieProd(sp);
-
+	
+		Phase ph = new Phase();
+		ph.setPreTri    (getBool(obj, "ph_preTri"));
+		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
+		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
+		ph.setTri       (getBool(obj, "ph_tri"));
+		ph.setFinit     (getBool(obj, "ph_finit"));
+		lot.setPhase(ph);
+	
 		return lot;
 	}
 

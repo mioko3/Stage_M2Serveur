@@ -320,6 +320,15 @@ public final class IhmUtils
 		return s;
 	}
 
+	public static String fmtH(double heures)
+	{
+		if (heures <= 0) return "—";
+		long h = (long) heures;
+		long m = Math.round((heures - h) * 60);
+		if (m == 60) { h++; m = 0; }
+		return m > 0 ? h + "h " + m + "min" : h + "h";
+	}
+
 	// ══════════════════════════════════════════════════════════════════════
 	//  BADGES & CHIPS
 	// ══════════════════════════════════════════════════════════════════════

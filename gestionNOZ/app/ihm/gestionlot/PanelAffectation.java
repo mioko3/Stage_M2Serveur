@@ -293,7 +293,7 @@ public class PanelAffectation extends JPanel
 		sb.append("Affaire : ").append(safe(lot.getAffaire())).append("\n");
 		sb.append("Pièces  : ").append(String.format("%,d", lot.getNbPieces())).append("\n");
 		sb.append("Cadence : ").append(String.format("%.2f p/h", lot.getCadence())).append("\n");
-		sb.append("Heures  : ").append(IhmUtils.fmt(lot.getHeures())).append("\n");
+		sb.append("Heures  : ").append(IhmUtils.fmtH(lot.getHeures())).append("\n");
 		sb.append("VVS     : ").append(String.format("%,d", lot.getValeurVente())).append(" €\n");
 		sb.append("PU      : ").append(String.format("%.2f €", lot.getPrixUnitaire())).append("\n");
 		sb.append("Statut  : ").append(safe(lot.getStatutEchant())).append("\n");
@@ -326,8 +326,8 @@ public class PanelAffectation extends JPanel
 		}
 		else
 		{
-			afficherStatut("Heures insuffisantes ! Besoin: " + IhmUtils.fmt(lot.getHeures())
-				+ "  Dispo: " + soc.getTotalHeuresCE() + "h", IhmUtils.ROUGE);
+			afficherStatut("Heures insuffisantes ! Besoin: " + IhmUtils.fmtH(lot.getHeures())
+				+ "  Dispo: " + IhmUtils.fmtH(soc.getTotalHeuresCE()), IhmUtils.ROUGE);
 		}
 	}
 
@@ -410,7 +410,7 @@ public class PanelAffectation extends JPanel
 				safe2(l.getTypologie()).length() > 28
 					? safe2(l.getTypologie()).substring(0, 28) + "…" : safe2(l.getTypologie()),
 				l.getNbPieces(),
-				IhmUtils.fmt(l.getHeures()),
+				IhmUtils.fmtH(l.getHeures()),
 				safe2(l.getStatutEchant())
 			});
 		}
@@ -450,7 +450,7 @@ public class PanelAffectation extends JPanel
 						? safe2(l.getTypologie()).substring(0, 22) + "…" : safe2(l.getTypologie()),
 					soc.getNom(),
 					ace != null ? ace.getNom() : "—",
-					IhmUtils.fmt(l.getHeuresAce())
+					IhmUtils.fmtH(l.getHeuresAce())
 				});
 			}
 	}

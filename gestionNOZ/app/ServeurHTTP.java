@@ -580,7 +580,9 @@ public class ServeurHTTP
 					new LigneColisage(JsonSerialiser.extraireString(c, "format"),
 						JsonSerialiser.extraireInt(c, "collisage")),
 					JsonSerialiser.extraireInt(c, "pcs"));
-				save(); rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
+				save();
+				versionDonnees = System.currentTimeMillis(); // ← AJOUT
+				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}

@@ -282,7 +282,7 @@ public class PanelLots extends JPanel
 				s(l.getAffaire()),
 				String.format("%,d", l.getNbPieces()),
 				l.getCadence() > 0 ? String.format("%.2f", l.getCadence()) : "—",
-				IhmUtils.fmt(l.getHeures()),
+				IhmUtils.fmtH(l.getHeures()),
 				l.getValeurVente() > 0 ? String.format("%,d €", l.getValeurVente()) : "—",
 				s(l.getStatutEchant()),
 				s(l.getSemaine()),

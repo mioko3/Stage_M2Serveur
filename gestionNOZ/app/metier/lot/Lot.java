@@ -464,11 +464,10 @@ public class Lot
 	public String calculDuree()
 	{
 		double heuresTotales = getHeuresTravaillees();
-
-		long heures  = (long) heuresTotales;
-		long minutes = (long)((heuresTotales - heures) * 60);
-
-		return heures + "h " + minutes + "m";
+		long h = (long) heuresTotales;
+		long m = Math.round((heuresTotales - h) * 60);
+		if (m == 60) { h++; m = 0; }
+		return m > 0 ? h + "h " + m + "min" : h + "h";
 	}
 
 	/**
@@ -513,11 +512,11 @@ public class Lot
 		this.nbColisPrevue = nbcarton;
 		switch (formatCarton)
 		{
-			case "1/16": this.nbPalettes = (int) Math.ceil(nbcarton / 64); break;
-			case "1/8":  this.nbPalettes = (int) Math.ceil(nbcarton / 32); break;
-			case "1/4":  this.nbPalettes = (int) Math.ceil(nbcarton / 16); break;
-			case "1/2":  this.nbPalettes = (int) Math.ceil(nbcarton / 8);  break;
-			case "box":  this.nbPalettes = (int) Math.ceil(nbcarton);      break;
+			case "1/16": this.nbPalettes = (int) Math.ceil(nbcarton / 64.0); break;
+			case "1/8":  this.nbPalettes = (int) Math.ceil(nbcarton / 32.0); break;
+			case "1/4":  this.nbPalettes = (int) Math.ceil(nbcarton / 16.0); break;
+			case "1/2":  this.nbPalettes = (int) Math.ceil(nbcarton /  8.0); break;
+			case "box":  this.nbPalettes = nbcarton;                          break;
 			default:     this.nbPalettes = 0; break;
 		}
 	}
@@ -614,6 +613,7 @@ public class Lot
 	public String     getdateFinT     () { return dateFinTheorique; }
 	public boolean    estMachine      () { return estMachine;  }
 	public int        getNbPers       () { return nbPers;      }
+	public int        getPcsUtiliser  () { return pcsUtiliser; }
 
 	// ── Setters ───────────────────────────────────────────────────────────
 	public void setId(String v)            { this.id           = v; }
@@ -652,6 +652,8 @@ public class Lot
 	public void setPhase(Phase v)           { this.phase      = v; }
 	public void setMethode(String methode)  { this.methode = Methode.getMetode(methode); }
 	public void setDistribution(String v)   { this.distribution = v; }
+	public void setPcsUtiliser(int v) { this.pcsUtiliser = v; }
+
 	/**
 	 * Définit le format de carton et recalcule nbColisPrevue et nbPalettes.
 	 *

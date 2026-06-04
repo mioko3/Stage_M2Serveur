@@ -278,7 +278,7 @@ public class DialogEditLot extends JDialog
 			int    nb  = Integer.parseInt(fNbPieces.getText().trim());
 			double cad = Double.parseDouble(fCadence.getText().trim().replace(",", "."));
 			double h   = (cad > 0) ? nb / cad : 0.0;
-			lblHeures.setText(String.format("%.2fh  (%.0f pièces ÷ %.2f p/h)", h, (double) nb, cad));
+			lblHeures.setText(IhmUtils.fmtH(h) + "  (" + nb + " pièces ÷ " + String.format("%.2f", cad) + " p/h)");
 			lblHeures.setForeground(IhmUtils.BLEU);
 			if (panelAff != null)
 				lblHeuresAce.setText(String.format("%.2fh", lot.getHeuresAce()));
