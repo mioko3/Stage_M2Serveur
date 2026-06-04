@@ -14,22 +14,19 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 
 /**
- * ══════════════════════════════════════════════════════════════
- *  DonneesSauvegarder — correctif clés phases + lignesColisage
- * ══════════════════════════════════════════════════════════════
+ * Persistance des données métier (lots et sociétés) au format JSON.
  *
- *  CORRECTIFS APPLIQUÉS :
- *  ──────────────────────
- *  • Les clés des phases utilisaient "phase_preTri" etc. dans construireJsonLots()
- *    mais JsonSerialiser.deserialiserLot() les lisait avec "ph_preTri" etc.
- *    → HARMONISATION : toutes les clés sont maintenant "ph_preTri", "ph_surPiste",
- *      "ph_sortieEtiq", "ph_tri", "ph_finit" dans les DEUX fichiers.
+ * Deux fichiers sont gérés :
+ *   • lots.json     — liste complète des lots avec leurs phases, suivi et lignes de colisage
+ *   • societes.json — liste des sociétés avec leurs ACE et les références de lots (numCDE)
  *
- *  • Les lignesColisage étaient sauvegardées comme "[]" vide systématiquement.
- *    → CORRECTIF : les lignes réelles sont maintenant sérialisées.
+ * Le chiffrement AES-256 est optionnel : appeler {@link #setCrypte} pour l'activer.
+ * Sans chiffrement, les fichiers sont écrits en JSON brut (UTF-8).
+ * Migration transparente : si un fichier est trouvé non chiffré alors que AES est actif,
+ * il est rechiffré à la volée lors du premier chargement.
  *
- *  • Champ "poucentrecup" ajouté dans construireJsonLots() (était absent).
- * ══════════════════════════════════════════════════════════════
+ * Clés JSON des phases : "ph_preTri", "ph_surPiste", "ph_sortieEtiq", "ph_tri", "ph_finit"
+ * (cohérent avec {@link JsonSerialiser}).
  */
 public class DonneesSauvegarder
 {
