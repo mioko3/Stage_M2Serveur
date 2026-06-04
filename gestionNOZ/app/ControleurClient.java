@@ -220,7 +220,7 @@ public class ControleurClient implements IControleur
 	// Si /version retourne un numéro différent, on recharge tout.
 	private volatile String  versionLocale = "";
 	private volatile boolean heureSup      = false;
-	private boolean pollingActif           = true;     // true = serveur actif | false = serveur down
+	private volatile boolean pollingActif  = true;
 	private static final int POLLING_MS    = 1000; // 1 secondes entre chaque sondage
 
 	// ══════════════════════════════════════════════════════════════════════
@@ -736,7 +736,7 @@ public class ControleurClient implements IControleur
 
 	@Override
 	public void chargerDonnees(String chemin) throws IOException {
-		// Uniquement disponible en mode désynchronisé
+		if (savLocal == null) return;
 		try { savLocal.charger(new PlanningGlobal(), chemin); }
 		catch (Exception ex) { err("chargerDonnees (désync)", ex); }
 	}
@@ -770,15 +770,17 @@ public class ControleurClient implements IControleur
 					Thread.sleep(POLLING_MS);
 
 					boolean modif = rafraichirSiModif();
-					boolean connec = connection();
-					echecsConsecutifs = connec ? 0 : echecsConsecutifs + 1;
+					echecsConsecutifs = 0;
 
 					if (modif && fenetre != null)
 						SwingUtilities.invokeLater(() -> fenetre.rafraichirTout());
 
 				} catch (InterruptedException ex)
 				{
-					break; // fin du thread si interrompu (ex: à la fermeture de la fenêtre)
+					break;
+				} catch (Exception ex)
+				{
+					echecsConsecutifs++;
 				}
 				
 				if (echecsConsecutifs == 3)
@@ -799,11 +801,6 @@ public class ControleurClient implements IControleur
 		t.setName("polling-serveur");
 		t.start();
 	}
-	/**
-	 * Teste la connexion au serveur en appelant GET /version.
-	 * Retourne true si la connexion est OK, false en cas d'erreur.
-	 * @return
-	 */
 	private boolean connection()
 	{
 		try {
