@@ -247,6 +247,15 @@ public class PanelMap extends JPanel
 		planPanel.repaint();
 	}
 
+	/**
+	 * Construit deux maps à partir de tous les lots :
+	 *   • lotsParEmplacement : code emplacement → liste des lots qui y sont stockés
+	 *   • numerosParZone     : lettre de zone   → numéros triés (ex: "A" → ["1","2","12"])
+	 *
+	 * Format d'un emplacement : lettre de zone (A/B/C/D) + numéro entier optionnel (ex: "A12").
+	 * Un emplacement sans numéro (ex: "A") est indexé sous la clé "".
+	 * Les codes spéciaux (LTS, HD) restent dans lotsParEmplacement mais pas dans numerosParZone.
+	 */
 	private void construireCacheLots()
 	{
 		lotsParEmplacement.clear();

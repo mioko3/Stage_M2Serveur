@@ -33,6 +33,14 @@ import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Panneau d'affectation des lots aux sociétés et ACE.
+ *
+ * Disposition en trois colonnes :
+ *   • Gauche  : lots disponibles (non affectés, hors sous-douane), filtrables
+ *   • Centre  : sélecteur société/ACE + boutons affecter / retirer / éditer
+ *   • Droite  : lots déjà affectés, avec société/ACE associés
+ */
 public class PanelAffectation extends JPanel
 {
 	private final IControleur       ctrl;
@@ -391,6 +399,7 @@ public class PanelAffectation extends JPanel
 
 		for (Lot l : ctrl.getLots())
 		{
+			// Les lots sous douane sont gérés par un flux douanier séparé : exclus ici
 			if (l.isEstSousDouane()) continue;
 			if (ctrl.getSocieteDuLot(l) != null) continue;
 

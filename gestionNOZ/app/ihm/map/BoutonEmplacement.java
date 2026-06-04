@@ -83,6 +83,15 @@ public class BoutonEmplacement extends JButton
 		super.paintComponent(g);
 	}
 
+	/**
+	 * Couleur d'un lot selon son statut, par ordre de priorité :
+	 *   1. Sélectionné          → cyan
+	 *   2. Sous douane          → violet
+	 *   3. VA (Validé)          → vert
+	 *   4. BL (Bloqué)          → rouge
+	 *   5. EP (Envoi au CP)     → orange
+	 *   6. Autre / inconnu      → gris
+	 */
 	private Color couleurLot(Lot l)
 	{
 		if (choisie) return new Color(0,255,255);
