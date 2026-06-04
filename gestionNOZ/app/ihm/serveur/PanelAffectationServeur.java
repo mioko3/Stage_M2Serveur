@@ -79,11 +79,7 @@ public class PanelAffectationServeur extends JPanel
 		lblEtat = new JLabel("Chargement…");
 		lblEtat.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
-		JButton btnBasculer = IhmUtils.bouton("⚡ Basculer", new Color(180, 100, 20), Color.WHITE);
-		btnBasculer.addActionListener(e -> basculerSemaine());
-
 		p.add(lblEtat,      BorderLayout.CENTER);
-		p.add(btnBasculer,  BorderLayout.EAST);
 		return p;
 	}
 
@@ -403,25 +399,6 @@ public class PanelAffectationServeur extends JPanel
 			s.getLots().removeIf(l -> l != null && lot.getId() != null && lot.getId().equals(l.getId()));
 			for (Ace a : s.getAces())
 				a.getLots().removeIf(l -> l != null && lot.getId() != null && lot.getId().equals(l.getId()));
-		}
-	}
-
-	private void basculerSemaine()
-	{
-		int r = JOptionPane.showConfirmDialog(this,
-			"Basculer tous les clients sur la semaine suivante ?\n"
-			+ "⚠ Les données courantes seront remplacées.",
-			"Confirmer", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (r != JOptionPane.YES_OPTION) return;
-		try {
-			serveur.basculerSemaneSuivante();
-			chargerDonnees();
-			JOptionPane.showMessageDialog(this,
-				"Bascule effectuée. Les clients se synchroniseront dans les 3 secondes.",
-				"OK", JOptionPane.INFORMATION_MESSAGE);
-		} catch (Exception ex) {
-			JOptionPane.showMessageDialog(this, "Erreur :\n" + ex.getMessage(),
-				"Erreur", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
