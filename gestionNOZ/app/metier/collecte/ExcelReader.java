@@ -165,6 +165,11 @@ public class ExcelReader
 				Row row = sh.getRow(i);
 				if (row == null) continue;
 
+				// Colonnes du fichier export ERP (index base 0) :
+				//   0=semaine  2=priorite  3=numCDE  4=typographie  5=affaire
+				//   6=valeurVente  7=nbPieces  8=cadence  9=statut  10=statutEchant
+				//   11=lotACharge  12=sousDouane  13=dateReception  14=datePaiement
+				//   15=commentaire  16=heures
 				String cdeText = strSafe(getCell(row, 3), evaluator);
 				if (cdeText.isEmpty()) continue;
 
@@ -210,6 +215,11 @@ public class ExcelReader
 		}
 	}
 
+	/**
+	 * Ligne Excel (base 1) de chaque société dans la feuille "TDB V2".
+	 * Ces indices correspondent aux lignes du tableau de bord Excel fourni par l'entreprise.
+	 * À mettre à jour si la structure du TDB change.
+	 */
 	private static final Map<String, Integer> SOCIETE_ROW = Map.of(
 		"PROD", 7,
 		"PA",   14,
@@ -352,6 +362,14 @@ public class ExcelReader
 		return value.isEmpty() ? "" : value;
 	}
 
+	/**
+	 * Retourne l'index de colonne (base 0) de la première donnée de la semaine dans "TDB V2".
+	 *
+	 * Structure du tableau : les colonnes 0-4 sont des entêtes fixes, puis pour chaque semaine
+	 * il y a 7 colonnes (effectif, besoin, ?, affecté, ?, ?, ?).
+	 * Formule : colonne = 5 + (semaine - 1) × 7
+	 *   Semaine 1 → col 5 | Semaine 2 → col 12 | etc.
+	 */
 	private static int getColonneHeures(int semaine) throws IOException
 	{
 		if (semaine <= 0 || semaine > 53)

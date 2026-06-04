@@ -142,15 +142,5 @@ public interface IControleur
 	void nouveaux();
 	void autoSauvegarde();
 
-	// ── Synchronisation serveur (IHM réseau) ───────────────────────────────
-	/**
-	 * Démarre un thread de polling qui interroge régulièrement le serveur
-	 * pour détecter les modifications (toutes les 5 secondes).
-	 * Si une modification est détectée, rafraîchit l'IHM.
-	 * En cas d'erreur de communication, affiche un avertissement à l'utilisateur
-	 * après 3 échecs consécutifs (une seule fois, pas en boucle).
-	 * En mode désynchronisé (PAM uniquement), le polling est stoppé et un message
-	 * informe l'utilisateur que les modifications ne seront pas synchronisées.
-	 */
 	boolean isPollingActif();
 }
