@@ -270,8 +270,9 @@ public class Lot
 
 	public void calculDateFinThéorique()
 	{
-		if (this.dateDebut == null || this.dateDebut.isEmpty()) return;
-		if (this.heuresAce <= 0) { this.dateFinTheorique = ""; return; }
+		 // Guard : pas de calcul si les données sont incomplètes
+		if (this.dateDebut == null || this.dateDebut.isEmpty()) {this.dateFinTheorique = ""; return; }
+		if (this.heuresAce <= 0) {this.dateFinTheorique = ""; return; }
 
 		try
 		{
@@ -697,6 +698,16 @@ public class Lot
 			calculDateFinThéorique();
 		}
 	}
+	/**
+	 * Restaure la date de début depuis la désérialisation JSON
+	 * SANS déclencher le recalcul de dateFinTheorique.
+	 * À utiliser uniquement dans JsonSerialiser.deserialiserLot().
+	 */
+	public void setDateDebutSansRecalcul(String v)
+	{
+		this.dateDebut = (v != null) ? v : "";
+	}
+
 	public void setdateFin(String v)        { this.dateFin = v;      }
 	public void setdateFinT(String v)       { this.dateFinTheorique = v; }
 	public void setEstMachine(boolean v)    { this.estMachine = v;   }

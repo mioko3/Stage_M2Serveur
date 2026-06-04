@@ -203,41 +203,45 @@ public class JsonSerialiser
 		);
 		String id = getString(obj, "id");
 		if (!id.isBlank()) lot.setId(id);
-	
+
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
-	
+
 		double heuresAce = getDouble(obj, "heuresAce");
 		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
-	
+
 		lot.setSemaine      (getString(obj, "semaine"));
 		lot.setPriorite     (getInt   (obj, "priorite"));
 		lot.setLotACharge   (getString(obj, "lotACharge"));
 		lot.setEmplacement  (getString(obj, "emplacement"));
 		lot.setEstSousDouane(getBool  (obj, "estSousDouane"));
-		lot.setEstMachine   (getBool  (obj, "estMachine"));
 		lot.setDateReception(getString(obj, "dateReception"));
 		lot.setDatePaiement (getString(obj, "datePaiement"));
 		lot.setCommentaire  (getString(obj, "commentaire"));
 		lot.setMethode      (getString(obj, "methode"));
 		lot.setDistribution (getString(obj, "distribution"));
 		lot.setFormatCarton (getString(obj, "formatCarton"));
-		lot.setDateDebut    (getString(obj, "dateDebut"));
-		lot.setdateFin      (getString(obj, "dateFin"));
-		lot.setdateFinT     (getString(obj, "dateFinTheorique"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
 		lot.setCollisage    (getInt   (obj, "collisage"));
-		lot.setNbPers       (getInt   (obj, "nbPers"));
-		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
-	
-		// ── CORRECTIF : restaurer pcsUtiliser avant les lignes ──────────
-		// Si absent du JSON (ancien fichier), on part de nbPieces par défaut
-		int pcsUtiliserSauve = getInt(obj, "pcsUtiliser");
-		if (pcsUtiliserSauve > 0) {
-			lot.setPcsUtiliser(pcsUtiliserSauve);          // ← AJOUT
-		}
-		// ────────────────────────────────────────────────────────────────
+
+		// ── ORDRE CRITIQUE : dateDebut AVANT nbPers ──
+		// setDateDebut déclenche calculDateFinThéorique()
+		// setNbPers  déclenche calculHeuresPiste() → calculDateFinThéorique()
+		// Il faut que heuresAce ET dateDebut soient prêts avant ces calculs.
+		lot.setDateDebutSansRecalcul(getString(obj, "dateDebut")); // ← nouveau setter
+		lot.setdateFin  (getString(obj, "dateFin"));
+
+		// Restaurer nbPers (déclenche calculHeuresPiste → dateFinTheorique)
+		// À ce stade dateDebut et heuresAce sont déjà en place → calcul correct
+		lot.setNbPers(getInt(obj, "nbPers"));
+
+		// Si la dateFinTheorique sauvegardée est valide, on la restaure telle quelle
+		// (cas où le lot est en cours / pausé)
+		String dft = getString(obj, "dateFinTheorique");
+		if (dft != null && !dft.isBlank())
+			lot.setdateFinT(dft);
+
 	
 		// Lignes de colisage — restaurées avec recalcul depuis "pcs"
 		String blocsLignes = extraireBloc(obj, "\"lignesColisage\"");

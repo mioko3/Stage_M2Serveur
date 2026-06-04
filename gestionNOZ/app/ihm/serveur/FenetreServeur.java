@@ -59,7 +59,6 @@ public class FenetreServeur extends JFrame
 	private JPanel               panelDemandesContenu;
 	private JLabel               lblBadgeDemandes;
 	private PanelSemaineSuivante panelSemSuiv;
-	private PanelAffectationServeur  panelAffServeur;
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  CONSTRUCTEUR
@@ -228,27 +227,23 @@ public class FenetreServeur extends JFrame
 		tabs.setFont(new Font("SansSerif", Font.PLAIN, 13));
 		tabs.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-		tabs.addTab("  Opérations  ",      buildPanelOperations());
+		tabs.addTab("  Opérations  ", buildPanelOperations());
 
-		panelAffServeur = new PanelAffectationServeur(serveur);
-		panelSemSuiv    = new PanelSemaineSuivante(serveur, panelAffServeur);
+		// ── CORRECTIF : instancier AVANT d'ajouter ──
+		panelSemSuiv = new PanelSemaineSuivante(serveur);
 		tabs.addTab("  Semaine suivante  ", panelSemSuiv);
-		tabs.addTab("  Pré-affectation  ",  panelAffServeur);
 
-		tabs.addTab("  Demandes  ",         buildPanelDemandes());
+		tabs.addTab("  Demandes  ", buildPanelDemandes());
 
-		 tabs.addChangeListener(e -> {
+		tabs.addChangeListener(e -> {
 			if (tabs.getSelectedIndex() == 1 && panelSemSuiv != null)
 				panelSemSuiv.chargerEtat();
-			  if (tabs.getSelectedIndex() == 2 && panelAffServeur != null)
-				panelAffServeur.chargerDonnees();
-			  if (tabs.getSelectedIndex() == 3)
+			if (tabs.getSelectedIndex() == 2)   // ← aussi 2 pas 3 (il n'y a que 3 onglets : 0, 1, 2)
 				rafraichirDemandes();
 		});
 
 		return tabs;
 	}
-
 
 	// ══════════════════════════════════════════════════════════════════════
 	//  ONGLET OPÉRATIONS
