@@ -10,22 +10,20 @@ import app.metier.personelle.Societe;
 import java.util.ArrayList;
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════════════
- *  JsonSerialiser — Sérialisation bidirectionnelle Java ↔ JSON
- * ═══════════════════════════════════════════════════════════════════════════════════
+ * Sérialisation bidirectionnelle Java ↔ JSON (sans dépendance externe).
  *
- *  CORRECTIFS APPLIQUÉS :
- *  ──────────────────────
- *  1. deserialiserLot() — ordre de désérialisation corrigé :
- *       • nbPers lu AVANT calculHeuresPiste()
- *       • Phase restaurée AVANT SuivieProd (setLot() déclenche miseAJJourAvancement)
- *       • calculHeuresPiste(nbPers) appelé si heuresAce absente ou nulle
+ * Toutes les conversions sont faites manuellement via des parseurs char-à-char
+ * pour éviter toute dépendance à une lib JSON tierce.
  *
- *  2. "estMachine" lu et écrit dans les deux sens.
+ * Ordre de désérialisation dans {@link #deserialiserLot} :
+ *   1. Champs scalaires (numCDE, nbPieces…)
+ *   2. pcsUtiliser  — doit précéder les lignesColisage pour que recalculer() soit correct
+ *   3. lignesColisage + recalculNbPalette()
+ *   4. SuivieProd   — setLot() déclenche miseAJourAvancement, donc après les lignes
+ *   5. Phase
  *
- *  3. Clés phases : "ph_preTri", "ph_surPiste", etc. (cohérent avec DonneesSauvegarder)
- *     → rétrocompatibilité : si "ph_preTri" absent, on tente "phase_preTri" (anciens fichiers)
- * ═══════════════════════════════════════════════════════════════════════════════════
+ * Clés JSON des phases : "ph_preTri", "ph_surPiste", "ph_sortieEtiq", "ph_tri", "ph_finit".
+ * Rétrocompatibilité anciens fichiers : {@link #getBoolCompat} tente l'ancienne clé si absente.
  */
 public class JsonSerialiser
 {
@@ -527,6 +525,7 @@ public class JsonSerialiser
 		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
 	}
 
+	/** Arrondit à 2 décimales et remplace les valeurs aberrantes (Inf, NaN, > 10⁹) par 0.0. */
 	private static double d2(double v)
 	{
 		if (Double.isInfinite(v) || Double.isNaN(v) || v > 1_000_000_000) return 0.0;

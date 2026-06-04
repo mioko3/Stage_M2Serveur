@@ -57,12 +57,16 @@ public class ServeurHTTP
 	private static final long TIMEOUT_CLIENT_MS    = 30_000;
 
 	// ── Sessions ──────────────────────────────────────────────────────────
+	/** Durée de vie d'un token de session (4 heures). */
 	private static final long TOKEN_TTL_MS = 4 * 3600_000L;
 	private final Map<String, SessionInfo> sessions    = new ConcurrentHashMap<>();
 	private final SecureRandom             rng         = new SecureRandom();
+	/** Compteur et verrou de blocage par IP (protection brute-force). */
 	private final Map<String, Integer>     loginEchecs = new ConcurrentHashMap<>();
 	private final Map<String, Long>        loginBlocage= new ConcurrentHashMap<>();
+	/** Nombre max de tentatives de login avant blocage de l'IP. */
 	private static final int  MAX_ECHECS = 5;
+	/** Durée du blocage après trop de tentatives échouées. */
 	private static final long BLOCAGE_MS = 5 * 60_000L;
 
 	// ── Chiffrement AES ───────────────────────────────────────────────────
