@@ -46,6 +46,9 @@ public class PanelSemaineSuivante extends JPanel
 	private ArrayList<Lot> lotsImportTemp  = null;
 	private String         cheminExcelTemp = null;
 
+	// ── Cache mémoire des sociétés préparées ─────────────────────────────
+	private ArrayList<Societe> socsPrepEnMemoire = null;
+
 	// ── Header ────────────────────────────────────────────────────────────
 	private JLabel  lblEtat;
 	private JButton btnBasculer;
@@ -334,7 +337,7 @@ public class PanelSemaineSuivante extends JPanel
 	{
 		if (combSocEdit == null) return;
 		ArrayList<Societe> socs = serveur.getSocietesSemaneSuivante();
-
+		socsPrepEnMemoire = socs;
 		String ancien = combSocEdit.getSelectedItem() != null
 			? combSocEdit.getSelectedItem().toString() : null;
 		combSocEdit.removeAllItems();
@@ -422,8 +425,9 @@ public class PanelSemaineSuivante extends JPanel
 
 	private void sauvegarderPrep()
 	{
+		// NE PAS relire depuis le serveur — on passe les listes déjà modifiées en mémoire
 		ArrayList<Lot>     lots = serveur.getLotsSemaneSuivante();
-		ArrayList<Societe> socs = serveur.getSocietesSemaneSuivante();
+		ArrayList<Societe> socs = getSocietesEnMemoire();
 		if (lots == null || socs == null) return;
 		try { serveur.sauvegarderSemaneSuivante(lots, socs); }
 		catch (Exception ex)
@@ -432,14 +436,17 @@ public class PanelSemaineSuivante extends JPanel
 
 	private Societe getSocPrepSelectionnee()
 	{
-		if (combSocEdit == null) return null;
-		Object sel = combSocEdit.getSelectedItem();
-		if (sel == null) return null;
-		ArrayList<Societe> socs = serveur.getSocietesSemaneSuivante();
-		if (socs == null) return null;
-		String nom = sel.toString();
-		for (Societe s : socs) if (s.getNom().equals(nom)) return s;
+		if (combSocEdit == null || socsPrepEnMemoire == null) return null;
+		String nom = combSocEdit.getSelectedItem() != null
+			? combSocEdit.getSelectedItem().toString() : null;
+		if (nom == null) return null;
+		for (Societe s : socsPrepEnMemoire) if (s.getNom().equals(nom)) return s;
 		return null;
+	}
+
+	private ArrayList<Societe> getSocietesEnMemoire()
+	{
+		return socsPrepEnMemoire;
 	}
 
 	// ══════════════════════════════════════════════════════════════════════
