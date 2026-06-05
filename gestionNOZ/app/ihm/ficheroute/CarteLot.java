@@ -447,11 +447,16 @@ public class CarteLot extends JPanel implements ActionListener
 		btnSuppr.setFocusPainted(false);
 		btnSuppr.setToolTipText("Supprimer cette ligne");
 		btnSuppr.addActionListener(e -> {
+			combFormCart.removeActionListener(this);
+			combDistri  .removeActionListener(this);
+
 			lot.supprimerLigneColisage(index);
 			if (ctrl instanceof app.ControleurClient)
 				((app.ControleurClient) ctrl).supprimerLigneColisage(lot, index);
+
 			m.rafraichir();
 		});
+
 
 		row.add(lbl);
 		row.add(btnSuppr);
@@ -514,12 +519,22 @@ public class CarteLot extends JPanel implements ActionListener
 			int col = Integer.parseInt(tfCol.getText().trim());
 			int pcs = Integer.parseInt(tfpiece.getText().trim());
 			if (col <= 0 || pcs <= 0 || pcs >= lot.getNbPieces()) throw new NumberFormatException();
+
+			// ── Désactiver les listeners AVANT de modifier le lot ──
+			combFormCart.removeActionListener(this);
+			combDistri  .removeActionListener(this);
+
 			lot.ajouterLigneColisage(new LigneColisage((String) comboFmt.getSelectedItem(), col), pcs);
+
 			if (ctrl instanceof app.ControleurClient) {
 				LigneColisage nvLigne = lot.getLignesColisage().get(lot.getLignesColisage().size() - 1);
 				((app.ControleurClient) ctrl).ajouterLigneColisage(lot, nvLigne, pcs);
 			}
+
 			m.rafraichir();
+
+			// ── Réactiver les listeners APRÈS le rafraîchissement ──
+			// (m.rafraichir() reconstruit la carte, les nouveaux combos ont leur propre listener)
 		}
 		catch (NumberFormatException ex)
 		{

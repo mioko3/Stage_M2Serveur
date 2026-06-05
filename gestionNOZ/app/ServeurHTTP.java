@@ -393,7 +393,6 @@ public class ServeurHTTP
 		}
 	}
 
-	// ── CORRECTIF : estMachine appliqué après modifierLot() ──────────────
 	class ModifierLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
 			if (!exigerToken(ex)) return;
@@ -402,6 +401,13 @@ public class ServeurHTTP
 				String c = lire(ex);
 				Lot lot = findLot(JsonSerialiser.extraireInt(c, "numCDE"));
 				if (lot == null) { rep(ex, 404, "{\"err\":\"lot introuvable\"}"); return; }
+
+				// ── Sauvegarder les lignes et pcsUtiliser AVANT toute modification ──
+				// modifierLot() appelle setNbPieces() → recalculerLignesColisage()
+				// ce qui écrase pcsUtiliser avec nbPieces, perdant l'état des lignes
+				ArrayList<app.metier.lot.LigneColisage> lignesSauvees =
+					new ArrayList<>(lot.getLignesColisage());
+				int pcsUtiliserSauve = lot.getPcsUtiliser();
 
 				// Champs administratifs
 				metier.modifierLot(lot,
@@ -422,25 +428,31 @@ public class ServeurHTTP
 					JsonSerialiser.extraireString(c, "commentaire")
 				);
 
-				// CORRECTIF : estMachine non présent dans la signature de modifierLot()
-				// → appliqué directement sur le lot après l'appel
 				lot.setEstMachine(JsonSerialiser.extraireBool(c, "estMachine"));
 
-				// Champs logistiques
-				lot.setMethode     (JsonSerialiser.extraireString(c, "methode"));
-				lot.setDistribution(JsonSerialiser.extraireString(c, "distribution"));
-				lot.setFormatCarton(JsonSerialiser.extraireString(c, "formatCarton"));
-				lot.setCollisage   (JsonSerialiser.extraireInt   (c, "collisage"));
-				lot.setNbPers      (JsonSerialiser.extraireInt   (c, "nbPers"));
-				lot.setCadenceReel (JsonSerialiser.extraireDouble (c, "cadenceReel"));
-				lot.setPoucentrecupCartonFour(JsonSerialiser.extraireInt(c, "poucentrecup"));
+				// ── Restaurer les lignes et pcsUtiliser après modifierLot() ──
+				lot.getLignesColisage().clear();
+				lot.getLignesColisage().addAll(lignesSauvees);
+				lot.setPcsUtiliser(pcsUtiliserSauve);
 
-				save(); versionDonnees = System.currentTimeMillis();
+				// Champs logistiques — collisage AVANT formatCarton
+				lot.setMethode              (JsonSerialiser.extraireString(c, "methode"));
+				lot.setDistribution         (JsonSerialiser.extraireString(c, "distribution"));
+				lot.setNbPers               (JsonSerialiser.extraireInt   (c, "nbPers"));
+				lot.setCadenceReel          (JsonSerialiser.extraireDouble (c, "cadenceReel"));
+				lot.setPoucentrecupCartonFour(JsonSerialiser.extraireInt  (c, "poucentrecupCartonFour"));
+				lot.setCollisage            (JsonSerialiser.extraireInt   (c, "collisage"));
+				lot.setFormatCarton         (JsonSerialiser.extraireString(c, "formatCarton"));
+				lot.recalculNbPalette();
+
+				save();
+				versionDonnees = System.currentTimeMillis();
 				rep(ex, 200, JsonSerialiser.serialiserLots(metier.getLots()));
 			} catch (Exception e) { rep(ex, 400, "{\"err\":\"" + e.getMessage() + "\"}"); }
 			finally { rwLock.writeLock().unlock(); }
 		}
 	}
+
 
 	class AffecterLotHandler implements HttpHandler {
 		public void handle(HttpExchange ex) throws IOException {
