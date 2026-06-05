@@ -284,6 +284,15 @@ public class JsonSerialiser
 		ph.setFinit     (getBool(obj, "ph_finit"));
 		lot.setPhase(ph);
 	
+		// ── RECALCULS FINAUX au chargement ───────────────────────────────────
+		// Garantit que tous les automatismes sont corrects après désérialisation,
+		// même si le JSON était incomplet ou provient d'une ancienne version.
+		lot.recalculerHeures();
+		if (lot.getPrixUnitaire() <= 0)
+			lot.setValeurVente(lot.getValeurVente());
+		lot.recalculNbPalette();
+		lot.calculColisRecup();
+
 		return lot;
 	}
 
