@@ -102,8 +102,6 @@ public class GestionComptes
 			String json = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
 			utilisateurs = parseUtilisateurs(json);
 			demandes     = parseDemandes(json);
-			System.out.println("[GestionComptes] " + utilisateurs.size() + " utilisateurs, "
-				+ demandes.stream().filter(d -> "attente".equals(d.statut)).count() + " demandes en attente.");
 		}
 		catch (Exception e)
 		{
