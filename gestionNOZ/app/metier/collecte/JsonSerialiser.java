@@ -208,10 +208,8 @@ public class JsonSerialiser
 		lot.setTypologie    (getString(obj, "typologie"));
 		lot.setAffaire      (getString(obj, "affaire"));
 		lot.setPrixUnitaire (getDouble(obj, "prixUnitaire"));
-
 		double heuresAce = getDouble(obj, "heuresAce");
 		lot.setHeuresAce(heuresAce > 1_000_000 ? 0.0 : heuresAce);
-
 		lot.setSemaine      (getString(obj, "semaine"));
 		lot.setPriorite     (getInt   (obj, "priorite"));
 		lot.setLotACharge   (getString(obj, "lotACharge"));
@@ -223,29 +221,23 @@ public class JsonSerialiser
 		lot.setCommentaire  (getString(obj, "commentaire"));
 		lot.setMethode      (getString(obj, "methode"));
 		lot.setDistribution (getString(obj, "distribution"));
+		lot.setCollisage    (getInt   (obj, "collisage"));
 		lot.setFormatCarton (getString(obj, "formatCarton"));
 		lot.setCadenceReel  (getDouble(obj, "cadenceReel"));
-		lot.setCollisage    (getInt   (obj, "collisage"));
+		lot.setPoucentrecupCartonFour(getInt(obj, "poucentrecup"));
 
-		// ── ORDRE CRITIQUE : dateDebut AVANT nbPers ──
-		// setDateDebut déclenche calculDateFinThéorique()
-		// setNbPers  déclenche calculHeuresPiste() → calculDateFinThéorique()
-		// Il faut que heuresAce ET dateDebut soient prêts avant ces calculs.
-		lot.setDateDebutSansRecalcul(getString(obj, "dateDebut")); // ← nouveau setter
+		lot.setDateDebutSansRecalcul(getString(obj, "dateDebut"));
 		lot.setdateFin  (getString(obj, "dateFin"));
-
-		// Restaurer nbPers (déclenche calculHeuresPiste → dateFinTheorique)
-		// À ce stade dateDebut et heuresAce sont déjà en place → calcul correct
-		lot.setNbPers(getInt(obj, "nbPers"));
-
-		// Si la dateFinTheorique sauvegardée est valide, on la restaure telle quelle
-		// (cas où le lot est en cours / pausé)
+		lot.setNbPers   (getInt(obj, "nbPers"));
 		String dft = getString(obj, "dateFinTheorique");
-		if (dft != null && !dft.isBlank())
-			lot.setdateFinT(dft);
+		if (dft != null && !dft.isBlank()) lot.setdateFinT(dft);
 
-	
-		// Lignes de colisage — restaurées avec recalcul depuis "pcs"
+		// ── CRITIQUE : restaurer pcsUtiliser AVANT les lignes ──
+		int pcsUtiliser = getInt(obj, "pcsUtiliser");
+		if (pcsUtiliser > 0)
+			lot.setPcsUtiliser(pcsUtiliser);
+
+		// Lignes de colisage
 		String blocsLignes = extraireBloc(obj, "\"lignesColisage\"");
 		if (blocsLignes != null) {
 			for (String objLigne : extraireObjets(blocsLignes)) {
@@ -253,45 +245,30 @@ public class JsonSerialiser
 					String fmt = getString(objLigne, "formatCarton");
 					int    col = getInt   (objLigne, "collisage");
 					int    pcs = getInt   (objLigne, "pcs");
-	
-					// Fallback rétrocompat : anciens JSON sans "pcs"
 					if (pcs <= 0) pcs = getInt(objLigne, "nbColis") * col;
-	
 					LigneColisage lc = new LigneColisage(fmt, col);
-					if (pcs > 0) lc.recalculer(pcs);           // recalcule nbColis + nbPalettes
-					lot.getLignesColisage().add(lc);            // add direct, pcsUtiliser déjà restauré
+					if (pcs > 0) lc.recalculer(pcs);
+					lot.getLignesColisage().add(lc);
 				} catch (Exception ignored) {}
 			}
 		}
-	
-		// Recalculer les totaux du lot (nbPalettes + nbColisPrevue)
-		// en tenant compte du pcsUtiliser restauré
-		lot.recalculNbPalette();                               // ← AJOUT
-	
+		lot.recalculNbPalette();
+
 		SuivieProd sp = new SuivieProd();
 		sp.setLot(lot);
-		sp.setNbPieceEtiq         (getInt(obj, "sp_nbPieceEtiq"));
-		sp.setNbPieceRepart       (getInt(obj, "sp_nbPieceRepart"));
+		sp.setNbPieceEtiq         (getInt   (obj, "sp_nbPieceEtiq"));
+		sp.setNbPieceRepart       (getInt   (obj, "sp_nbPieceRepart"));
 		sp.setNbHeureEtiqRestant  (Math.min(getDouble(obj, "sp_nbHeureEtiqRestant"),   999999));
 		sp.setNbHeureRepartRestant(Math.min(getDouble(obj, "sp_nbHeureRepartRestant"), 999999));
 		lot.setSuivieProd(sp);
-	
+
 		Phase ph = new Phase();
-		ph.setPreTri    (getBool(obj, "ph_preTri"));
-		ph.setSurPiste  (getBool(obj, "ph_surPiste"));
-		ph.setSortieEtiq(getBool(obj, "ph_sortieEtiq"));
-		ph.setTri       (getBool(obj, "ph_tri"));
-		ph.setFinit     (getBool(obj, "ph_finit"));
+		ph.setPreTri    (getBoolCompat(obj, "ph_preTri",     "preTri"));
+		ph.setSurPiste  (getBoolCompat(obj, "ph_surPiste",   "surPiste"));
+		ph.setSortieEtiq(getBoolCompat(obj, "ph_sortieEtiq", "sortieEtiq"));
+		ph.setTri       (getBoolCompat(obj, "ph_tri",        "tri"));
+		ph.setFinit     (getBoolCompat(obj, "ph_finit",      "finit"));
 		lot.setPhase(ph);
-	
-		// ── RECALCULS FINAUX au chargement ───────────────────────────────────
-		// Garantit que tous les automatismes sont corrects après désérialisation,
-		// même si le JSON était incomplet ou provient d'une ancienne version.
-		lot.recalculerHeures();
-		if (lot.getPrixUnitaire() <= 0)
-			lot.setValeurVente(lot.getValeurVente());
-		lot.recalculNbPalette();
-		lot.calculColisRecup();
 
 		return lot;
 	}
